@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Jobsuche | AI Job Copilot{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Jobsuche</h1>
+    <p>Suche nach Stellenanzeigen über API.</p>
+</section>
+
+<section>
+    <form method="post" action="/jobs/search">
+        <label for="query">Suchbegriff</label>
+        <input type="text" id="query" name="query">
+
+        <label for="location">Standort</label>
+        <input type="text" id="location" name="location">
+
+        <label for="work_model">Arbeitsmodell</label>
+        <select id="work_model" name="work_model">
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="onsite">Vor Ort</option>
+        </select>
+
+        <button type="submit">Jobs suchen</button>
+    </form>
+</section>
+{% endblock %}

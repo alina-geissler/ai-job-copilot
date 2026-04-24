@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Profil | AI Job Copilot{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Profil / Lebenslauf</h1>
+    <p>Bereich für persönliche Daten, CV und Bewerbungsinformationen.</p>
+</section>
+
+<section>
+    <form method="post" action="/profile">
+        <label for="cv">CV hochladen</label>
+        <input type="file" id="cv" name="cv">
+
+        <label for="full_name">Name</label>
+        <input type="text" id="full_name" name="full_name">
+
+        <label for="skills">Skills</label>
+        <textarea id="skills" name="skills"></textarea>
+
+        <label for="experience">Berufserfahrung</label>
+        <textarea id="experience" name="experience"></textarea>
+
+        <label for="education">Ausbildung</label>
+        <textarea id="education" name="education"></textarea>
+
+        <button type="submit">Speichern</button>
+    </form>
+</section>
+{% endblock %}

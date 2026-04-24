@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Single Job Analysis | AI Job Copilot{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Single Job Analysis</h1>
+    <p>Analyse einer einzelnen Stellenanzeige im Guest Mode oder Logged-in Mode.</p>
+</section>
+
+<section>
+    <h2>Stellenanzeige</h2>
+    <form method="post" action="/single-job-analysis">
+        <label for="job_text">Stellenanzeige einfügen</label>
+        <textarea id="job_text" name="job_text" rows="8"></textarea>
+
+        <label for="job_link">Oder Link einfügen</label>
+        <input type="url" id="job_link" name="job_link">
+
+        <h2>Profildaten</h2>
+        <p>Guest: CV hochladen oder Daten manuell eingeben. Logged-in: gespeichertes Profil nutzen.</p>
+
+        <h2>Ausgabe wählen</h2>
+        <label><input type="checkbox" name="outputs" value="cover_letter"> Anschreiben</label>
+        <label><input type="checkbox" name="outputs" value="interview_questions"> Mögliche Interviewfragen</label>
+        <label><input type="checkbox" name="outputs" value="company_questions"> Fragen an das Unternehmen</label>
+        <label><input type="checkbox" name="outputs" value="skill_gap"> Skill-Gap-Analyse</label>
+        <label><input type="checkbox" name="outputs" value="checklist"> Bewerbungscheckliste</label>
+
+        <button type="submit">Generieren / Analysieren</button>
+    </form>
+</section>
+{% endblock %}

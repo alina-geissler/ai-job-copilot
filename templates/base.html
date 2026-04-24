@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Job Copilot{% endblock %}</title>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/single-job-analysis">Single Job Analysis</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/profile">Profil</a>
+            <a href="/jobs/search">Jobsuche</a>
+            <a href="/documents">Dokumente</a>
+            <a href="/tracker">Bewerbungstracker</a>
+            <a href="/auth">Login / Registrierung</a>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>AI Job Match &amp; Application Copilot</p>
+    </footer>
+</body>
+</html>
