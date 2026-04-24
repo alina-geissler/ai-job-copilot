@@ -17,4 +17,42 @@
         <a href="/matches">Match-Analyse starten</a>
     </article>
 </section>
+
+<section>
+    <h2>ABGESCHICKTE WERTE:</h2>
+
+    <p><strong>Suchbegriff:</strong> {{ search_data.query }}</p>
+    <p><strong>Ort:</strong> {{ search_data.location or "—" }}</p>
+    <p><strong>Berufserfahrung:</strong> {{ search_data.experience_level or "—" }}</p>
+    <p><strong>Unternehmen:</strong> {{ search_data.company or "—" }}</p>
+
+    <h4>Arbeitsmodell</h4>
+    <ul>
+        {% for item in search_data.work_model %}
+            <li>{{ item }}</li>
+        {% else %}
+            <li>Keine Auswahl</li>
+        {% endfor %}
+    </ul>
+
+    <h4>Art der Beschäftigung</h4>
+    <ul>
+        {% for item in search_data.employment_type %}
+            <li>{{ item }}</li>
+        {% else %}
+            <li>Keine Auswahl</li>
+        {% endfor %}
+    </ul>
+
+    <h4>Branche</h4>
+    <ul>
+        {% for item in search_data.industry %}
+            <li>{{ item }}</li>
+        {% else %}
+            <li>Keine Auswahl</li>
+        {% endfor %}
+    </ul>
+
+    <p><a href="/jobs/search">Zurück zur Suche</a></p>
+</section>
 {% endblock %}
