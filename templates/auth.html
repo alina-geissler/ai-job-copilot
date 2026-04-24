@@ -5,14 +5,16 @@
 {% block content %}
 <section>
     <h1>Login / Registrierung</h1>
-    <p>Seite für Anmeldung und Kontoerstellung.</p>
+    <p>Hier können sich Nutzerinnen später einloggen oder registrieren.</p>
 </section>
 
 <section>
     <h2>Login</h2>
     <form method="post" action="/login">
-        <input type="email" name="email" placeholder="E-Mail">
-        <input type="password" name="password" placeholder="Passwort">
+        <label for="login-email">E-Mail</label>
+        <input type="email" id="login-email" name="login-email" placeholder="E-Mail" required>
+        <label for="login-password">Passwort</label>
+        <input type="password" id="login-password" name="login-password" placeholder="Passwort" required>
         <button type="submit">Login</button>
     </form>
 </section>
@@ -20,9 +22,12 @@
 <section>
     <h2>Registrierung</h2>
     <form method="post" action="/register">
-        <input type="text" name="name" placeholder="Name">
-        <input type="email" name="email" placeholder="E-Mail">
-        <input type="password" name="password" placeholder="Passwort">
+        <label for="register-name">Name</label>
+        <input type="text" id="register-name" name="register-name" placeholder="Name" required>
+        <label for="register-email">E-Mail</label>
+        <input type="email" id="register-email" name="register-email" placeholder="E-Mail" required>
+        <label for="register-password">Passwort</label>
+        <input type="password" id="register-password" name="register-password" placeholder="Passwort" required>
         <button type="submit">Konto erstellen</button>
     </form>
 </section>
