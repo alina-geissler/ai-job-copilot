@@ -3,3 +3,4 @@ app/api/__pycache__/
 app/api/routes/__pycache__/
 .env
 app/core/__pycache__/
+docs/

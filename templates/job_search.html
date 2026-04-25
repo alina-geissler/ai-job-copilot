@@ -17,113 +17,112 @@
         <input type="text" id="location" name="location" value="Deutschland">
 
         <button type="submit">Jobs finden</button>
+
+        <fieldset>
+        <legend>Arbeitsmodell</legend>
+
+        <label>
+            <input type="checkbox" name="work_model" value="remote">
+            Remote
+        </label>
+
+        <label>
+            <input type="checkbox" name="work_model" value="hybrid">
+            Hybrid
+        </label>
+
+        <label>
+            <input type="checkbox" name="work_model" value="onsite">
+            Vor Ort
+        </label>
+        </fieldset>
+
+        <details>
+        <summary>Alle Filter</summary>
+
+        <fieldset>
+            <legend>Art der Beschäftigung</legend>
+
+            <label>
+                <input type="checkbox" name="employment_type" value="full_time">
+                Vollzeit
+            </label>
+
+            <label>
+                <input type="checkbox" name="employment_type" value="part_time">
+                Teilzeit
+            </label>
+
+            <label>
+                <input type="checkbox" name="employment_type" value="internship">
+                Praktikum
+            </label>
+
+            <label>
+                <input type="checkbox" name="employment_type" value="working_student">
+                Werkstudentin / Werkstudent
+            </label>
+
+            <label>
+                <input type="checkbox" name="employment_type" value="freelance">
+                Freelance
+            </label>
+        </fieldset>
+
+        <fieldset>
+            <legend>Berufserfahrung / Position</legend>
+
+            <label>
+                <input type="radio" name="experience_level" value="entry">
+                Einstieg
+            </label>
+
+            <label>
+                <input type="radio" name="experience_level" value="junior">
+                Junior
+            </label>
+
+            <label>
+                <input type="radio" name="experience_level" value="mid">
+                Mid-Level
+            </label>
+
+            <label>
+                <input type="radio" name="experience_level" value="senior">
+                Senior
+            </label>
+        </fieldset>
+
+        <div>
+            <label for="company">Unternehmen</label>
+            <input type="text" id="company" name="company" placeholder="z. B. SAP">
+        </div>
+
+        <fieldset>
+            <legend>Branche</legend>
+
+            <label>
+                <input type="checkbox" name="industry" value="it">
+                IT / Software
+            </label>
+
+            <label>
+                <input type="checkbox" name="industry" value="finance">
+                Finance
+            </label>
+
+            <label>
+                <input type="checkbox" name="industry" value="healthcare">
+                Healthcare
+            </label>
+
+            <label>
+                <input type="checkbox" name="industry" value="education">
+                Education
+            </label>
+        </fieldset>
+
+        </details>
     </form>
-</section>
-<section>
-    <fieldset>
-    <legend>Arbeitsmodell</legend>
-
-    <label>
-        <input type="checkbox" name="work_model" value="remote">
-        Remote
-    </label>
-
-    <label>
-        <input type="checkbox" name="work_model" value="hybrid">
-        Hybrid
-    </label>
-
-    <label>
-        <input type="checkbox" name="work_model" value="onsite">
-        Vor Ort
-    </label>
-</fieldset>
-
-<details>
-    <summary>Alle Filter</summary>
-
-    <fieldset>
-        <legend>Art der Beschäftigung</legend>
-
-        <label>
-            <input type="checkbox" name="employment_type" value="full_time">
-            Vollzeit
-        </label>
-
-        <label>
-            <input type="checkbox" name="employment_type" value="part_time">
-            Teilzeit
-        </label>
-
-        <label>
-            <input type="checkbox" name="employment_type" value="internship">
-            Praktikum
-        </label>
-
-        <label>
-            <input type="checkbox" name="employment_type" value="working_student">
-            Werkstudentin / Werkstudent
-        </label>
-
-        <label>
-            <input type="checkbox" name="employment_type" value="freelance">
-            Freelance
-        </label>
-    </fieldset>
-
-    <fieldset>
-        <legend>Berufserfahrung / Position</legend>
-
-        <label>
-            <input type="radio" name="experience_level" value="entry">
-            Einstieg
-        </label>
-
-        <label>
-            <input type="radio" name="experience_level" value="junior">
-            Junior
-        </label>
-
-        <label>
-            <input type="radio" name="experience_level" value="mid">
-            Mid-Level
-        </label>
-
-        <label>
-            <input type="radio" name="experience_level" value="senior">
-            Senior
-        </label>
-    </fieldset>
-
-    <div>
-        <label for="company">Unternehmen</label>
-        <input type="text" id="company" name="company" placeholder="z. B. SAP">
-    </div>
-
-    <fieldset>
-        <legend>Branche</legend>
-
-        <label>
-            <input type="checkbox" name="industry" value="it">
-            IT / Software
-        </label>
-
-        <label>
-            <input type="checkbox" name="industry" value="finance">
-            Finance
-        </label>
-
-        <label>
-            <input type="checkbox" name="industry" value="healthcare">
-            Healthcare
-        </label>
-
-        <label>
-            <input type="checkbox" name="industry" value="education">
-            Education
-        </label>
-    </fieldset>
-
-</details>
 </section>
 {% endblock %}

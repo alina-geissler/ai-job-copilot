@@ -5,7 +5,8 @@
 {% block content %}
 <section>
     <h1>Suchergebnisse</h1>
-    <p>Liste der gefundenen Stellenanzeigen mit Filter- und Sortieroptionen.</p>
+    <p>Aktuell noch die abgeschickten Such- und Filterwerte als Debug-Ansicht.</p>
+    <p>Später: Liste der gefundenen Stellenanzeigen mit Filter- und Sortieroptionen.</p>
 </section>
 
 <section>
@@ -21,37 +22,49 @@
 <section>
     <h2>ABGESCHICKTE WERTE:</h2>
 
-    <p><strong>Suchbegriff:</strong> {{ search_data.query }}</p>
-    <p><strong>Ort:</strong> {{ search_data.location or "—" }}</p>
-    <p><strong>Berufserfahrung:</strong> {{ search_data.experience_level or "—" }}</p>
-    <p><strong>Unternehmen:</strong> {{ search_data.company or "—" }}</p>
+    <p><strong>Suchbegriff:</strong> {{ search_data.get("query") or "- kein Suchbegriff -"  }}</p>
+    <p><strong>Ort:</strong> {{ search_data.get("location") or "—" }}</p>
+    <p><strong>Berufserfahrung:</strong> {{ search_data.get("experience_level") or "—" }}</p>
+    <p><strong>Unternehmen:</strong> {{ search_data.get("company") or "—" }}</p>
 
-    <h4>Arbeitsmodell</h4>
-    <ul>
-        {% for item in search_data.work_model %}
-            <li>{{ item }}</li>
-        {% else %}
-            <li>Keine Auswahl</li>
-        {% endfor %}
-    </ul>
+    <h4>Arbeitsmodell:</h4>
+    {% set work_models = search_data.get("work_model", []) %}
 
-    <h4>Art der Beschäftigung</h4>
-    <ul>
-        {% for item in search_data.employment_type %}
-            <li>{{ item }}</li>
-        {% else %}
-            <li>Keine Auswahl</li>
-        {% endfor %}
-    </ul>
+    {% if work_models %}
+        <ul>
+            {% for item in work_models %}
+                <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Keine Auswahl</p>
+    {% endif %}
 
-    <h4>Branche</h4>
-    <ul>
-        {% for item in search_data.industry %}
-            <li>{{ item }}</li>
-        {% else %}
-            <li>Keine Auswahl</li>
-        {% endfor %}
-    </ul>
+    <h4>Art der Beschäftigung:</h4>
+    {% set employment_types = search_data.get("employment_type", []) %}
+
+    {% if employment_types %}
+        <ul>
+            {% for item in employment_types %}
+                <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Keine Auswahl</p>
+    {% endif %}
+
+    <h4>Branche:</h4>
+    {% set industries = search_data.get("industry", []) %}
+
+    {% if industries %}
+        <ul>
+            {% for item in industries %}
+                <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Keine Auswahl</p>
+    {% endif %}
 
     <p><a href="/jobs/search">Zurück zur Suche</a></p>
 </section>
