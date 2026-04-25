@@ -3,6 +3,9 @@
 {% block title %}Jobsuche | AI Job Copilot{% endblock %}
 
 {% block content %}
+{% set errors = errors | default({}) %}
+{% set form_data = form_data | default({}) %}
+
 <section>
     <h1>Jobsuche</h1>
     <p>Suche nach Stellenanzeigen über API.</p>
@@ -10,118 +13,238 @@
 
 <section>
     <form method="post" action="/jobs/search">
-        <label for="query">Position</label>
-        <input type="text" id="query" name="query" placeholder="Jobtitel oder Stichworte" required>
+        <div>
+            <label for="query">Position:</label>
+            <input
+                type="text"
+                id="query"
+                name="query"
+                placeholder="Jobtitel oder Stichworte"
+                value="{{ form_data.get('query', '') }}"
+                {% if errors.get('query') %}
+                    aria-invalid="true"
+                    aria-describedby="query-error"
+                {% endif %}
+                required
+            >
+            {% if errors.get('query') %}
+                <p id="query-error" role="alert">{{ errors.get("query") }}</p>
+            {% endif %}
+        </div>
 
-        <label for="location">Standort</label>
-        <input type="text" id="location" name="location" value="Deutschland">
+        <div>
+            <label for="location">Standort:</label>
+            <input
+                type="text"
+                id="location"
+                name="location"
+                value="{{ form_data.get('location', 'Deutschland') }}"
+                {% if errors.get('location') %}
+                    aria-invalid="true"
+                    aria-describedby="location-error"
+                {% endif %}
+                required
+            >
+            {% if errors.get('location') %}
+                <p id="location-error" role="alert">{{ errors.get("location") }}</p>
+            {% endif %}
+        </div>
 
         <button type="submit">Jobs finden</button>
 
         <fieldset>
-        <legend>Arbeitsmodell</legend>
-
-        <label>
-            <input type="checkbox" name="work_model" value="remote">
-            Remote
-        </label>
-
-        <label>
-            <input type="checkbox" name="work_model" value="hybrid">
-            Hybrid
-        </label>
-
-        <label>
-            <input type="checkbox" name="work_model" value="onsite">
-            Vor Ort
-        </label>
-        </fieldset>
-
-        <details>
-        <summary>Alle Filter</summary>
-
-        <fieldset>
-            <legend>Art der Beschäftigung</legend>
+            <legend>Arbeitsmodell</legend>
+            {% set selected_work_models = form_data.get('work_model', []) %}
 
             <label>
-                <input type="checkbox" name="employment_type" value="full_time">
-                Vollzeit
+                <input
+                    type="checkbox"
+                    name="work_model"
+                    value="remote"
+                    {% if "remote" in selected_work_models %}checked{% endif %}
+                >
+                Remote
             </label>
 
             <label>
-                <input type="checkbox" name="employment_type" value="part_time">
-                Teilzeit
+                <input
+                    type="checkbox"
+                    name="work_model"
+                    value="hybrid"
+                    {% if "hybrid" in selected_work_models %}checked{% endif %}
+                >
+                Hybrid
             </label>
 
             <label>
-                <input type="checkbox" name="employment_type" value="internship">
-                Praktikum
-            </label>
-
-            <label>
-                <input type="checkbox" name="employment_type" value="working_student">
-                Werkstudentin / Werkstudent
-            </label>
-
-            <label>
-                <input type="checkbox" name="employment_type" value="freelance">
-                Freelance
+                <input
+                    type="checkbox"
+                    name="work_model"
+                    value="onsite"
+                    {% if "onsite" in selected_work_models %}checked{% endif %}
+                >
+                Vor Ort
             </label>
         </fieldset>
 
-        <fieldset>
-            <legend>Berufserfahrung / Position</legend>
+        <details {% if form_data.get('employment_type') or form_data.get('experience_level') or form_data.get('company') or form_data.get('industry') %}open{% endif %}>
+            <summary>Alle Filter</summary>
 
-            <label>
-                <input type="radio" name="experience_level" value="entry">
-                Einstieg
-            </label>
+            <fieldset>
+                <legend>Art der Beschäftigung</legend>
+                {% set selected_employment_types = form_data.get('employment_type', []) %}
 
-            <label>
-                <input type="radio" name="experience_level" value="junior">
-                Junior
-            </label>
+                <label>
+                    <input
+                        type="checkbox"
+                        name="employment_type"
+                        value="full_time"
+                        {% if "full_time" in selected_employment_types %}checked{% endif %}
+                    >
+                    Vollzeit
+                </label>
 
-            <label>
-                <input type="radio" name="experience_level" value="mid">
-                Mid-Level
-            </label>
+                <label>
+                    <input
+                        type="checkbox"
+                        name="employment_type"
+                        value="part_time"
+                        {% if "part_time" in selected_employment_types %}checked{% endif %}
+                    >
+                    Teilzeit
+                </label>
 
-            <label>
-                <input type="radio" name="experience_level" value="senior">
-                Senior
-            </label>
-        </fieldset>
+                <label>
+                    <input
+                        type="checkbox"
+                        name="employment_type"
+                        value="internship"
+                        {% if "internship" in selected_employment_types %}checked{% endif %}
+                    >
+                    Praktikum
+                </label>
 
-        <div>
-            <label for="company">Unternehmen</label>
-            <input type="text" id="company" name="company" placeholder="z. B. SAP">
-        </div>
+                <label>
+                    <input
+                        type="checkbox"
+                        name="employment_type"
+                        value="working_student"
+                        {% if "working_student" in selected_employment_types %}checked{% endif %}
+                    >
+                    Werkstudentin / Werkstudent
+                </label>
 
-        <fieldset>
-            <legend>Branche</legend>
+                <label>
+                    <input
+                        type="checkbox"
+                        name="employment_type"
+                        value="freelance"
+                        {% if "freelance" in selected_employment_types %}checked{% endif %}
+                    >
+                    Freelance
+                </label>
+            </fieldset>
 
-            <label>
-                <input type="checkbox" name="industry" value="it">
-                IT / Software
-            </label>
+            <fieldset>
+                <legend>Berufserfahrung / Position</legend>
+                {% set selected_experience_level = form_data.get('experience_level', '') %}
 
-            <label>
-                <input type="checkbox" name="industry" value="finance">
-                Finance
-            </label>
+                <label>
+                    <input
+                        type="radio"
+                        name="experience_level"
+                        value="entry"
+                        {% if selected_experience_level == "entry" %}checked{% endif %}
+                    >
+                    Einstieg
+                </label>
 
-            <label>
-                <input type="checkbox" name="industry" value="healthcare">
-                Healthcare
-            </label>
+                <label>
+                    <input
+                        type="radio"
+                        name="experience_level"
+                        value="junior"
+                        {% if selected_experience_level == "junior" %}checked{% endif %}
+                    >
+                    Junior
+                </label>
 
-            <label>
-                <input type="checkbox" name="industry" value="education">
-                Education
-            </label>
-        </fieldset>
+                <label>
+                    <input
+                        type="radio"
+                        name="experience_level"
+                        value="mid"
+                        {% if selected_experience_level == "mid" %}checked{% endif %}
+                    >
+                    Mid-Level
+                </label>
 
+                <label>
+                    <input
+                        type="radio"
+                        name="experience_level"
+                        value="senior"
+                        {% if selected_experience_level == "senior" %}checked{% endif %}
+                    >
+                    Senior
+                </label>
+            </fieldset>
+
+            <div>
+                <label for="company">Unternehmen</label>
+                <input
+                    type="text"
+                    id="company"
+                    name="company"
+                    placeholder="z. B. SAP"
+                    value="{{ form_data.get('company', '') }}"
+                >
+            </div>
+
+            <fieldset>
+                <legend>Branche</legend>
+                {% set selected_industries = form_data.get('industry', []) %}
+
+                <label>
+                    <input
+                        type="checkbox"
+                        name="industry"
+                        value="it"
+                        {% if "it" in selected_industries %}checked{% endif %}
+                    >
+                    IT / Software
+                </label>
+
+                <label>
+                    <input
+                        type="checkbox"
+                        name="industry"
+                        value="finance"
+                        {% if "finance" in selected_industries %}checked{% endif %}
+                    >
+                    Finance
+                </label>
+
+                <label>
+                    <input
+                        type="checkbox"
+                        name="industry"
+                        value="healthcare"
+                        {% if "healthcare" in selected_industries %}checked{% endif %}
+                    >
+                    Healthcare
+                </label>
+
+                <label>
+                    <input
+                        type="checkbox"
+                        name="industry"
+                        value="education"
+                        {% if "education" in selected_industries %}checked{% endif %}
+                    >
+                    Education
+                </label>
+            </fieldset>
         </details>
     </form>
 </section>

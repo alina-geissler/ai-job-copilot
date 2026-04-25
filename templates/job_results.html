@@ -5,31 +5,20 @@
 {% block content %}
 <section>
     <h1>Suchergebnisse</h1>
-    <p>Aktuell noch die abgeschickten Such- und Filterwerte als Debug-Ansicht.</p>
-    <p>Später: Liste der gefundenen Stellenanzeigen mit Filter- und Sortieroptionen.</p>
+    <p>Aktuell werden die übergebenen Such- und Filterwerte als Debug-Ansicht angezeigt.</p>
+    <p>Später folgt hier die Liste der gefundenen Stellenanzeigen mit Filter- und Sortieroptionen.</p>
 </section>
 
 <section>
-    <article>
-        <h2>Beispiel-Jobtitel</h2>
-        <p>Firma, Ort, Kurzinfos</p>
-        <a href="/jobs/detail">Details ansehen</a>
-        <button type="button">Speichern</button>
-        <a href="/matches">Match-Analyse starten</a>
-    </article>
-</section>
+    <h2>Abgeschickte Werte</h2>
 
-<section>
-    <h2>ABGESCHICKTE WERTE:</h2>
-
-    <p><strong>Suchbegriff:</strong> {{ search_data.get("query") or "- kein Suchbegriff -"  }}</p>
-    <p><strong>Ort:</strong> {{ search_data.get("location") or "—" }}</p>
+    <p><strong>Suchbegriff:</strong> {{ search_data.get("query") or "—" }}</p>
+    <p><strong>Standort:</strong> {{ search_data.get("location") or "—" }}</p>
     <p><strong>Berufserfahrung:</strong> {{ search_data.get("experience_level") or "—" }}</p>
     <p><strong>Unternehmen:</strong> {{ search_data.get("company") or "—" }}</p>
 
     <h4>Arbeitsmodell:</h4>
     {% set work_models = search_data.get("work_model", []) %}
-
     {% if work_models %}
         <ul>
             {% for item in work_models %}
@@ -42,7 +31,6 @@
 
     <h4>Art der Beschäftigung:</h4>
     {% set employment_types = search_data.get("employment_type", []) %}
-
     {% if employment_types %}
         <ul>
             {% for item in employment_types %}
@@ -55,7 +43,6 @@
 
     <h4>Branche:</h4>
     {% set industries = search_data.get("industry", []) %}
-
     {% if industries %}
         <ul>
             {% for item in industries %}
@@ -67,5 +54,17 @@
     {% endif %}
 
     <p><a href="/jobs/search">Zurück zur Suche</a></p>
+</section>
+
+<section>
+    <article>
+        <h2>Beispiel-Stellenanzeige</h2>
+        <p>Firma, Standort und weitere Kurzinfos werden später hier gerendert.</p>
+        <p>
+            <a href="/jobs/detail">Details ansehen</a>
+            <button type="button">Speichern</button>
+            <a href="/matches">Match-Analyse starten</a>
+        </p>
+    </article>
 </section>
 {% endblock %}
