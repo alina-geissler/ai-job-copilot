@@ -1,15 +1,21 @@
 from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Form, Query, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.schemas.job_search import JobSearchFilters
+from app.services.fixture_job_search_provider import FixtureJobSearchProvider
+from app.services.job_search_provider import JobSearchProvider
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 templates = Jinja2Templates(directory="templates")
+
+
+def get_job_search_provider() -> JobSearchProvider:
+    return FixtureJobSearchProvider()
 
 
 def _build_form_data(
@@ -30,6 +36,26 @@ def _build_form_data(
         "company": company or "",
         "industry": industry or [],
     }
+
+
+def _build_search_filters(
+    query: str,
+    location: str,
+    work_model: list[str] | None = None,
+    employment_type: list[str] | None = None,
+    experience_level: str | None = None,
+    company: str | None = None,
+    industry: list[str] | None = None,
+) -> JobSearchFilters:
+    return JobSearchFilters(
+        query=query,
+        location=location,
+        work_model=work_model or [],
+        employment_type=employment_type or [],
+        experience_level=experience_level.strip() if experience_level else None,
+        company=company.strip() if company else None,
+        industry=industry or [],
+    )
 
 
 def _build_results_redirect_url(request: Request, search_data: JobSearchFilters) -> str:
@@ -91,14 +117,14 @@ def submit_job_search(
     )
 
     try:
-        search_data = JobSearchFilters(
+        search_data = _build_search_filters(
             query=query,
             location=location,
-            work_model=work_model or [],
-            employment_type=employment_type or [],
-            experience_level=experience_level.strip() if experience_level else None,
-            company=company.strip() if company else None,
-            industry=industry or [],
+            work_model=work_model,
+            employment_type=employment_type,
+            experience_level=experience_level,
+            company=company,
+            industry=industry,
         )
     except ValidationError as e:
         errors: dict[str, str] = {}
@@ -135,16 +161,17 @@ def render_job_results_page(
     experience_level: Annotated[str | None, Query()] = None,
     company: Annotated[str | None, Query()] = None,
     industry: Annotated[list[str] | None, Query()] = None,
+    provider: JobSearchProvider = Depends(get_job_search_provider),
 ):
     try:
-        search_data = JobSearchFilters(
+        search_data = _build_search_filters(
             query=query,
             location=location,
-            work_model=work_model or [],
-            employment_type=employment_type or [],
-            experience_level=experience_level.strip() if experience_level else None,
-            company=company.strip() if company else None,
-            industry=industry or [],
+            work_model=work_model,
+            employment_type=employment_type,
+            experience_level=experience_level,
+            company=company,
+            industry=industry,
         )
     except ValidationError:
         return RedirectResponse(
@@ -152,8 +179,13 @@ def render_job_results_page(
             status_code=303,
         )
 
+    search_results = provider.search_jobs(search_data)
+
     return templates.TemplateResponse(
         request=request,
         name="job_results.html",
-        context={"search_data": search_data.model_dump()},
+        context={
+            "search_data": search_data.model_dump(),
+            "search_results": search_results.model_dump(),
+        },
     )

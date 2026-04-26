@@ -17,18 +17,3 @@ class JobSearchFilters(BaseModel):
     experience_level: str | None = None
     company: str | None = None
     industry: list[str] = Field(default_factory=list)
-
-
-class JobResult(BaseModel):
-    title: str
-    company: str
-    location: str | None = None
-    employment_type: str | None = None
-    work_model: str | None = None
-    url: str
-    source: str | None = None
-
-
-class JobSearchResponse(BaseModel):
-    results: list[JobResult] = Field(default_factory=list)
-    total: int = 0

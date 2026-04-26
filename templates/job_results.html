@@ -4,67 +4,119 @@
 
 {% block content %}
 <section>
-    <h1>Suchergebnisse</h1>
-    <p>Aktuell werden die übergebenen Such- und Filterwerte als Debug-Ansicht angezeigt.</p>
-    <p>Später folgt hier die Liste der gefundenen Stellenanzeigen mit Filter- und Sortieroptionen.</p>
-</section>
-
-<section>
-    <h2>Abgeschickte Werte</h2>
-
-    <p><strong>Suchbegriff:</strong> {{ search_data.get("query") or "—" }}</p>
-    <p><strong>Standort:</strong> {{ search_data.get("location") or "—" }}</p>
-    <p><strong>Berufserfahrung:</strong> {{ search_data.get("experience_level") or "—" }}</p>
-    <p><strong>Unternehmen:</strong> {{ search_data.get("company") or "—" }}</p>
-
-    <h4>Arbeitsmodell:</h4>
+    {% set total = search_results.get("total", 0) %}
+    {% set query = search_data.get("query") %}
+    {% set location = search_data.get("location") %}
     {% set work_models = search_data.get("work_model", []) %}
-    {% if work_models %}
-        <ul>
-            {% for item in work_models %}
-                <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Keine Auswahl</p>
-    {% endif %}
-
-    <h4>Art der Beschäftigung:</h4>
     {% set employment_types = search_data.get("employment_type", []) %}
-    {% if employment_types %}
-        <ul>
-            {% for item in employment_types %}
-                <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Keine Auswahl</p>
-    {% endif %}
-
-    <h4>Branche:</h4>
     {% set industries = search_data.get("industry", []) %}
-    {% if industries %}
-        <ul>
-            {% for item in industries %}
-                <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Keine Auswahl</p>
-    {% endif %}
+    {% set experience_level = search_data.get("experience_level") %}
+    {% set company_filter = search_data.get("company") %}
+    {% set jobs = search_results.get("results", []) %}
 
-    <p><a href="/jobs/search">Zurück zur Suche</a></p>
+    <h1>{{ total }} Suchergebnisse für "{{ query }}" in {{ location }}</h1>
+
+    <p>
+        {% if experience_level %}
+            <strong>Erfahrung:</strong> {{ experience_level }}
+        {% endif %}
+
+        {% if company_filter %}
+            {% if experience_level %} · {% endif %}
+            <strong>Unternehmen:</strong> {{ company_filter }}
+        {% endif %}
+
+        {% if work_models %}
+            {% if experience_level or company_filter %} · {% endif %}
+            <strong>Arbeitsmodell:</strong> {{ work_models | join(", ") }}
+        {% endif %}
+
+        {% if employment_types %}
+            {% if experience_level or company_filter or work_models %} · {% endif %}
+            <strong>Beschäftigung:</strong> {{ employment_types | join(", ") }}
+        {% endif %}
+
+        {% if industries %}
+            {% if experience_level or company_filter or work_models or employment_types %} · {% endif %}
+            <strong>Branche:</strong> {{ industries | join(", ") }}
+        {% endif %}
+    </p>
 </section>
 
 <section>
-    <article>
-        <h2>Beispiel-Stellenanzeige</h2>
-        <p>Firma, Standort und weitere Kurzinfos werden später hier gerendert.</p>
-        <p>
-            <a href="/jobs/detail">Details ansehen</a>
-            <button type="button">Speichern</button>
-            <a href="/matches">Match-Analyse starten</a>
-        </p>
-    </article>
+    <p>
+        <a href="/matches">Match-Analyse starten</a>
+    </p>
+</section>
+
+<section>
+    {% if jobs %}
+        {% for job in jobs %}
+            {% set description = job.get("job_description") or "" %}
+            <article style="padding: 1rem 0;">
+                <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                    {% if job.get("company_logo") %}
+                        <img
+                            src="{{ job.get('company_logo') }}"
+                            alt="Logo von {{ job.get('company') }}"
+                            width="64"
+                            height="64"
+                            style="width: 64px; height: 64px; object-fit: contain; border-radius: 0.5rem; background: #fff; flex-shrink: 0;"
+                        >
+                    {% endif %}
+
+                    <div style="flex: 1;">
+                        <h2 style="margin-bottom: 0.25rem;">{{ job.get("title") }}</h2>
+
+                        <p style="margin-bottom: 0.5rem;">
+                            <strong>{{ job.get("company") }}</strong>
+                            {% if job.get("location") %} · {{ job.get("location") }}{% endif %}
+                            {% if job.get("employment_type") %} · {{ job.get("employment_type") }}{% endif %}
+                            {% if job.get("is_remote") %} · Remote {% else %} · Vor Ort {% endif %}
+                        </p>
+
+                        {% if job.get("source") or job.get("job_posted_at") %}
+                            <p style="margin-bottom: 0.5rem;">
+                                {% if job.get("source") %}
+                                    Quelle: {{ job.get("source") }}
+                                {% endif %}
+                                {% if job.get("source") and job.get("job_posted_at") %} · {% endif %}
+                                {% if job.get("job_posted_at") %}
+                                    Veröffentlicht: {{ job.get("job_posted_at").strftime("%d-%m-%Y") }}
+                                {% endif %}
+                            </p>
+                        {% endif %}
+
+                        {% if description %}
+                            <p style="margin-bottom: 0.75rem;">
+                                {{ description[:220] }}{% if description|length > 220 %}…{% endif %}
+                            </p>
+                        {% endif %}
+
+                        <p style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 0;">
+                            <a href="/jobs/detail">Details ansehen</a>
+
+                            <button type="button">Speichern</button>
+
+                            {% if job.get("apply_link") %}
+                                <a href="{{ job.get('apply_link') }}" target="_blank" rel="noopener noreferrer">
+                                    Zur Bewerbung
+                                </a>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </article>
+            {% if not loop.last %}
+                <hr>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p>Keine Stellenanzeigen gefunden.</p>
+    {% endif %}
+</section>
+
+<section>
+    <p><a href="/jobs/search">Zurück zur Suche</a></p>
 </section>
 {% endblock %}
