@@ -1,22 +1,43 @@
+"""Provide job-search results from a local fixture payload.
+
+Load a stored JSON response from disk and map it to the same internal response models used by the live provider
+so the rest of the application can work against one provider contract.
+"""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from app.schemas.job_search import JobSearchFilters
-from app.schemas.job_search_results import JobSearchResponse, JobSearchResult
+from app.schemas.job_search_results import JobSearchResponse
 from app.services.job_search_provider import JobSearchProvider
+
+from app.services.job_search_response_mapper import map_payload_to_job_search_response
 
 
 class FixtureJobSearchProvider(JobSearchProvider):
+    """Implement the shared job-search provider contract with fixture data.
+
+    Serve pre-recorded search results from a local JSON file for development and testing without calling
+    the live external API.
+    """
+
     def __init__(self, file_path: Path | None = None) -> None:
+        """Initialize the provider with a fixture file path.
+
+        If no path is provided, the default job search fixture file is used.
+        """
         self._file_path = file_path or (
             Path(__file__).resolve().parents[2] / "fixtures" / "job_search_response.json"
         )
 
     def _load_response_data(self) -> dict:
+        """Load the fixture payload from disk.
+
+        :return: Parsed top-level fixture payload.
+        :raises ValueError: If the fixture does not contain the expected JSON object structure.
+        """
         with open(self._file_path, "r", encoding="utf-8") as handle:
             data = json.load(handle)
 
@@ -25,63 +46,17 @@ class FixtureJobSearchProvider(JobSearchProvider):
 
         return data
 
-    def _extract_raw_jobs(self, payload: dict) -> list[dict]:
-        raw_jobs = payload.get("data", [])
-
-        if raw_jobs is None:
-            return []
-
-        if not isinstance(raw_jobs, list):
-            raise ValueError("Fixture JSON field 'data' must be a list.")
-
-        return [item for item in raw_jobs if isinstance(item, dict)]
-
-    def _map_job(self, raw_job: dict) -> JobSearchResult | None:
-        job_id = raw_job.get("job_id")
-        title = raw_job.get("job_title")
-        company = raw_job.get("employer_name")
-        posted_at = raw_job.get("job_posted_at_datetime_utc")
-        apply_link = raw_job.get("job_apply_link")
-
-        if not job_id or not title or not company or not apply_link:
-            return None
-
-        raw_location = raw_job.get("job_location")
-        location = (
-            raw_location.split("•")[0].strip()
-            if isinstance(raw_location, str) and raw_location.strip()
-            else None
-        )
-
-        try:
-            return JobSearchResult(
-                provider_job_id=str(job_id),
-                job_posted_at=posted_at or None,
-                title=title.strip(),
-                company=company.strip(),
-                company_logo=raw_job.get("employer_logo") or None,
-                location=location,
-                employment_type=raw_job.get("job_employment_type") or None,
-                is_remote=raw_job.get("job_is_remote"),
-                job_description=raw_job.get("job_description") or None,
-                source=raw_job.get("job_publisher") or None,
-                apply_link=apply_link,
-            )
-        except ValidationError:
-            return None
-
     def search_jobs(self, filters: JobSearchFilters) -> JobSearchResponse:
+        """Return normalized results from the fixture payload.
+
+        Accept the validated ``JobSearchFilters`` object to satisfy the shared provider contract, then load and map
+        the stored fixture response. The filters are not applied inside this provider because the fixture already
+        represents a captured search result.
+
+        :param filters: Validated search criteria accepted by the provider contract.
+        :return: Normalized search results built from fixture data.
+        """
         payload = self._load_response_data()
-        raw_jobs = self._extract_raw_jobs(payload)
+        response = map_payload_to_job_search_response(payload)
+        return response
 
-        results: list[JobSearchResult] = []
-
-        for raw_job in raw_jobs:
-            mapped_job = self._map_job(raw_job)
-            if mapped_job is not None:
-                results.append(mapped_job)
-
-        return JobSearchResponse(
-            results=results,
-            total=len(results),
-        )

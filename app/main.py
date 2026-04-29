@@ -1,3 +1,9 @@
+"""
+Create the FastAPI application object and register route modules.
+
+Expose the main ASGI app for the different endpoints.
+"""
+
 from fastapi import FastAPI
 from app.api.routes.health import router as health_router
 from app.api.routes.auth import router as auth_router

@@ -1,3 +1,11 @@
+"""Define browser routes for job-search input and results.
+
+ Collect raw request values, convert them to a validated ``JobSearchFilters`` object, pass that object to the active
+ ``JobSearchProvider``, and render the corresponding templates or redirects.
+ """
+
+from __future__ import annotations
+
 from typing import Annotated
 from urllib.parse import urlencode
 
@@ -6,16 +14,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
+from app.dependencies.providers import get_job_search_provider
 from app.schemas.job_search import JobSearchFilters
-from app.services.fixture_job_search_provider import FixtureJobSearchProvider
 from app.services.job_search_provider import JobSearchProvider
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 templates = Jinja2Templates(directory="templates")
-
-
-def get_job_search_provider() -> JobSearchProvider:
-    return FixtureJobSearchProvider()
 
 
 def _build_form_data(
@@ -27,6 +31,13 @@ def _build_form_data(
     company: str | None = None,
     industry: list[str] | None = None,
 ) -> dict[str, str | list[str]]:
+    """Build normalized form data for template rendering.
+
+    Convert optional request values into predictable defaults so the search form can be rendered consistently
+    on first load and after validation errors.
+
+    :return: Normalized form data for the template context.
+    """
     return {
         "query": query,
         "location": location,
@@ -47,6 +58,13 @@ def _build_search_filters(
     company: str | None = None,
     industry: list[str] | None = None,
 ) -> JobSearchFilters:
+    """Instantiate validated job-search filters from raw request values.
+
+    Normalize optional text fields, preserve list selections, and construct the ``JobSearchFilters`` object used by
+    redirect helpers, providers, and templates as the application's canonical search input.
+
+    :return: Validated job-search filters.
+    """
     return JobSearchFilters(
         query=query,
         location=location,
@@ -59,6 +77,15 @@ def _build_search_filters(
 
 
 def _build_results_redirect_url(request: Request, search_data: JobSearchFilters) -> str:
+    """Build the results URL from validated search filters.
+
+    Serialize the ``JobSearchFilters`` object into query parameters for the GET-based results route so the submitted
+    search can be represented in the URL.
+
+    :param request: Incoming HTTP request.
+    :param search_data: Validated job-search filters.
+    :return: Results-page URL with encoded query parameters.
+    """
     params: list[tuple[str, str]] = [
         ("query", search_data.query),
         ("location", search_data.location),
@@ -85,6 +112,7 @@ def _build_results_redirect_url(request: Request, search_data: JobSearchFilters)
 
 @router.get("/search", response_class=HTMLResponse, name="render_job_search_page")
 def render_job_search_page(request: Request):
+    """Render the empty job-search form page."""
     return templates.TemplateResponse(
         request=request,
         name="job_search.html",
@@ -106,6 +134,13 @@ def submit_job_search(
     company: Annotated[str | None, Form()] = None,
     industry: Annotated[list[str] | None, Form()] = None,
 ):
+    """Validate submitted form data and redirect to the results route.
+
+    Build normalized form data from the POST body, try to instantiate a ``JobSearchFilters`` object, and either
+    re-render the form with field errors or redirect to the GET results page built from the validated search object.
+
+    :return: Redirect to results on success, or the form page with errors.
+    """
     form_data = _build_form_data(
         query=query,
         location=location,
@@ -163,6 +198,14 @@ def render_job_results_page(
     industry: Annotated[list[str] | None, Query()] = None,
     provider: JobSearchProvider = Depends(get_job_search_provider),
 ):
+    """Render results for validated query parameters.
+
+    Rebuild the canonical ``JobSearchFilters`` object from the GET parameters, redirect to the search page
+    if validation fails, and use the injected ``JobSearchProvider`` to obtain the normalized `JobSearchResponse``
+    rendered by the results template.
+
+    :return: Rendered results page, or a redirect if validation fails.
+    """
     try:
         search_data = _build_search_filters(
             query=query,
