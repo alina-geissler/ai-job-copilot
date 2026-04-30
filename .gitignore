@@ -6,3 +6,5 @@ app/core/__pycache__/
 docs/
 app/schemas/__pycache__/
 app/services/__pycache__/
+app/dependencies/__pycache__/providers.cpython-314.pyc
+curl-requests.txt
