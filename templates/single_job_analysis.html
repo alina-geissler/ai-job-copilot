@@ -3,31 +3,47 @@
 {% block title %}Single Job Analysis | AI Job Copilot{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Single Job Analysis</h1>
-    <p>Analyse einer einzelnen Stellenanzeige im Guest Mode oder Logged-in Mode.</p>
-</section>
+<header class="page-header">
+  <h1>Single Job Analysis</h1>
+  <p class="muted">Analyse einer einzelnen Stellenanzeige im Guest Mode oder Logged-in Mode.</p>
+</header>
 
-<section>
-    <h2>Stellenanzeige</h2>
-    <form method="post" action="/single-job-analysis">
-        <label for="job_text">Stellenanzeige einfügen</label>
-        <textarea id="job_text" name="job_text" rows="8"></textarea>
+<section class="section">
+  <form class="form">
+    <div class="card stack">
+      <div class="form-group">
+        <label for="job-text">Stellenanzeige</label>
+        <textarea id="job-text" name="job-text" placeholder="Stellenanzeige einfügen"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="job-link">Oder Link einfügen</label>
+        <input type="url" id="job-link" name="job-link" placeholder="https://...">
+      </div>
+    </div>
 
-        <label for="job_link">Oder Link einfügen</label>
-        <input type="url" id="job_link" name="job_link">
+    <div class="card stack">
+      <h2>Profildaten</h2>
+      <p class="muted">Guest: CV hochladen oder Daten manuell eingeben. Logged-in: gespeichertes Profil nutzen.</p>
+      <div class="form-group">
+        <label for="cv-upload">CV hochladen</label>
+        <input type="file" id="cv-upload" name="cv-upload">
+      </div>
+    </div>
 
-        <h2>Profildaten</h2>
-        <p>Guest: CV hochladen oder Daten manuell eingeben. Logged-in: gespeichertes Profil nutzen.</p>
+    <fieldset>
+      <legend>Ausgabe wählen</legend>
+      <div class="checkbox-group">
+        <label class="choice"><input type="checkbox" name="output" value="cover-letter"> Anschreiben</label>
+        <label class="choice"><input type="checkbox" name="output" value="interview-questions"> Mögliche Interviewfragen</label>
+        <label class="choice"><input type="checkbox" name="output" value="company-questions"> Fragen an das Unternehmen</label>
+        <label class="choice"><input type="checkbox" name="output" value="skill-gap"> Skill-Gap-Analyse</label>
+        <label class="choice"><input type="checkbox" name="output" value="checklist"> Bewerbungscheckliste</label>
+      </div>
+    </fieldset>
 
-        <h2>Ausgabe wählen</h2>
-        <label><input type="checkbox" name="outputs" value="cover_letter"> Anschreiben</label>
-        <label><input type="checkbox" name="outputs" value="interview_questions"> Mögliche Interviewfragen</label>
-        <label><input type="checkbox" name="outputs" value="company_questions"> Fragen an das Unternehmen</label>
-        <label><input type="checkbox" name="outputs" value="skill_gap"> Skill-Gap-Analyse</label>
-        <label><input type="checkbox" name="outputs" value="checklist"> Bewerbungscheckliste</label>
-
-        <button type="submit">Generieren / Analysieren</button>
-    </form>
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Generieren / Analysieren</button>
+    </div>
+  </form>
 </section>
 {% endblock %}

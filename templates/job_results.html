@@ -3,120 +3,86 @@
 {% block title %}Suchergebnisse | AI Job Copilot{% endblock %}
 
 {% block content %}
-<section>
-    {% set total = search_results.get("total", 0) %}
-    {% set query = search_data.get("query") %}
-    {% set location = search_data.get("location") %}
-    {% set work_models = search_data.get("work_model", []) %}
-    {% set employment_types = search_data.get("employment_type", []) %}
-    {% set industries = search_data.get("industry", []) %}
-    {% set experience_level = search_data.get("experience_level") %}
-    {% set company_filter = search_data.get("company") %}
-    {% set jobs = search_results.get("results", []) %}
+<section class="section">
+  {% set total = search_results.get('total', 0) %}
+  {% set query = search_data.get('query') %}
+  {% set location = search_data.get('location') %}
+  {% set work_models = search_data.get('work_model', []) %}
+  {% set employment_types = search_data.get('employment_type', []) %}
+  {% set industries = search_data.get('industry', []) %}
+  {% set experience_level = search_data.get('experience_level') %}
+  {% set company_filter = search_data.get('company') %}
+  {% set jobs = search_results.get('results', []) %}
 
+  <header class="page-header">
     <h1>{{ total }} Suchergebnisse für "{{ query }}" in {{ location }}</h1>
-
-    <p>
-        {% if experience_level %}
-            <strong>Erfahrung:</strong> {{ experience_level }}
-        {% endif %}
-
-        {% if company_filter %}
-            {% if experience_level %} · {% endif %}
-            <strong>Unternehmen:</strong> {{ company_filter }}
-        {% endif %}
-
-        {% if work_models %}
-            {% if experience_level or company_filter %} · {% endif %}
-            <strong>Arbeitsmodell:</strong> {{ work_models | join(", ") }}
-        {% endif %}
-
-        {% if employment_types %}
-            {% if experience_level or company_filter or work_models %} · {% endif %}
-            <strong>Beschäftigung:</strong> {{ employment_types | join(", ") }}
-        {% endif %}
-
-        {% if industries %}
-            {% if experience_level or company_filter or work_models or employment_types %} · {% endif %}
-            <strong>Branche:</strong> {{ industries | join(", ") }}
-        {% endif %}
+    <p class="muted">
+      {% if experience_level %}<strong>Erfahrung:</strong> {{ experience_level }}{% endif %}
+      {% if company_filter %}{% if experience_level %} · {% endif %}<strong>Unternehmen:</strong> {{ company_filter }}{% endif %}
+      {% if work_models %}{% if experience_level or company_filter %} · {% endif %}<strong>Arbeitsmodell:</strong> {{ work_models | join(', ') }}{% endif %}
+      {% if employment_types %}{% if experience_level or company_filter or work_models %} · {% endif %}<strong>Beschäftigung:</strong> {{ employment_types | join(', ') }}{% endif %}
+      {% if industries %}{% if experience_level or company_filter or work_models or employment_types %} · {% endif %}<strong>Branche:</strong> {{ industries | join(', ') }}{% endif %}
     </p>
+  </header>
+
+  <p><a href="/jobs/search">Zurück zur Suche</a></p>
+
+  <div class="actions section">
+    <a href="/matches" class="btn btn-secondary">Match-Analyse starten</a>
+  </div>
 </section>
 
-<section>
-    <p>
-        <a href="/matches">Match-Analyse starten</a>
-    </p>
-</section>
-
-<section>
-    {% if jobs %}
-        {% for job in jobs %}
-            {% set description = job.get("job_description") or "" %}
-            <article style="padding: 1rem 0;">
-                <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                    {% if job.get("company_logo") %}
-                        <img
-                            src="{{ job.get('company_logo') }}"
-                            alt="Logo von {{ job.get('company') }}"
-                            width="64"
-                            height="64"
-                            style="width: 64px; height: 64px; object-fit: contain; border-radius: 0.5rem; background: #fff; flex-shrink: 0;"
-                        >
-                    {% endif %}
-
-                    <div style="flex: 1;">
-                        <h2 style="margin-bottom: 0.25rem;">{{ job.get("title") }}</h2>
-
-                        <p style="margin-bottom: 0.5rem;">
-                            <strong>{{ job.get("company") }}</strong>
-                            {% if job.get("location") %} · {{ job.get("location") }}{% endif %}
-                            {% if job.get("employment_type") %} · {{ job.get("employment_type") }}{% endif %}
-                            {% if job.get("is_remote") %} · Remote {% else %} · Vor Ort {% endif %}
-                        </p>
-
-                        {% if job.get("source") or job.get("job_posted_at") %}
-                            <p style="margin-bottom: 0.5rem;">
-                                {% if job.get("source") %}
-                                    Quelle: {{ job.get("source") }}
-                                {% endif %}
-                                {% if job.get("source") and job.get("job_posted_at") %} · {% endif %}
-                                {% if job.get("job_posted_at") %}
-                                    Veröffentlicht: {{ job.get("job_posted_at").strftime("%d-%m-%Y") }}
-                                {% endif %}
-                            </p>
-                        {% endif %}
-
-                        {% if description %}
-                            <p style="margin-bottom: 0.75rem;">
-                                {{ description[:220] }}{% if description|length > 220 %}…{% endif %}
-                            </p>
-                        {% endif %}
-
-                        <p style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 0;">
-                            <a href="/jobs/detail">Details ansehen</a>
-
-                            <button type="button">Speichern</button>
-
-                            {% if job.get("apply_link") %}
-                                <a href="{{ job.get('apply_link') }}" target="_blank" rel="noopener noreferrer">
-                                    Zur Bewerbung
-                                </a>
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-            </article>
-            {% if not loop.last %}
-                <hr>
+<section class="section">
+  {% if jobs %}
+    <div class="job-list">
+      {% for job in jobs %}
+        {% set description = job.get("job_description") or "" %}
+        <article class="job-card">
+          <div class="job-card__layout">
+            {% if job.get('company_logo') %}
+              <img src="{{ job.get('company_logo') }}" alt="Logo von {{ job.get('company') }}" width="64" height="64" class="job-card__logo">
             {% endif %}
-        {% endfor %}
-    {% else %}
-        <p>Keine Stellenanzeigen gefunden.</p>
-    {% endif %}
-</section>
 
-<section>
-    <p><a href="/jobs/search">Zurück zur Suche</a></p>
+            <div class="job-card__body">
+              <h2 class="job-card__title">{{ job.get("title") }}</h2>
+
+              <p class="job-card__meta">
+                <strong>{{ job.get("company") }}</strong>
+                {% if job.get("location") %} · {{ job.get("location") }}{% endif %}
+                {% if job.get("employment_type") %} · {{ job.get("employment_type") }}{% endif %}
+                {% if job.get("is_remote") %} · Remote{% else %} · Vor Ort{% endif %}
+              </p>
+
+              {% if job.get("source") or job.get("job_posted_at") %}
+                <p class="job-card__meta muted">
+                  {% if job.get("source") %}Quelle: {{ job.get("source") }}{% endif %}
+                  {% if job.get("source") and job.get("job_posted_at") %} · {% endif %}
+                  {% if job.get("job_posted_at") %}Veröffentlicht: {{ job.get("job_posted_at").strftime("%d-%m-%Y") }}{% endif %}
+                </p>
+              {% endif %}
+
+              {% if description %}
+                <p class="job-card__description">
+                  {{ description[:220] }}{% if description|length > 220 %}…{% endif %}
+                </p>
+              {% endif %}
+
+              <div class="actions">
+                <a href="/jobs/detail" class="btn btn-secondary">Details ansehen</a>
+                <button type="button" class="btn btn-secondary">Speichern</button>
+                {% if job.get("apply_link") %}
+                  <a href="{{ job.get('apply_link') }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Zur Bewerbung</a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card">
+      <p>Keine Stellenanzeigen gefunden.</p>
+    </div>
+  {% endif %}
 </section>
 {% endblock %}

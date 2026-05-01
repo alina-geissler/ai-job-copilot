@@ -3,17 +3,26 @@
 {% block title %}Home | AI Job Copilot{% endblock %}
 
 {% block content %}
-<section>
-    <h1>AI Job Match & Application Copilot</h1>
-    <h2>Finde passende Jobs und erstelle bessere Bewerbungen</h2>
+<header class="page-header">
+  <h1>AI Job Match &amp; Application Copilot</h1>
+  <p class="muted">Finde passende Jobs und erstelle bessere Bewerbungen.</p>
+</header>
+
+<section class="section">
+  <div class="card">
     <p>Öffentliche Einstiegsseite mit Hero-Bereich, Nutzenbeschreibung und CTAs.</p>
-    <a href="/single-job-analysis">Single Job Analysis starten</a>
-    <a href="/auth">Login / Registrierung</a>
+    <div class="actions">
+      <a href="/single-job-analysis" class="btn btn-primary">Single Job Analysis starten</a>
+      <a href="/auth" class="btn btn-secondary">Login / Registrierung</a>
+    </div>
+  </div>
 </section>
 
-<section>
+<section class="section">
+  <div class="card">
     <h2>Hinweise</h2>
     <p>Guest Mode ohne dauerhafte Speicherung, voller Funktionsumfang mit Konto.</p>
-    <p>Jobsuche als Trial-Funktion für eingeloggte Nutzerinnen.</p>
+    <p class="muted">Jobsuche als Trial-Funktion für eingeloggte Nutzerinnen.</p>
+  </div>
 </section>
 {% endblock %}

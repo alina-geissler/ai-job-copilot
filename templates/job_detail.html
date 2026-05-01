@@ -3,17 +3,19 @@
 {% block title %}Stellen-Details | AI Job Copilot{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Stellen-Details</h1>
-    <p>Titel, Firma, Ort, Original-Link und vollständige Stellenbeschreibung.</p>
-</section>
+<header class="page-header">
+  <h1>Stellen-Details</h1>
+  <p class="muted">Titel, Firma, Ort, Original-Link und vollständige Stellenbeschreibung.</p>
+</header>
 
-<section>
+<section class="section">
+  <div class="card">
     <h2>Aktionen</h2>
-    <ul>
-        <li>Speichern</li>
-        <li>Dokumente generieren</li>
-        <li>Zum Tracker hinzufügen</li>
-    </ul>
+    <div class="actions">
+      <button type="button" class="btn btn-secondary">Speichern</button>
+      <button type="button" class="btn btn-secondary">Dokumente generieren</button>
+      <button type="button" class="btn btn-primary">Zum Tracker hinzufügen</button>
+    </div>
+  </div>
 </section>
 {% endblock %}

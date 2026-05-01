@@ -3,29 +3,38 @@
 {% block title %}Profil | AI Job Copilot{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Profil / Lebenslauf</h1>
-    <p>Bereich für persönliche Daten, CV und Bewerbungsinformationen.</p>
-</section>
+<header class="page-header">
+  <h1>Profil / Lebenslauf</h1>
+  <p class="muted">Bereich für persönliche Daten, CV und Bewerbungsinformationen.</p>
+</header>
 
-<section>
-    <form method="post" action="/profile">
-        <label for="cv">CV hochladen</label>
-        <input type="file" id="cv" name="cv">
-
-        <label for="full_name">Name</label>
-        <input type="text" id="full_name" name="full_name">
-
-        <label for="skills">Skills</label>
-        <textarea id="skills" name="skills"></textarea>
-
-        <label for="experience">Berufserfahrung</label>
-        <textarea id="experience" name="experience"></textarea>
-
-        <label for="education">Ausbildung</label>
-        <textarea id="education" name="education"></textarea>
-
-        <button type="submit">Speichern</button>
-    </form>
+<section class="section">
+  <form class="form">
+    <div class="card stack">
+      <div class="form-group">
+        <label for="cv-file">CV hochladen</label>
+        <input type="file" id="cv-file" name="cv-file">
+      </div>
+      <div class="form-group">
+        <label for="profile-name">Name</label>
+        <input type="text" id="profile-name" name="profile-name" placeholder="Name">
+      </div>
+      <div class="form-group">
+        <label for="profile-skills">Skills</label>
+        <textarea id="profile-skills" name="profile-skills" placeholder="Skills"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="profile-experience">Berufserfahrung</label>
+        <textarea id="profile-experience" name="profile-experience" placeholder="Berufserfahrung"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="profile-education">Ausbildung</label>
+        <textarea id="profile-education" name="profile-education" placeholder="Ausbildung"></textarea>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Speichern</button>
+      </div>
+    </div>
+  </form>
 </section>
 {% endblock %}

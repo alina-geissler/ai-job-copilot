@@ -1,30 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AI Job Copilot{% endblock %}</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AI Job Copilot{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/dev-ui.css') }}">
 </head>
 <body>
-    <header>
-        <nav>
-            <a href="/">Home</a>
-            <a href="/single-job-analysis">Single Job Analysis</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/profile">Profil</a>
-            <a href="/jobs/search">Jobsuche</a>
-            <a href="/documents">Dokumente</a>
-            <a href="/tracker">Bewerbungstracker</a>
-            <a href="/auth">Login / Registrierung</a>
-        </nav>
-    </header>
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a href="/" class="site-brand">AI Job Copilot</a>
+      <nav class="site-nav" aria-label="Hauptnavigation">
+        <div class="site-nav__list">
+          <a href="/">Home</a>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/single-job-analysis">Single Job Analysis</a>
+          <a href="/jobs/search">Jobsuche</a>
+          <a href="/documents">Dokumente</a>
+          <a href="/profile">Profil</a>
+          <a href="/tracker">Bewerbungstracker</a>
+          <a href="/auth">Login / Registrierung</a>
+        </div>
+      </nav>
+    </div>
+  </header>
 
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+  <main class="page">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
 
-    <footer>
-        <p>&copy; 2026 AI Job Match &amp; Application Copilot. All rights reserved.</p>
-    </footer>
+  <footer class="site-footer">
+    <div class="container">
+      <p class="muted">&copy; 2026 AI Job Match &amp; Application Copilot. All rights reserved. – Dev UI</p>
+    </div>
+  </footer>
 </body>
 </html>
+

@@ -3,19 +3,21 @@
 {% block title %}Bewerbungstracker | AI Job Copilot{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Bewerbungstracker</h1>
-    <p>Verwaltung gespeicherter Stellenanzeigen und Bewerbungsstatus.</p>
-</section>
+<header class="page-header">
+  <h1>Bewerbungstracker</h1>
+  <p class="muted">Verwaltung gespeicherter Stellenanzeigen und Bewerbungsstatus.</p>
+</header>
 
-<section>
+<section class="section">
+  <div class="card">
     <h2>Statusübersicht</h2>
-    <ul>
-        <li>Offen</li>
-        <li>Beworben</li>
-        <li>Interview</li>
-        <li>Angebot</li>
-        <li>Absage</li>
+    <ul class="list-clean">
+      <li>Offen</li>
+      <li>Beworben</li>
+      <li>Interview</li>
+      <li>Angebot</li>
+      <li>Absage</li>
     </ul>
+  </div>
 </section>
 {% endblock %}

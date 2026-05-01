@@ -3,17 +3,19 @@
 {% block title %}Match-Ergebnisse | AI Job Copilot{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Match-Ergebnisse</h1>
-    <p>Übersicht passender Stellenanzeigen mit Ranking und Kurzbegründung.</p>
-</section>
+<header class="page-header">
+  <h1>Match-Ergebnisse</h1>
+  <p class="muted">Übersicht passender Stellenanzeigen mit Ranking und Kurzbegründung.</p>
+</header>
 
-<section>
-    <article>
-        <h2>Top Match</h2>
-        <p>Match-Score, passende Skills, mögliche Skill-Gaps.</p>
-        <a href="/jobs/detail">Details öffnen</a>
-        <button type="button">Speichern</button>
-    </article>
+<section class="section">
+  <div class="card">
+    <h2>Top Match</h2>
+    <p>Match-Score, passende Skills, mögliche Skill-Gaps.</p>
+    <div class="actions">
+      <a href="/jobs/detail" class="btn btn-primary">Details öffnen</a>
+      <button type="button" class="btn btn-secondary">Speichern</button>
+    </div>
+  </div>
 </section>
 {% endblock %}

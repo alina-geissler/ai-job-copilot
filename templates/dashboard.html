@@ -3,24 +3,34 @@
 {% block title %}Dashboard | AI Job Copilot{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Dashboard</h1>
-    <p>Zentrale Startseite nach dem Login mit Überblick und Quick Actions.</p>
-</section>
+<header class="page-header">
+  <h1>Dashboard</h1>
+  <p class="muted">Zentrale Startseite nach dem Login mit Überblick und Quick Actions.</p>
+</header>
 
-<section>
+<section class="section">
+  <div class="card">
     <h2>Statuskarten</h2>
-    <p>Offene Bewerbungen, gespeicherte Jobs, letzte Dokumente, Profilstatus, Trial-Status.</p>
+    <ul class="list-clean">
+      <li>Offene Bewerbungen</li>
+      <li>Gespeicherte Jobs</li>
+      <li>Letzte Dokumente</li>
+      <li>Profilstatus</li>
+      <li>Trial-Status</li>
+    </ul>
+  </div>
 </section>
 
-<section>
+<section class="section">
+  <div class="card">
     <h2>Quick Actions</h2>
-    <ul>
-        <li>Single Job Analysis</li>
-        <li>Jobs suchen</li>
-        <li>Profil bearbeiten</li>
-        <li>Bewerbungstracker öffnen</li>
-        <li>Dokumente öffnen</li>
-    </ul>
+    <div class="actions">
+      <a href="/single-job-analysis" class="btn btn-primary">Single Job Analysis</a>
+      <a href="/jobs/search" class="btn btn-secondary">Jobs suchen</a>
+      <a href="/profile" class="btn btn-secondary">Profil bearbeiten</a>
+      <a href="/tracker" class="btn btn-secondary">Bewerbungstracker öffnen</a>
+      <a href="/documents" class="btn btn-secondary">Dokumente öffnen</a>
+    </div>
+  </div>
 </section>
 {% endblock %}
