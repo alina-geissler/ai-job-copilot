@@ -15,6 +15,8 @@ NonEmptyStr = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1),
 ]
+WorkModel = Literal["remote", "hybrid", "onsite"]
+EmploymentType = Literal["full_time", "part_time", "internship"]
 
 
 class JobSearchFilters(BaseModel):
@@ -25,8 +27,8 @@ class JobSearchFilters(BaseModel):
     """
     query: NonEmptyStr
     location: NonEmptyStr
-    work_model: list[Literal["remote", "hybrid", "onsite"]] = Field(default_factory=list)
-    employment_type: list[Literal["full_time", "part_time", "internship"]] = Field(default_factory=list)
+    work_model: list[WorkModel] = Field(default_factory=list)
+    employment_type: list[EmploymentType] = Field(default_factory=list)
     experience_level: str | None = None
     company: str | None = None
     industry: list[str] = Field(default_factory=list)

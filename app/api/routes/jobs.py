@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.dependencies.providers import get_job_search_provider
-from app.schemas.job_search import JobSearchFilters
+from app.schemas.job_search import EmploymentType, JobSearchFilters, WorkModel
 from app.services.job_search_provider import JobSearchProvider
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -25,8 +25,8 @@ templates = Jinja2Templates(directory="templates")
 def _build_form_data(
     query: str = "",
     location: str = "Deutschland",
-    work_model: list[str] | None = None,
-    employment_type: list[str] | None = None,
+    work_model: list[WorkModel] | None = None,
+    employment_type: list[EmploymentType] | None = None,
     experience_level: str | None = None,
     company: str | None = None,
     industry: list[str] | None = None,
@@ -52,8 +52,8 @@ def _build_form_data(
 def _build_search_filters(
     query: str,
     location: str,
-    work_model: list[str] | None = None,
-    employment_type: list[str] | None = None,
+    work_model: list[WorkModel] | None = None,
+    employment_type: list[EmploymentType] | None = None,
     experience_level: str | None = None,
     company: str | None = None,
     industry: list[str] | None = None,
