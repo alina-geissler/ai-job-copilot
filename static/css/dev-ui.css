@@ -162,6 +162,7 @@ li + li {
   font-weight: 700;
   color: var(--color-text);
   text-decoration: none;
+  line-height: 1.2;
 }
 
 .site-brand:hover {
@@ -170,20 +171,25 @@ li + li {
 
 .site-nav {
   width: 100%;
+    display: flex;
+  align-items: center;
 }
 
 .site-nav__list {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+  align-items: center;
 }
 
 .site-nav__list a {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 0.35rem 0.5rem;
   border-radius: 6px;
   color: var(--color-text);
   text-decoration: none;
+  line-height: 1.2;
 }
 
 .site-nav__list a:hover,
@@ -416,4 +422,20 @@ a:focus-visible {
   .site-nav {
     width: auto;
   }
+}
+
+/* Auth page */
+
+.form-row--two > .card {
+  height: 100%;
+}
+
+.form-group .error-text {
+  margin-top: var(--space-1);
+  margin-bottom: 0;
+}
+
+.form-group .muted {
+  margin-bottom: 0;
+  font-size: 0.95rem;
 }

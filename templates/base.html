@@ -1,26 +1,35 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}AI Job Copilot{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='css/dev-ui.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='/css/dev-ui.css') }}">
 </head>
 <body>
   <header class="site-header">
     <div class="container site-header__inner">
-      <a href="/" class="site-brand">AI Job Copilot</a>
+      <a class="site-brand" href="{{ request.url_for('render_index_page') }}">AI Job Copilot</a>
+
       <nav class="site-nav" aria-label="Hauptnavigation">
-        <div class="site-nav__list">
-          <a href="/">Home</a>
-          <a href="/dashboard">Dashboard</a>
-          <a href="/single-job-analysis">Single Job Analysis</a>
-          <a href="/jobs/search">Jobsuche</a>
-          <a href="/documents">Dokumente</a>
-          <a href="/profile">Profil</a>
-          <a href="/tracker">Bewerbungstracker</a>
-          <a href="/auth">Login / Registrierung</a>
-        </div>
+        <ul class="site-nav__list list-clean">
+          {% if is_authenticated %}
+          <li><a href="{{ request.url_for('render_index_page') }}">Home</a></li>
+          <li><a href="/single-job-analysis">Single Job Analysis</a></li>
+          <li><a href="{{ request.url_for('render_dashboard_page') }}">Dashboard</a></li>
+          <li><a href="{{ request.url_for('render_job_search_page') }}">Jobsuche</a></li>
+          <li><a href="/profile">Profil</a></li>
+          <li>
+            <form method="post" action="{{ request.url_for('logout_user') }}">
+              <button type="submit" class="btn">Logout</button>
+            </form>
+          </li>
+          {% else %}
+          <li><a href="{{ request.url_for('render_index_page') }}">Home</a></li>
+          <li><a href="/single-job-analysis">Single Job Analysis</a></li>
+          <li><a href="{{ request.url_for('render_auth_page') }}">Registrierung + Login</a></li>
+          {% endif %}
+        </ul>
       </nav>
     </div>
   </header>

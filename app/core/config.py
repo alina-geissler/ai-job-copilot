@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     app_name: str = "AI Job Match & Application Copilot"
     debug: bool = True
 
+    session_secret_key: str
+    session_cookie_name: str = "ai_job_copilot_session"
+    session_max_age_seconds: int = Field(default=60 * 60 * 8, gt=0)
+    session_same_site: Literal["lax", "strict", "none"] = "lax"
+    session_https_only: bool = False
+    session_idle_timeout_seconds: int = Field(default=60 * 30, gt=0)
+    session_absolute_timeout_seconds: int = Field(default=60 * 60 * 8, gt=0)
+
     database_url: str
     openai_api_key: str
 

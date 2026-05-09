@@ -13,11 +13,14 @@ router = APIRouter(tags=["pages"])
 templates = Jinja2Templates(directory="templates")
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse, name="render_index_page")
 def render_index_page(request: Request):
     """Render the landing page template."""
+
+    is_authenticated = bool(request.session.get("is_authenticated", False))
+
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={}
+        context={"is_authenticated": is_authenticated}
     )

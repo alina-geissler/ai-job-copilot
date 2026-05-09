@@ -17,6 +17,8 @@ from pydantic import ValidationError
 from app.dependencies.providers import get_job_search_provider
 from app.schemas.job_search import EmploymentType, JobSearchFilters, WorkModel
 from app.services.job_search_provider import JobSearchProvider
+from app.dependencies.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 templates = Jinja2Templates(directory="templates")
@@ -111,7 +113,7 @@ def _build_results_redirect_url(request: Request, search_data: JobSearchFilters)
 
 
 @router.get("/search", response_class=HTMLResponse, name="render_job_search_page")
-def render_job_search_page(request: Request):
+def render_job_search_page(request: Request, current_user: Annotated[User, Depends(get_current_user)]):
     """Render the empty job-search form page."""
     return templates.TemplateResponse(
         request=request,
@@ -119,6 +121,8 @@ def render_job_search_page(request: Request):
         context={
             "errors": {},
             "form_data": _build_form_data(),
+            "current_user": current_user,
+            "is_authenticated": True
         },
     )
 
@@ -189,6 +193,7 @@ def submit_job_search(
 @router.get("/results", response_class=HTMLResponse, name="render_job_results_page")
 def render_job_results_page(
     request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
     query: Annotated[str, Query()],
     location: Annotated[str, Query()],
     work_model: Annotated[list[str] | None, Query()] = None,
@@ -197,6 +202,7 @@ def render_job_results_page(
     company: Annotated[str | None, Query()] = None,
     industry: Annotated[list[str] | None, Query()] = None,
     provider: JobSearchProvider = Depends(get_job_search_provider),
+
 ):
     """Render results for validated query parameters.
 
@@ -230,5 +236,28 @@ def render_job_results_page(
         context={
             "search_data": search_data.model_dump(),
             "search_results": search_results.model_dump(),
+            "current_user": current_user,
+            "is_authenticated": True
+        },
+    )
+
+
+@router.get("/dashboard", response_class=HTMLResponse, name="render_dashboard_page")
+def render_dashboard_page(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> HTMLResponse:
+    """Render the dashboard page for the authenticated user.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user resolved from the current session.
+    :return: Rendered dashboard page.
+    """
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "current_user": current_user,
+            "is_authenticated": True
         },
     )

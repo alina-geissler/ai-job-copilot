@@ -5,48 +5,106 @@
 {% block content %}
 <header class="page-header">
   <h1>Login / Registrierung</h1>
-  <p class="muted">Hier können sich Nutzerinnen später einloggen oder registrieren.</p>
+  <p class="muted">Melde dich an oder erstelle ein neues Konto für deinen AI Job Copilot.</p>
 </header>
 
+{% if registered %}
 <section class="section">
-  <div class="card">
-    <h2>Login</h2>
-    <form method="post" action="/login" class="form">
-      <div class="form-group">
-        <label for="login-email">E-Mail</label>
-        <input type="email" id="login-email" name="login-email" placeholder="E-Mail" required>
-      </div>
-      <div class="form-group">
-        <label for="login-password">Passwort</label>
-        <input type="password" id="login-password" name="login-password" placeholder="Passwort" required>
-      </div>
-      <div class="actions">
-        <button type="submit" class="btn btn-primary">Login</button>
-      </div>
-    </form>
+  <div class="alert alert-success">
+    <p>Dein Konto wurde erfolgreich erstellt. Bitte logge dich jetzt ein.</p>
   </div>
 </section>
+{% endif %}
+
+{% if session_expired %}
+<section class="section">
+  <div class="alert alert-error">
+    <p>Deine Sitzung ist abgelaufen. Bitte logge dich erneut ein.</p>
+  </div>
+</section>
+{% endif %}
 
 <section class="section">
-  <div class="card">
-    <h2>Registrierung</h2>
-    <form method="post" action="/register" class="form">
-      <div class="form-group">
-        <label for="register-name">Name</label>
-        <input type="text" id="register-name" name="register-name" placeholder="Name" required>
-      </div>
-      <div class="form-group">
-        <label for="register-email">E-Mail</label>
-        <input type="email" id="register-email" name="register-email" placeholder="E-Mail" required>
-      </div>
-      <div class="form-group">
-        <label for="register-password">Passwort</label>
-        <input type="password" id="register-password" name="register-password" placeholder="Passwort" required>
-      </div>
-      <div class="actions">
-        <button type="submit" class="btn btn-primary">Konto erstellen</button>
-      </div>
-    </form>
+  <div class="form-row form-row--two">
+    <div class="card">
+      <h2>Login</h2>
+
+      <form class="form" method="post" action="{{ request.url_for('login_user') }}">
+        {% if errors.get("login_general") %}
+        <p class="error-text">{{ errors.get("login_general") }}</p>
+        {% endif %}
+
+        <div class="form-group">
+          <label for="login_email">E-Mail</label>
+          <input
+            id="login_email"
+            name="email"
+            type="email"
+            value="{{ form_data.get('login_email', '') }}"
+            autocomplete="email"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="login_password">Passwort</label>
+          <input
+            id="login_password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Login</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Registrierung</h2>
+
+      <form class="form" method="post" action="{{ request.url_for('register_user') }}">
+        <div class="form-group">
+          <label for="register_email">E-Mail</label>
+          <input
+            id="register_email"
+            name="email"
+            type="email"
+            value="{{ form_data.get('register_email', '') }}"
+            autocomplete="email"
+            required
+          >
+          {% if errors.get("register_email") %}
+          <p class="error-text">{{ errors.get("register_email") }}</p>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="register_password">Passwort</label>
+          <input
+            id="register_password"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            required
+          >
+          <p class="muted">
+            Mindestens 10 Zeichen, keine führenden oder abschließenden Leerzeichen
+            und kein häufig verwendetes Passwort.
+          </p>
+          {% if errors.get("register_password") %}
+          <p class="error-text">{{ errors.get("register_password") }}</p>
+          {% endif %}
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Konto erstellen</button>
+        </div>
+      </form>
+    </div>
   </div>
 </section>
 {% endblock %}

@@ -13,7 +13,9 @@
     <p>Öffentliche Einstiegsseite mit Hero-Bereich, Nutzenbeschreibung und CTAs.</p>
     <div class="actions">
       <a href="/single-job-analysis" class="btn btn-primary">Single Job Analysis starten</a>
-      <a href="/auth" class="btn btn-secondary">Login / Registrierung</a>
+      {% if not is_authenticated %}
+        <a href="/auth" class="btn btn-secondary">Login / Registrierung</a>
+      {% endif %}
     </div>
   </div>
 </section>
