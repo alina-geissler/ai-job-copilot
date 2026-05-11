@@ -18,6 +18,7 @@ from app.dependencies.providers import get_job_search_provider
 from app.schemas.job_search import EmploymentType, JobSearchFilters, WorkModel
 from app.services.job_search_provider import JobSearchProvider
 from app.dependencies.auth import get_current_user
+from app.dependencies.templates import get_base_template_context
 from app.models.user import User
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -119,10 +120,10 @@ def render_job_search_page(request: Request, current_user: Annotated[User, Depen
         request=request,
         name="job_search.html",
         context={
+            **get_base_template_context(request),
             "errors": {},
             "form_data": _build_form_data(),
-            "current_user": current_user,
-            "is_authenticated": True
+            "current_user": current_user
         },
     )
 
@@ -180,6 +181,7 @@ def submit_job_search(
             request=request,
             name="job_search.html",
             context={
+                **get_base_template_context(request),
                 "errors": errors,
                 "form_data": form_data,
             },
@@ -234,10 +236,10 @@ def render_job_results_page(
         request=request,
         name="job_results.html",
         context={
+            **get_base_template_context(request),
             "search_data": search_data.model_dump(),
             "search_results": search_results.model_dump(),
-            "current_user": current_user,
-            "is_authenticated": True
+            "current_user": current_user
         },
     )
 
@@ -257,7 +259,7 @@ def render_dashboard_page(
         request=request,
         name="dashboard.html",
         context={
-            "current_user": current_user,
-            "is_authenticated": True
+            **get_base_template_context(request),
+            "current_user": current_user
         },
     )

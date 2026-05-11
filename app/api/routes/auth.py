@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.security import verify_password
 from app.crud.user import create_user, get_user_by_email
 from app.db.session import get_db
+from app.dependencies.templates import get_base_template_context
 from app.schemas.user import UserCreate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -60,6 +61,7 @@ def render_auth_page(
         request=request,
         name="auth.html",
         context={
+            **get_base_template_context(request),
             "errors": {},
             "form_data": {
                 **_build_login_form_data(),
@@ -120,6 +122,7 @@ def register_user(
             request=request,
             name="auth.html",
             context={
+                **get_base_template_context(request),
                 "errors": errors,
                 "form_data": form_data,
                 "registered": False,
@@ -136,6 +139,7 @@ def register_user(
             request=request,
             name="auth.html",
             context={
+                **get_base_template_context(request),
                 "errors": errors,
                 "form_data": form_data,
                 "registered": False,
@@ -177,6 +181,7 @@ def login_user(
             request=request,
             name="auth.html",
             context={
+                **get_base_template_context(request),
                 "errors": errors,
                 "form_data": form_data,
                 "registered": False,

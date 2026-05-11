@@ -12,6 +12,7 @@ router = APIRouter(tags=["dashboard"])
 templates = Jinja2Templates(directory="templates")
 
 from app.dependencies.auth import get_current_user
+from app.dependencies.templates import get_base_template_context
 from app.models.user import User
 
 
@@ -30,7 +31,7 @@ def render_dashboard_page(
         request=request,
         name="dashboard.html",
         context={
-            "current_user": current_user,
-            "is_authenticated": True
+            **get_base_template_context(request),
+            "current_user": current_user
         },
     )

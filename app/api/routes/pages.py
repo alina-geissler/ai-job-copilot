@@ -9,6 +9,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.dependencies.templates import get_base_template_context
+
 router = APIRouter(tags=["pages"])
 templates = Jinja2Templates(directory="templates")
 
@@ -17,10 +19,8 @@ templates = Jinja2Templates(directory="templates")
 def render_index_page(request: Request):
     """Render the landing page template."""
 
-    is_authenticated = bool(request.session.get("is_authenticated", False))
-
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={"is_authenticated": is_authenticated}
+        context={**get_base_template_context(request)}
     )
