@@ -16,6 +16,8 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.application_tracker_entry import ApplicationTrackerEntry
+    from app.models.search_profile import SearchProfile
+    from app.models.search_run import SearchRun
 
 
 class User(Base):
@@ -43,3 +45,10 @@ class User(Base):
     tracker_entries: Mapped[list[ApplicationTrackerEntry]] = relationship(
         "ApplicationTrackerEntry", back_populates="user"
     )
+    search_profiles: Mapped[list[SearchProfile]] = relationship(
+        "SearchProfile", back_populates="user"
+    )
+    search_runs: Mapped[list[SearchRun]] = relationship(
+        "SearchRun", back_populates="user"
+    )
+

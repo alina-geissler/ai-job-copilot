@@ -16,6 +16,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.application_tracker_entry import ApplicationTrackerEntry
+    from app.models.search_run_job import SearchRunJob
 
 
 class Job(Base):
@@ -49,4 +50,7 @@ class Job(Base):
 
     tracker_entries: Mapped[list[ApplicationTrackerEntry]] = relationship(
         "ApplicationTrackerEntry", back_populates="job"
+    )
+    search_run_jobs: Mapped[list[SearchRunJob]] = relationship(
+        "SearchRunJob", back_populates="job"
     )
