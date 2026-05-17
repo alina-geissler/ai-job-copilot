@@ -407,13 +407,18 @@ def delete_search_profile_action(
     :param db: Active SQLAlchemy database session.
     :return: Redirect response to the search page.
     """
-    delete_search_profile_for_user(
+    was_deleted = delete_search_profile_for_user(
         db,
         profile_id=search_profile_id,
         user_id=current_user.id,
     )
 
+    message = "Suchprofil erfolgreich gelöscht."
+    if not was_deleted:
+        message = "Suchprofil nicht gefunden."
+
+    search_page_url = str(request.url_for("render_job_search_page"))
     return RedirectResponse(
-        url=str(request.url_for("render_job_search_page")),
+        url=f"{search_page_url}?message={message}",
         status_code=303,
     )

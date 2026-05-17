@@ -17,6 +17,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.jobs import router as jobs_router
 from app.api.routes.pages import router as pages_router
 from app.api.routes.search_profiles import router as search_profiles_router
+from app.api.routes.application_tracker import router as application_tracker_router
 
 from app.core.config import settings
 
@@ -54,3 +55,4 @@ app.include_router(pages_router)
 app.include_router(jobs_router)
 app.include_router(dashboard_router)
 app.include_router(search_profiles_router)
+app.include_router(application_tracker_router)

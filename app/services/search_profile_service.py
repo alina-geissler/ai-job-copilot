@@ -37,7 +37,6 @@ def create_search_profile_for_user(
         db.rollback()
         raise
 
-    db.refresh(search_profile)
     return search_profile
 
 
@@ -72,7 +71,6 @@ def update_search_profile_for_user(
         db.rollback()
         raise
 
-    db.refresh(search_profile)
     return search_profile
 
 

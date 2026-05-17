@@ -14,3 +14,4 @@ alembic/__pycache__/
 alembic/versions/__pycache__/
 app/dependencies/__pycache__/
 app/crud/__pycache__/
+app/utils/__pycache__/

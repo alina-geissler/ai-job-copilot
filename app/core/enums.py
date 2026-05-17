@@ -1,11 +1,13 @@
-"""Define shared enums for job-search-related filter values.
+"""Define shared enum types used across the application.
 
-Provide centralized, reusable string enums for validated search filters
-used across schemas, routes, templates, services, and mappers.
+Provide centralized, reusable enums for validated filter values and
+canonical application states used across models, schemas, routes,
+templates, services, CRUD functions, and mappers.
 """
 
 from __future__ import annotations
 
+import enum
 from enum import StrEnum
 
 
@@ -25,3 +27,18 @@ class ExperienceLevel(StrEnum):
     MORE_THAN_THREE_YEARS_EXPERIENCE = "more_than_3_years_experience"
     NO_EXPERIENCE = "no_experience"
     NO_DEGREE = "no_degree"
+
+
+class ApplicationStatus(enum.Enum):
+    """Represent the possible stages of a job application lifecycle.
+
+    Use stable English enum values in the database and translate them only
+    in the UI layer.
+    """
+
+    SAVED = "saved"
+    APPLIED = "applied"
+    INTERVIEW = "interview"
+    OFFER = "offer"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"

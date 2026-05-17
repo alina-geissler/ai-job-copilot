@@ -28,5 +28,4 @@ def register_user_account(db: Session, user_in: UserCreate) -> User:
         db.rollback()
         raise
 
-    db.refresh(user)
     return user

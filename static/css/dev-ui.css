@@ -482,3 +482,258 @@ a:focus-visible {
   font-size: 0.9rem;
   font-weight: 600;
 }
+
+/* Application tracker */
+
+.tracker-status-pill.tracker-status--saved {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.tracker-status-pill.tracker-status--applied {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.tracker-status-pill.tracker-status--interview {
+  background: #fed7aa;
+  color: #c2410c;
+}
+
+.tracker-status-pill.tracker-status--offer {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.tracker-status-pill.tracker-status--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.tracker-status-pill.tracker-status--withdrawn {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.tracker-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tracker-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.tracker-card__summary {
+  list-style: none;
+  cursor: pointer;
+  padding: var(--space-4);
+}
+
+.tracker-card__summary::-webkit-details-marker {
+  display: none;
+}
+
+.tracker-card__summary-main {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tracker-card__content {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-4);
+}
+
+.tracker-card__title {
+  margin-bottom: 0;
+}
+
+.tracker-status-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tracker-status-section__label {
+  font-weight: 600;
+}
+
+.tracker-status-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tracker-status-segment,
+.tracker-status-segment--direct {
+  margin: 0;
+  flex: 1 1 0;
+  min-width: 8rem;
+}
+
+.tracker-status-segment {
+  border-left: 0;
+}
+
+.tracker-status-segment:first-child {
+  border-left: 1px solid var(--color-border);
+}
+
+.tracker-status-segment[open] {
+  background: transparent;
+}
+
+.tracker-status-segment > summary {
+  list-style: none;
+}
+
+.tracker-status-segment > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tracker-status-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 4.75rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-left: 0;
+  border-radius: 0;
+  background: #f3f4f6;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.tracker-status-segment:first-child .tracker-status-button,
+.tracker-status-segment--direct:first-child .tracker-status-button {
+  border-left: 1px solid var(--color-border);
+  border-top-left-radius: var(--radius);
+  border-bottom-left-radius: var(--radius);
+}
+
+.tracker-status-bar > :last-child .tracker-status-button {
+  border-top-right-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+}
+
+.tracker-status-button__label {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tracker-status-button__date {
+  font-size: 0.85rem;
+  line-height: 1.2;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.tracker-status-button.is-current.tracker-status--saved {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.tracker-status-button.is-current.tracker-status--applied {
+  background: #fef3c7;
+  border-color: #ca8a04;
+  color: #a16207;
+}
+
+.tracker-status-button.is-current.tracker-status--interview {
+  background: #fed7aa;
+  border-color: #ea580c;
+  color: #c2410c;
+}
+
+.tracker-status-button.is-current.tracker-status--offer {
+  background: #dcfce7;
+  border-color: #16a34a;
+  color: #15803d;
+}
+
+.tracker-status-button.is-current.tracker-status--rejected {
+  background: #fee2e2;
+  border-color: #dc2626;
+  color: #b91c1c;
+}
+
+.tracker-status-button.is-current.tracker-status--withdrawn {
+  background: #f3e8ff;
+  border-color: #9333ea;
+  color: #7e22ce;
+}
+
+.tracker-status-segment__form {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-top: 0;
+  background: var(--color-surface);
+}
+
+.tracker-status-segment__date-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.tracker-status-segment__submit {
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .tracker-status-bar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .tracker-status-segment,
+  .tracker-status-segment--direct {
+    flex: 1 1 calc(50% - 0rem);
+    min-width: 0;
+  }
+
+  .tracker-status-button,
+  .tracker-status-segment:first-child .tracker-status-button,
+  .tracker-status-segment--direct:first-child .tracker-status-button,
+  .tracker-status-bar > :last-child .tracker-status-button {
+    border-radius: var(--radius);
+    border-left: 1px solid var(--color-border);
+  }
+}
+
+.tracker-status-pill.tracker-status--saved {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.tracker-status-pill.tracker-status--applied {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.tracker-status-pill.tracker-status--interview {
+  background: #fed7aa;
+  color: #c2410c;
+}
+
+.tracker-status-pill.tracker-status--offer {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.tracker-status-pill.tracker-status--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.tracker-status-pill.tracker-status--withdrawn {
+  background: #f3e8ff;
+  color: #7e22ce;
+}

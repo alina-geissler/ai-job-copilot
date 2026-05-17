@@ -142,6 +142,7 @@ def render_job_search_page(
             request,
             current_user=current_user,
             search_profiles=search_profiles,
+            page_message=request.query_params.get("message"),
         ),
     )
 

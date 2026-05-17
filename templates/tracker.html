@@ -8,16 +8,139 @@
   <p class="muted">Verwaltung gespeicherter Stellenanzeigen und Bewerbungsstatus.</p>
 </header>
 
-<section class="section">
-  <div class="card">
-    <h2>Statusübersicht</h2>
-    <ul class="list-clean">
-      <li>Offen</li>
-      <li>Beworben</li>
-      <li>Interview</li>
-      <li>Angebot</li>
-      <li>Absage</li>
-    </ul>
+{% if page_message %}
+  <div class="alert alert-success" role="alert">
+    <p>{{ page_message }}</p>
   </div>
+{% endif %}
+
+<section class="section">
+  <div class="actions">
+    <a href="{{ request.url_for('render_job_search_page') }}" class="btn btn-secondary">Zur Jobsuche</a>
+  </div>
+</section>
+
+<section class="section">
+  {% if tracker_entries %}
+    <div class="tracker-list">
+      {% for entry in tracker_entries %}
+        <details class="tracker-card">
+          <summary class="tracker-card__summary">
+            <div class="tracker-card__summary-main">
+              <h2 class="tracker-card__title">{{ entry.job.title }}</h2>
+              <p class="job-card__meta">
+                <strong>{{ entry.job.company }}</strong>
+                {% if entry.job.location %} · {{ entry.job.location }}{% endif %}
+              </p>
+              <p class="job-card__meta muted">
+                Status: <span class="status-badge tracker-status-pill {{ entry.status_css_class }}">{{ entry.status_label }}</span>
+                · Gespeichert am {{ entry.created_at.strftime("%d.%m.%Y") }}
+              </p>
+            </div>
+          </summary>
+
+          <div class="tracker-card__content stack">
+            <div class="tracker-status-section">
+              <span class="tracker-status-section__label">Status:</span>
+
+              <div class="tracker-status-bar" aria-label="Status-Tracker">
+                {% for status_item in entry.status_items %}
+                  {% if status_item.opens_date_form %}
+                    <details class="tracker-status-segment">
+                      <summary class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}">
+                        <span class="tracker-status-button__label">{{ status_item.label }}</span>
+
+                        {% if status_item.shows_date %}
+                          <span class="tracker-status-button__date">
+                            {{ status_item.date_value.strftime("%d.%m.%Y") }}
+                          </span>
+                        {% endif %}
+                      </summary>
+
+                      <form
+                        method="post"
+                        action="{{ request.url_for('update_application_tracker_status', entry_id=entry.id) }}"
+                        class="tracker-status-segment__form"
+                      >
+                        <input type="hidden" name="status" value="{{ status_item.value }}">
+                        <input type="hidden" name="redirect_to" value="overview">
+
+                        <input
+                          id="status-date-overview-{{ entry.id }}-{{ status_item.value }}"
+                          type="date"
+                          name="status_date"
+                          value="{{ status_item.default_date }}"
+                          class="tracker-status-segment__date-input"
+                        >
+
+                        <button type="submit" class="tracker-status-segment__submit">
+                          Status setzen
+                        </button>
+                      </form>
+                    </details>
+                  {% else %}
+                    <form
+                      method="post"
+                      action="{{ request.url_for('update_application_tracker_status', entry_id=entry.id) }}"
+                      class="tracker-status-segment tracker-status-segment--direct"
+                    >
+                      <input type="hidden" name="status" value="{{ status_item.value }}">
+                      <input type="hidden" name="redirect_to" value="overview">
+
+                      <button
+                        type="submit"
+                        class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}"
+                      >
+                        <span class="tracker-status-button__label">{{ status_item.label }}</span>
+
+                        {% if status_item.shows_date %}
+                          <span class="tracker-status-button__date">
+                            {{ status_item.date_value.strftime("%d.%m.%Y") }}
+                          </span>
+                        {% endif %}
+                      </button>
+                    </form>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+
+            <form method="post" action="{{ request.url_for('update_application_tracker_notes', entry_id=entry.id) }}" class="form">
+              <input type="hidden" name="redirect_to" value="overview">
+
+              <div class="form-group">
+                <textarea name="notes" placeholder="Platz für deine Notizen">{{ entry.notes }}</textarea>
+              </div>
+
+              <div class="actions">
+                <button type="submit" class="btn btn-secondary">Notizen speichern</button>
+              </div>
+            </form>
+
+            <div class="actions">
+              <a
+                href="{{ request.url_for('render_application_tracker_detail_page', entry_id=entry.id) }}"
+                class="btn btn-primary"
+              >
+                Zur Tracker-Detailsseite
+              </a>
+
+              <form
+                method="post"
+                action="{{ request.url_for('delete_application_tracker_entry', entry_id=entry.id) }}"
+                onsubmit="return confirm('Möchtest du diesen Tracker-Eintrag wirklich löschen?');"
+              >
+                <button type="submit" class="btn btn-secondary">Eintrag löschen</button>
+              </form>
+            </div>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card">
+      <p>Du hast noch keine Stellenanzeigen im Bewerbungstracker gespeichert.</p>
+    </div>
+  {% endif %}
 </section>
 {% endblock %}

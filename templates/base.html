@@ -18,6 +18,7 @@
           <li><a href="/single-job-analysis">Single Job Analysis</a></li>
           <li><a href="{{ request.url_for('render_dashboard_page') }}">Dashboard</a></li>
           <li><a href="{{ request.url_for('render_job_search_page') }}">Jobsuche</a></li>
+          <li><a href="{{ request.url_for('render_application_tracker_page') }}">Bewerbungstracker</a></li>
           <li><a href="/profile">Profil</a></li>
           <li>
             <form method="post" action="{{ request.url_for('logout_user') }}">

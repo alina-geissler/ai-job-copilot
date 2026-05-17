@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Tracker-Details | AI Job Copilot{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1>Tracker-Details</h1>
+  <p class="muted">Verwalte Status, Notizen und Stelleninformationen für diesen Eintrag.</p>
+</header>
+
+<section class="section">
+  <div class="actions">
+    <a href="{{ request.url_for('render_application_tracker_page') }}" class="btn btn-secondary">
+      Zurück zum Bewerbungstracker
+    </a>
+
+    {% if tracker_entry.job.job_url %}
+      <a
+        href="{{ tracker_entry.job.job_url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn btn-primary"
+      >
+        Zur Stellenanzeige / Bewerbung
+      </a>
+    {% endif %}
+
+    <a href="#" class="btn btn-secondary">Bewerbungsdokumente erstellen</a>
+    <a href="#" class="btn btn-secondary">Dokumente einsehen</a>
+    <span class="muted">Match-Analyse (optional später)</span>
+  </div>
+</section>
+
+<section class="section">
+  <article class="card stack">
+    <div>
+      <h2>{{ tracker_entry.job.title }}</h2>
+
+      <p class="job-card__meta">
+        <strong>{{ tracker_entry.job.company }}</strong>
+        {% if tracker_entry.job.location %} · {{ tracker_entry.job.location }}{% endif %}
+        {% if tracker_entry.job.employment_type %} · {{ tracker_entry.job.employment_type }}{% endif %}
+        {% if tracker_entry.job.is_remote %} · Remote{% endif %}
+      </p>
+
+      <p class="job-card__meta muted">
+        Status: <span class="status-badge tracker-status-pill {{ tracker_entry.status_css_class }}">{{ tracker_entry.status_label }}</span>
+        · Gespeichert am {{ tracker_entry.created_at.strftime("%d.%m.%Y") }}
+        {% if tracker_entry.updated_at %}
+          · Zuletzt geändert am {{ tracker_entry.updated_at.strftime("%d.%m.%Y") }}
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="tracker-status-section">
+      <span class="tracker-status-section__label">Status:</span>
+
+      <div class="tracker-status-bar" aria-label="Status-Tracker">
+        {% for status_item in tracker_entry.status_items %}
+          {% if status_item.opens_date_form %}
+            <details class="tracker-status-segment">
+              <summary class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}">
+                <span class="tracker-status-button__label">{{ status_item.label }}</span>
+
+                {% if status_item.shows_date %}
+                  <span class="tracker-status-button__date">
+                    {{ status_item.date_value.strftime("%d.%m.%Y") }}
+                  </span>
+                {% endif %}
+              </summary>
+
+              <form
+                method="post"
+                action="{{ request.url_for('update_application_tracker_status', entry_id=tracker_entry.id) }}"
+                class="tracker-status-segment__form"
+              >
+                <input type="hidden" name="status" value="{{ status_item.value }}">
+                <input type="hidden" name="redirect_to" value="detail">
+
+                <input
+                  id="status-date-detail-{{ tracker_entry.id }}-{{ status_item.value }}"
+                  type="date"
+                  name="status_date"
+                  value="{{ status_item.default_date }}"
+                  class="tracker-status-segment__date-input"
+                >
+
+                <button type="submit" class="tracker-status-segment__submit">
+                  Status setzen
+                </button>
+              </form>
+            </details>
+          {% else %}
+            <form
+              method="post"
+              action="{{ request.url_for('update_application_tracker_status', entry_id=tracker_entry.id) }}"
+              class="tracker-status-segment tracker-status-segment--direct"
+            >
+              <input type="hidden" name="status" value="{{ status_item.value }}">
+              <input type="hidden" name="redirect_to" value="detail">
+
+              <button
+                type="submit"
+                class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}"
+              >
+                <span class="tracker-status-button__label">{{ status_item.label }}</span>
+
+                {% if status_item.shows_date %}
+                  <span class="tracker-status-button__date">
+                    {{ status_item.date_value.strftime("%d.%m.%Y") }}
+                  </span>
+                {% endif %}
+              </button>
+            </form>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    <form method="post" action="{{ request.url_for('update_application_tracker_notes', entry_id=tracker_entry.id) }}" class="form">
+      <input type="hidden" name="redirect_to" value="detail">
+
+      <div class="form-group">
+        <textarea name="notes" placeholder="Platz für deine Notizen">{{ tracker_entry.notes }}</textarea>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-secondary">Notizen speichern</button>
+      </div>
+    </form>
+  </article>
+</section>
+
+<section class="section">
+  <article class="card stack">
+    <div>
+      <h2>Stelleninformationen</h2>
+
+      <h3>{{ tracker_entry.job.title }}</h3>
+      <p><strong>{{ tracker_entry.job.company }}</strong></p>
+
+      <ul>
+        <li>Quelle: {{ tracker_entry.job.source or '-' }}</li>
+        <li>Standort: {{ tracker_entry.job.location or '-' }}</li>
+        <li>Anstellungsart: {{ tracker_entry.job.employment_type or '-' }}</li>
+        <li>Remote: {% if tracker_entry.job.is_remote %}Ja{% else %}Nein{% endif %}</li>
+        <li>
+          Veröffentlicht am:
+          {% if tracker_entry.job.published_at %}
+            {{ tracker_entry.job.published_at.strftime("%d.%m.%Y") }}
+          {% else %}
+            -
+          {% endif %}
+        </li>
+      </ul>
+    </div>
+
+    <div>
+      <h3>Stellenbeschreibung</h3>
+      {% if tracker_entry.job.description %}
+        <p>{{ tracker_entry.job.description }}</p>
+      {% else %}
+        <p class="muted">Für diesen Eintrag liegt keine Stellenbeschreibung vor.</p>
+      {% endif %}
+    </div>
+  </article>
+</section>
+{% endblock %}

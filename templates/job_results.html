@@ -67,6 +67,7 @@
   <div class="actions">
     <a href="{{ request.url_for('render_job_search_page') }}" class="btn btn-secondary">Zur Profilübersicht</a>
     <a href="{{ request.url_for('render_search_run_history_page') }}" class="btn btn-secondary">Zur Historie</a>
+    <a href="{{ request.url_for('render_application_tracker_page') }}" class="btn btn-secondary">Zum Bewerbungstracker</a>
 
     {% if search_run and can_load_more %}
       <form method="post" action="{{ request.url_for('load_more_search_run_results', search_run_id=search_run.id) }}">
@@ -137,7 +138,10 @@
               {% endif %}
 
               <div class="actions">
-                <button type="button" class="btn btn-secondary" disabled>Im Bewerbungstracker speichern</button>
+                <form method="post" action="{{ request.url_for('create_application_tracker_entry', job_id=job.get('id')) }}">
+                  <button type="submit" class="btn btn-secondary">Im Bewerbungstracker speichern</button>
+                </form>
+
                 {% if job.get("job_url") %}
                   <a href="{{ job.get('job_url') }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
                     Zur Stellenanzeige

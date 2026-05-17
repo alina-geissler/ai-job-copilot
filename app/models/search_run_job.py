@@ -37,7 +37,7 @@ class SearchRunJob(Base):
         ForeignKey("search_runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
     job_id: Mapped[int] = mapped_column(
-        ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("jobs.id"), nullable=False, index=True
     )
     is_previously_seen: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
