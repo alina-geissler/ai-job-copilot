@@ -1,3 +1,5 @@
+"""Define the shared protocol for job-search provider implementations."""
+
 from __future__ import annotations
 
 from typing import Protocol

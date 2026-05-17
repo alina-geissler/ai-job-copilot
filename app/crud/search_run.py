@@ -1,4 +1,8 @@
-"""Provide database access helpers for persisted search runs."""
+"""CRUD operations for the SearchRun model.
+
+Handles database interactions for creating, reading, and updating
+persisted search runs and their search-history metadata.
+"""
 
 from __future__ import annotations
 
@@ -22,7 +26,17 @@ def create_search_run(
     current_page: int,
     can_load_more: bool = True,
 ) -> SearchRun:
-    """Create and flush a new persisted search run with profile snapshots."""
+    """Create and flush a new persisted search run with profile snapshots.
+
+    :param db: Active SQLAlchemy database session.
+    :param user_id: Identifier of the owning user.
+    :param search_profile: Search profile used to start the run.
+    :param run_date: Calendar date of the search run.
+    :param date_posted: Effective provider ``date_posted`` filter.
+    :param current_page: Last loaded provider page after the current fetch.
+    :param can_load_more: Whether further load-more actions are initially allowed.
+    :return: Newly created persisted search-run ORM object.
+    """
     search_run = SearchRun(
         user_id=user_id,
         search_profile_id=search_profile.id,
@@ -56,7 +70,17 @@ def update_search_run_after_fetch(
     increment_load_more_requests_used: int,
     can_load_more: bool,
 ) -> SearchRun:
-    """Update counters and continuation state after one provider fetch."""
+    """Update counters and continuation state after one provider fetch.
+
+    :param db: Active SQLAlchemy database session.
+    :param search_run: Existing persisted search run to update.
+    :param current_page: Last loaded provider page after the current fetch.
+    :param total_jobs_loaded: Total number of jobs linked to this run.
+    :param total_new_jobs_loaded: Total number of newly seen jobs linked to this run.
+    :param increment_load_more_requests_used: Number of additional load-more actions to add.
+    :param can_load_more: Whether further load-more actions remain allowed.
+    :return: Updated persisted search-run ORM object.
+    """
     search_run.current_page = current_page
     search_run.total_jobs_loaded = total_jobs_loaded
     search_run.total_new_jobs_loaded = total_new_jobs_loaded
@@ -73,7 +97,13 @@ def get_search_run_by_id_for_user(
     search_run_id: int,
     user_id: int,
 ) -> SearchRun | None:
-    """Return one persisted search run belonging to the given user."""
+    """Return one persisted search run belonging to the given user.
+
+    :param db: Active SQLAlchemy database session.
+    :param search_run_id: Identifier of the search run.
+    :param user_id: Identifier of the owning user.
+    :return: Matching persisted search-run ORM object, or ``None`` if not found.
+    """
     stmt = (
         select(SearchRun)
         .where(SearchRun.id == search_run_id, SearchRun.user_id == user_id)
@@ -91,7 +121,13 @@ def get_latest_search_run_for_profile(
     user_id: int,
     search_profile_id: int,
 ) -> SearchRun | None:
-    """Return the most recent search run of one user's search profile."""
+    """Return the most recent search run of one user's search profile.
+
+    :param db: Active SQLAlchemy database session.
+    :param user_id: Identifier of the owning user.
+    :param search_profile_id: Identifier of the search profile.
+    :return: Most recent persisted search-run ORM object, or ``None`` if none exists.
+    """
     stmt = (
         select(SearchRun)
         .where(
@@ -111,7 +147,14 @@ def get_today_search_run_for_profile(
     search_profile_id: int,
     today: date,
 ) -> SearchRun | None:
-    """Return today's search run for one user's search profile, if it exists."""
+    """Return today's search run for one user's search profile, if it exists.
+
+    :param db: Active SQLAlchemy database session.
+    :param user_id: Identifier of the owning user.
+    :param search_profile_id: Identifier of the search profile.
+    :param today: Calendar date used for the lookup.
+    :return: Matching persisted search-run ORM object for today, or ``None`` if not found.
+    """
     stmt = (
         select(SearchRun)
         .where(
@@ -131,7 +174,14 @@ def has_primary_search_for_profile_today(
     search_profile_id: int,
     today: date,
 ) -> bool:
-    """Return whether the user already started this search profile today."""
+    """Return whether the user already started this search profile today.
+
+    :param db: Active SQLAlchemy database session.
+    :param user_id: Identifier of the owning user.
+    :param search_profile_id: Identifier of the search profile.
+    :param today: Calendar date used for the lookup.
+    :return: ``True`` if a primary search run exists for today, otherwise ``False``.
+    """
     stmt = (
         select(func.count(SearchRun.id))
         .where(
@@ -149,7 +199,13 @@ def count_primary_searches_for_user_today(
     user_id: int,
     today: date,
 ) -> int:
-    """Count how many primary searches the user started today."""
+    """Count how many primary searches the user started today.
+
+    :param db: Active SQLAlchemy database session.
+    :param user_id: Identifier of the owning user.
+    :param today: Calendar date used for the count.
+    :return: Number of primary search runs started today.
+    """
     stmt = (
         select(func.count(SearchRun.id))
         .where(
@@ -166,7 +222,13 @@ def count_load_more_actions_for_user_today(
     user_id: int,
     today: date,
 ) -> int:
-    """Count how many load-more actions the user has used today."""
+    """Count how many load-more actions the user has used today.
+
+    :param db: Active SQLAlchemy database session.
+    :param user_id: Identifier of the owning user.
+    :param today: Calendar date used for the count.
+    :return: Total number of load-more actions used today.
+    """
     stmt = (
         select(func.coalesce(func.sum(SearchRun.load_more_requests_used), 0))
         .where(
@@ -185,7 +247,15 @@ def list_search_runs_for_user(
     run_date: date | None = None,
     limit: int | None = None,
 ) -> list[SearchRun]:
-    """Return persisted search runs for the user's history page."""
+    """Return persisted search runs for the user's history page.
+
+    :param db: Active SQLAlchemy database session.
+    :param user_id: Identifier of the owning user.
+    :param search_profile_id: Optional identifier used to filter by search profile.
+    :param run_date: Optional calendar date used to filter the result list.
+    :param limit: Optional maximum number of search runs to return.
+    :return: List of persisted search-run ORM objects.
+    """
     stmt = (
         select(SearchRun)
         .where(SearchRun.user_id == user_id)

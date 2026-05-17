@@ -8,20 +8,23 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.crud.search_profile import (
-    create_search_profile,
-    delete_search_profile,
     get_next_default_search_profile_name,
     get_search_profile_by_id,
-    update_search_profile,
 )
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import get_base_template_context
 from app.models.user import User
 from app.schemas.search_profile import SearchProfileCreate, SearchProfileUpdate
+from app.services.search_profile_service import (
+    create_search_profile_for_user,
+    delete_search_profile_for_user,
+    update_search_profile_for_user,
+)
 
 router = APIRouter(prefix="/search-profiles", tags=["search_profiles"])
 templates = Jinja2Templates(directory="templates")
@@ -36,7 +39,17 @@ def _build_form_data(
     experience_levels: list[str] | None = None,
     radius_km: str | None = None,
 ) -> dict[str, object]:
-    """Build normalized form data for the search-profile form."""
+    """Build normalized form data for the search-profile form.
+
+    :param profile_name: Submitted profile name.
+    :param query: Submitted job query.
+    :param location: Submitted location value.
+    :param remote_only: Submitted remote-only flag.
+    :param employment_types: Submitted employment types.
+    :param experience_levels: Submitted experience levels.
+    :param radius_km: Submitted search radius.
+    :return: Normalized template form data.
+    """
     return {
         "profile_name": profile_name,
         "query": query,
@@ -106,7 +119,16 @@ def _render_form(
     search_profile=None,
     status_code: int = 200,
 ) -> HTMLResponse:
-    """Render the shared search-profile form template."""
+    """Render the shared search-profile form template.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param form_data: Normalized template form data.
+    :param errors: Template-ready error messages.
+    :param search_profile: Existing ORM search profile for edit mode, if any.
+    :param status_code: HTTP status code for the response.
+    :return: Rendered HTML form response.
+    """
     return templates.TemplateResponse(
         request=request,
         name="search_profile_form.html",
@@ -127,7 +149,13 @@ def render_search_profile_create_page(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> HTMLResponse:
-    """Render the empty form for creating a search profile."""
+    """Render the empty form for creating a search profile.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :return: Rendered HTML create form.
+    """
     default_profile_name = get_next_default_search_profile_name(db, user_id=current_user.id)
 
     return _render_form(
@@ -151,7 +179,20 @@ def create_search_profile_action(
     experience_levels: Annotated[list[str] | None, Form()] = None,
     radius_km: Annotated[str | None, Form()] = None,
 ) -> Response:
-    """Validate and create a new search profile."""
+    """Validate and create a new search profile.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :param profile_name: Submitted profile name.
+    :param query: Submitted job query.
+    :param location: Submitted location value.
+    :param remote_only: Submitted remote-only flag.
+    :param employment_types: Submitted employment types.
+    :param experience_levels: Submitted experience levels.
+    :param radius_km: Submitted search radius.
+    :return: Redirect response on success, or rendered form with errors.
+    """
     form_data = _build_form_data(
         profile_name=profile_name or "",
         query=query,
@@ -184,12 +225,12 @@ def create_search_profile_action(
         )
 
     try:
-        create_search_profile(
+        create_search_profile_for_user(
             db,
             user_id=current_user.id,
             search_profile_in=search_profile_in,
         )
-    except ValueError:
+    except (ValueError, IntegrityError):
         errors = {
             "profile_name": "Du hast bereits ein Suchprofil mit diesem Namen."
         }
@@ -200,8 +241,6 @@ def create_search_profile_action(
             errors=errors,
             status_code=422,
         )
-
-    db.commit()
 
     return RedirectResponse(
         url=str(request.url_for("render_job_search_page")),
@@ -216,7 +255,14 @@ def render_search_profile_edit_page(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> Response:
-    """Render the prefilled form for editing one search profile."""
+    """Render the prefilled form for editing one search profile.
+
+    :param request: Incoming HTTP request.
+    :param search_profile_id: Identifier of the search profile.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :return: Rendered HTML edit form or redirect response.
+    """
     search_profile = get_search_profile_by_id(
         db,
         profile_id=search_profile_id,
@@ -259,7 +305,21 @@ def update_search_profile_action(
     experience_levels: Annotated[list[str] | None, Form()] = None,
     radius_km: Annotated[str | None, Form()] = None,
 ) -> Response:
-    """Validate and update an existing search profile."""
+    """Validate and update an existing search profile.
+
+    :param request: Incoming HTTP request.
+    :param search_profile_id: Identifier of the search profile to update.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :param profile_name: Submitted profile name.
+    :param query: Submitted job query.
+    :param location: Submitted location value.
+    :param remote_only: Submitted remote-only flag.
+    :param employment_types: Submitted employment types.
+    :param experience_levels: Submitted experience levels.
+    :param radius_km: Submitted search radius.
+    :return: Redirect response on success, or rendered form with errors.
+    """
     existing_profile = get_search_profile_by_id(
         db,
         profile_id=search_profile_id,
@@ -303,13 +363,13 @@ def update_search_profile_action(
         )
 
     try:
-        updated_profile = update_search_profile(
+        updated_profile = update_search_profile_for_user(
             db,
             profile_id=search_profile_id,
             user_id=current_user.id,
             search_profile_in=search_profile_in,
         )
-    except ValueError:
+    except (ValueError, IntegrityError):
         errors = {"profile_name": "Du hast bereits ein Suchprofil mit diesem Namen."}
         return _render_form(
             request,
@@ -326,8 +386,6 @@ def update_search_profile_action(
             status_code=303,
         )
 
-    db.commit()
-
     return RedirectResponse(
         url=str(request.url_for("render_job_search_page")),
         status_code=303,
@@ -341,14 +399,19 @@ def delete_search_profile_action(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> RedirectResponse:
-    """Delete one search profile owned by the current user."""
-    deleted = delete_search_profile(
+    """Delete one search profile owned by the current user.
+
+    :param request: Incoming HTTP request.
+    :param search_profile_id: Identifier of the search profile to delete.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :return: Redirect response to the search page.
+    """
+    delete_search_profile_for_user(
         db,
         profile_id=search_profile_id,
         user_id=current_user.id,
     )
-    if deleted:
-        db.commit()
 
     return RedirectResponse(
         url=str(request.url_for("render_job_search_page")),

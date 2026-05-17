@@ -12,7 +12,14 @@ def build_job_search_request_params(
     pages_to_fetch: int,
     date_posted: str,
 ) -> dict[str, str]:
-    """Build upstream request parameters from validated search-profile data."""
+    """Build upstream request parameters from validated search-profile data.
+
+    :param filters: Validated search-profile data used as internal search filters.
+    :param start_page: First upstream page to request.
+    :param pages_to_fetch: Number of consecutive upstream pages to fetch.
+    :param date_posted: Effective upstream ``date_posted`` value.
+    :return: Dictionary of upstream request parameters for the external job-search API.
+    """
     request_params: dict[str, str] = {}
 
     normalized_location = filters.location.strip().casefold()

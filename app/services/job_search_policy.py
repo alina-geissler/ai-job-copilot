@@ -58,7 +58,15 @@ def decide_primary_search(
     user_primary_searches_today_count: int,
     has_primary_search_for_profile_today: bool,
 ) -> PrimarySearchDecision:
-    """Decide how a primary search request should be handled."""
+    """Decide how a primary search request should be handled.
+
+    :param today: Current calendar date.
+    :param search_profile: Search profile selected by the user.
+    :param last_search_run: Most recent persisted search run for this profile, if any.
+    :param user_primary_searches_today_count: Number of primary searches the user already started today.
+    :param has_primary_search_for_profile_today: Whether this profile already has a primary search today.
+    :return: Decision object describing whether to start, block, or reuse a search run.
+    """
     profile_changed_since_last_run = _has_profile_changed_since_last_run(
         search_profile=search_profile,
         last_search_run=last_search_run,
@@ -123,7 +131,12 @@ def decide_load_more(
     search_run: SearchRun,
     user_load_more_actions_today_count: int,
 ) -> LoadMoreDecision:
-    """Decide whether one more page may be loaded for a persisted search run."""
+    """Decide whether one more page may be loaded for a persisted search run.
+
+    :param search_run: Existing persisted search run.
+    :param user_load_more_actions_today_count: Number of load-more actions the user already used today.
+    :return: Decision object describing whether loading more results is allowed.
+    """
     if user_load_more_actions_today_count >= 100:  # TODO: -> 15 !!!
         return LoadMoreDecision(
             allowed=False,
@@ -159,7 +172,12 @@ def evaluate_primary_search_load_more_availability(
     total_jobs_returned: int,
     new_jobs_for_user_count: int,
 ) -> LoadMoreStopEvaluation:
-    """Evaluate whether further load-more requests remain useful after a primary search."""
+    """Evaluate whether further load-more requests remain useful after a primary search.
+
+    :param total_jobs_returned: Number of jobs returned by the primary provider fetch.
+    :param new_jobs_for_user_count: Number of jobs in the response that are new for the user.
+    :return: Evaluation result describing whether further load-more actions should remain enabled.
+    """
     if total_jobs_returned < 50 or new_jobs_for_user_count < 15:
         return LoadMoreStopEvaluation(
             allow_further_load_more=False,
@@ -177,7 +195,12 @@ def evaluate_load_more_availability_after_load_more(
     total_jobs_returned: int,
     new_jobs_for_user_count: int,
 ) -> LoadMoreStopEvaluation:
-    """Evaluate whether another load-more request remains useful."""
+    """Evaluate whether another load-more request remains useful.
+
+    :param total_jobs_returned: Number of jobs returned by the latest load-more fetch.
+    :param new_jobs_for_user_count: Number of jobs in the response that are new for the user.
+    :return: Evaluation result describing whether another load-more action should remain enabled.
+    """
     if total_jobs_returned < 10 or new_jobs_for_user_count < 3:
         return LoadMoreStopEvaluation(
             allow_further_load_more=False,
@@ -191,7 +214,12 @@ def evaluate_load_more_availability_after_load_more(
 
 
 def decide_date_posted(*, today: date, last_search_run: SearchRun | None) -> str:
-    """Return the provider ``date_posted`` value for a new primary run."""
+    """Return the provider ``date_posted`` value for a new primary run.
+
+    :param today: Current calendar date.
+    :param last_search_run: Most recent persisted search run for this profile, if any.
+    :return: Provider-specific ``date_posted`` value for the next primary search.
+    """
     if last_search_run is None:
         return "week"
 
@@ -216,7 +244,12 @@ def _has_profile_changed_since_last_run(
     last_search_run: SearchRun | None,
 ) -> bool:
     """Return whether the profile has been modified since the last run was created
-    to determine whether a new primary search needs to be initiated."""
+    to determine whether a new primary search needs to be initiated.
+
+    :param search_profile: Current search profile selected by the user.
+    :param last_search_run: Most recent persisted search run for this profile, if any.
+    :return: ``True`` if the profile changed after the last run was created, otherwise ``False``.
+    """
     if last_search_run is None:
         return False
 

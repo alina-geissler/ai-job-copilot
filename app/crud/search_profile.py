@@ -7,7 +7,6 @@ search profiles that belong to application users.
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.search_profile import SearchProfile
@@ -92,7 +91,6 @@ def create_search_profile(
     :param db: Active SQLAlchemy database session.
     :param user_id: Identifier of the owning user.
     :param search_profile_in: Validated input data for profile creation.
-    :raises ValueError: If the profile name already exists for the user.
     :return: Newly created ORM search-profile object.
     """
     profile_name = search_profile_in.profile_name or get_next_default_search_profile_name(
@@ -111,12 +109,7 @@ def create_search_profile(
         radius_km=search_profile_in.radius_km,
     )
     db.add(search_profile)
-
-    try:
-        db.flush()
-    except IntegrityError as exc:
-        db.rollback()
-        raise ValueError("profile_name_already_exists") from exc
+    db.flush()
 
     return search_profile
 
@@ -149,12 +142,7 @@ def update_search_profile(
     search_profile.radius_km = search_profile_in.radius_km
 
     db.add(search_profile)
-
-    try:
-        db.flush()
-    except IntegrityError as exc:
-        db.rollback()
-        raise ValueError("profile_name_already_exists") from exc
+    db.flush()
 
     return search_profile
 

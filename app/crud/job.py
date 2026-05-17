@@ -1,4 +1,8 @@
-"""Provide database access helpers for persisted jobs."""
+"""CRUD operations for the Job model.
+
+Handles database interactions for creating, reading, and updating
+persisted external job records from provider search results.
+"""
 
 from __future__ import annotations
 

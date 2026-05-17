@@ -47,7 +47,14 @@ def _build_job_search_page_context(
     search_profiles: list[Any],
     page_message: str | None = None,
 ) -> dict[str, Any]:
-    """Build the template context for the search-profile overview page."""
+    """Build the template context for the search-profile overview page.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param search_profiles: Search profiles available to the user.
+    :param page_message: Optional page-level feedback message.
+    :return: Template context for the search-profile overview page.
+    """
     return {
         **get_base_template_context(request),
         "current_user": current_user,
@@ -63,7 +70,14 @@ def _build_results_page_context(
     search_run,
     page_message: str | None = None,
 ) -> dict[str, Any]:
-    """Build the template context for one persisted search run."""
+    """Build the template context for one persisted search run.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param search_run: Persisted search run with related jobs and profile data.
+    :param page_message: Optional page-level feedback message.
+    :return: Template context for the search-run detail page.
+    """
     search_run_jobs = sorted(
         search_run.search_run_jobs,
         key=lambda item: (item.result_position, item.id),
@@ -112,7 +126,13 @@ def render_job_search_page(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> HTMLResponse:
-    """Render the search-profile overview page."""
+    """Render the search-profile overview page.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :return: Rendered job-search overview page.
+    """
     search_profiles = get_search_profiles_for_user(db, user_id=current_user.id)
 
     return templates.TemplateResponse(
@@ -134,7 +154,15 @@ def run_job_search(
     db: Annotated[Session, Depends(get_db)],
     provider: JobSearchProvider = Depends(get_job_search_provider),
 ) -> Response:
-    """Start or resume a search run for the selected search profile."""
+    """Start or resume a search run for the selected search profile.
+
+    :param request: Incoming HTTP request.
+    :param search_profile_id: Identifier of the selected search profile.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :param provider: Job-search provider implementation.
+    :return: Redirect response to an existing or newly persisted search run, or a rendered page with an error message.
+    """
     from app.crud.search_profile import get_search_profile_by_id_for_user
 
     search_profile = get_search_profile_by_id_for_user(
@@ -236,7 +264,14 @@ def render_search_run_detail_page(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> Response:
-    """Render the persisted detail page of one search run."""
+    """Render the persisted detail page of one search run.
+
+    :param request: Incoming HTTP request.
+    :param search_run_id: Identifier of the search run to display.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :return: Rendered search-run detail page or redirect response.
+    """
     search_run = get_search_run_by_id_for_user(
         db,
         search_run_id=search_run_id,
@@ -267,7 +302,15 @@ def load_more_search_run_results(
     db: Annotated[Session, Depends(get_db)],
     provider: JobSearchProvider = Depends(get_job_search_provider),
 ) -> Response:
-    """Load one more provider page into an existing search run."""
+    """Load one more provider page into an existing search run.
+
+    :param request: Incoming HTTP request.
+    :param search_run_id: Identifier of the search run to extend.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :param provider: Job-search provider implementation.
+    :return: Redirect response to the updated search run, or a rendered page with an error message.
+    """
     search_run = get_search_run_by_id_for_user(
         db,
         search_run_id=search_run_id,
@@ -334,7 +377,14 @@ def render_search_run_history_page(
     db: Annotated[Session, Depends(get_db)],
     search_profile_id: Annotated[int | None, Query()] = None,
 ) -> HTMLResponse:
-    """Render the search-run history page, optionally filtered by search profile."""
+    """Render the search-run history page, optionally filtered by search profile.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active SQLAlchemy database session.
+    :param search_profile_id: Optional identifier used to filter the history by search profile.
+    :return: Rendered search-run history page.
+    """
     search_runs = list_search_runs_for_user(
         db,
         user_id=current_user.id,

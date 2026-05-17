@@ -10,13 +10,15 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import verify_password
-from app.crud.user import create_user, get_user_by_email
+from app.crud.user import get_user_by_email
 from app.db.session import get_db
 from app.dependencies.templates import get_base_template_context
 from app.schemas.user import UserCreate
+from app.services.auth_service import register_user_account
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 templates = Jinja2Templates(directory="templates")
@@ -131,8 +133,8 @@ def register_user(
         )
 
     try:
-        create_user(db, user_in)
-    except ValueError:
+        register_user_account(db, user_in)
+    except (ValueError, IntegrityError):
         errors["register_email"] = "Diese E-Mail-Adresse ist bereits registriert."
 
         return templates.TemplateResponse(
