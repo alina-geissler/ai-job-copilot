@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if search_profile %}Suchprofil bearbeiten{% else %}Suchprofil anlegen{% endif %} | AI Job Copilot
+{% endblock %}
+
+{% block content %}
+{% set errors = errors | default({}) %}
+{% set form_data = form_data | default({}) %}
+
+<header class="page-header">
+  <h1>{% if search_profile %}Suchprofil bearbeiten{% else %}Suchprofil anlegen{% endif %}</h1>
+  <p class="muted">Lege die Suchparameter fest, die für spätere Suchläufe verwendet werden.</p>
+</header>
+
+<section class="section">
+  <form
+    method="post"
+    action="{% if search_profile %}{{ request.url_for('update_search_profile', search_profile_id=search_profile.id) }}{% else %}{{ request.url_for('create_search_profile') }}{% endif %}"
+    class="form"
+  >
+    <div class="card stack">
+      <div class="form-row form-row--two">
+        <div class="form-group">
+          <label for="profile_name">Profilname</label>
+          <input type="text" id="profile_name" name="profile_name" value="{{ form_data.get('profile_name', '') }}" required>
+          {% if errors.get('profile_name') %}
+            <p class="error-text" role="alert">{{ errors.get("profile_name") }}</p>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="location">Standort</label>
+          <input type="text" id="location" name="location" value="{{ form_data.get('location', 'Deutschland') }}" required>
+          {% if errors.get('location') %}
+            <p class="error-text" role="alert">{{ errors.get("location") }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="query">Suchbegriff</label>
+        <input type="text" id="query" name="query" value="{{ form_data.get('query', '') }}" placeholder="Jobtitel oder Kompetenz" required>
+        {% if errors.get('query') %}
+          <p class="error-text" role="alert">{{ errors.get("query") }}</p>
+        {% endif %}
+      </div>
+
+      <fieldset>
+        <legend>Arbeitsort</legend>
+        <div class="checkbox-group">
+          <label class="choice">
+            <input type="checkbox" name="remote_only" value="true" {% if form_data.get('remote_only') %}checked{% endif %}>
+            Nur Remote
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Beschäftigungsarten</legend>
+        {% set selected_employment_types = form_data.get('employment_types', []) %}
+        <div class="checkbox-group">
+          <label class="choice"><input type="checkbox" name="employment_types" value="FULLTIME" {% if 'FULLTIME' in selected_employment_types %}checked{% endif %}> Vollzeit</label>
+          <label class="choice"><input type="checkbox" name="employment_types" value="PARTTIME" {% if 'PARTTIME' in selected_employment_types %}checked{% endif %}> Teilzeit</label>
+          <label class="choice"><input type="checkbox" name="employment_types" value="CONTRACTOR" {% if 'CONTRACTOR' in selected_employment_types %}checked{% endif %}> Freelancer / Contract</label>
+          <label class="choice"><input type="checkbox" name="employment_types" value="INTERN" {% if 'INTERN' in selected_employment_types %}checked{% endif %}> Praktikum</label>
+        </div>
+        {% if errors.get('employment_types') %}
+          <p class="error-text" role="alert">{{ errors.get("employment_types") }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset>
+        <legend>Erfahrungslevel</legend>
+        {% set selected_experience_levels = form_data.get('experience_levels', []) %}
+        <div class="checkbox-group">
+          <label class="choice"><input type="checkbox" name="experience_levels" value="no_degree" {% if 'no_degree' in selected_experience_levels %}checked{% endif %}> Ohne akademischen Abschluss</label>
+          <label class="choice"><input type="checkbox" name="experience_levels" value="no_experience" {% if 'no_experience' in selected_experience_levels %}checked{% endif %}> Ohne Berufserfahrung</label>
+          <label class="choice"><input type="checkbox" name="experience_levels" value="under_3_years_experience" {% if 'under_3_years_experience' in selected_experience_levels %}checked{% endif %}> Unter 3 Jahre</label>
+          <label class="choice"><input type="checkbox" name="experience_levels" value="more_than_3_years_experience" {% if 'more_than_3_years_experience' in selected_experience_levels %}checked{% endif %}> Mehr als 3 Jahre</label>
+        </div>
+        {% if errors.get('experience_levels') %}
+          <p class="error-text" role="alert">{{ errors.get("experience_levels") }}</p>
+        {% endif %}
+      </fieldset>
+
+      <div class="form-group">
+        <label for="radius_km">Suchradius in km</label>
+        <input type="text" id="radius_km" name="radius_km" value="{{ form_data.get('radius_km', '') }}" placeholder="bis 500km">
+        {% if errors.get('radius_km') %}
+          <p class="error-text" role="alert">{{ errors.get("radius_km") }}</p>
+        {% endif %}
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">
+          {% if search_profile %}Suchprofil speichern{% else %}Suchprofil anlegen{% endif %}
+        </button>
+        <a href="{{ request.url_for('render_job_search_page') }}" class="btn btn-secondary">Abbrechen</a>
+      </div>
+    </div>
+  </form>
+</section>
+{% endblock %}

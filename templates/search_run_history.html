@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Suchlauf-Historie | AI Job Copilot{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1>Suchlauf-Historie</h1>
+  <p class="muted">Alle gespeicherten Suchläufe, optional gefiltert nach Suchprofil.</p>
+</header>
+
+<section class="section">
+  <div class="card">
+    <form method="get" action="{{ request.url_for('render_search_run_history_page') }}" class="form">
+      <div class="form-row form-row--two">
+        <div class="form-group">
+          <label for="search_profile_id">Nach Suchprofil filtern</label>
+          <select id="search_profile_id" name="search_profile_id">
+            <option value="">Alle Suchprofile</option>
+            {% for profile in search_profiles %}
+              <option value="{{ profile.id }}" {% if selected_search_profile_id == profile.id %}selected{% endif %}>
+                {{ profile.profile_name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Filter anwenden</button>
+        <a href="{{ request.url_for('render_search_run_history_page') }}" class="btn btn-secondary">Filter zurücksetzen</a>
+        <a href="{{ request.url_for('render_job_search_page') }}" class="btn btn-secondary">Suchprofile + Jobsuche</a>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="section">
+  {% if search_runs %}
+    <div class="history-list">
+      {% for search_run in search_runs %}
+        <article class="card history-card">
+          <div class="history-card__header">
+            <div>
+              <h2 class="history-card__title">
+                {% if search_run.search_profile %}
+                  {{ search_run.search_profile.profile_name }}
+                {% else %}
+                  Gelöschtes Suchprofil
+                {% endif %}
+              </h2>
+              <p class="muted">
+                {{ search_run.run_date.strftime("%d.%m.%Y") }}
+                · {{ search_run.query_snapshot }}
+                {% if search_run.location_snapshot %} · {{ search_run.location_snapshot }}{% endif %}
+              </p>
+            </div>
+          </div>
+
+          <ul class="list-clean history-card__meta">
+            <li><strong>Date posted:</strong> {{ search_run.date_posted }}</li>
+            <li><strong>Geladene Seiten bis:</strong> {{ search_run.current_page }}</li>
+            <li><strong>Treffer gesamt:</strong> {{ search_run.total_jobs_loaded }}</li>
+            <li><strong>Neue Treffer:</strong> {{ search_run.total_new_jobs_loaded }}</li>
+            <li><strong>Load-more genutzt:</strong> {{ search_run.load_more_requests_used }}</li>
+          </ul>
+
+          <div class="actions">
+            <a href="{{ request.url_for('render_search_run_detail_page', search_run_id=search_run.id) }}" class="btn btn-primary">
+              Suchlauf ansehen
+            </a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card">
+      <p>Es wurden noch keine Suchläufe gespeichert.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

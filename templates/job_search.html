@@ -3,91 +3,135 @@
 {% block title %}Jobsuche | AI Job Copilot{% endblock %}
 
 {% block content %}
-{% set errors = errors | default({}) %}
-{% set form_data = form_data | default({}) %}
-
 <header class="page-header">
   <h1>Jobsuche</h1>
-  <p class="muted">Suche nach Stellenanzeigen über API.</p>
+  <p class="muted">Wähle ein Suchprofil, um eine Suche zu starten oder einen heutigen Suchlauf fortzusetzen.</p>
 </header>
 
+{% if page_message %}
+  <div class="alert alert-error" role="alert">
+    <p>{{ page_message }}</p>
+  </div>
+{% endif %}
+
 <section class="section">
-  <form method="post" action="/jobs/search" class="form">
-    <div class="card stack">
-      <div class="form-row form-row--two">
-        <div class="form-group">
-          <label for="query">Position</label>
-          <input type="text" id="query" name="query" placeholder="Jobtitel oder Stichworte" value="{{ form_data.get('query', '') }}" {% if errors.get('query') %}aria-invalid="true" aria-describedby="query-error"{% endif %} required>
-          {% if errors.get('query') %}
-            <p id="query-error" class="error-text" role="alert">{{ errors.get("query") }}</p>
-          {% endif %}
-        </div>
-        <div class="form-group">
-          <label for="location">Standort</label>
-          <input type="text" id="location" name="location" value="{{ form_data.get('location', 'Deutschland') }}" {% if errors.get('location') %}aria-invalid="true" aria-describedby="location-error"{% endif %} required>
-          {% if errors.get('location') %}
-            <p id="location-error" class="error-text" role="alert">{{ errors.get("location") }}</p>
-          {% endif %}
-        </div>
-      </div>
+  <div class="actions">
+    <a href="{{ request.url_for('render_search_profile_create_page') }}" class="btn btn-primary">Neues Suchprofil anlegen</a>
+    <a href="{{ request.url_for('render_search_run_history_page') }}" class="btn btn-secondary">Suchlauf-Historie</a>
+  </div>
+</section>
+
+<section class="section">
+  {% if search_profiles %}
+    <div class="profile-list">
+      {% for profile in search_profiles %}
+        <article class="card profile-card">
+          <details class="profile-card__disclosure">
+            <summary class="profile-card__summary">
+              <div class="profile-card__header">
+                <div>
+                  <h2 class="profile-card__title">{{ profile.profile_name }}</h2>
+                  <p class="muted">
+                    {{ profile.query }}{% if profile.location %} · {{ profile.location }}{% endif %}
+                  </p>
+                </div>
+              </div>
+              <div class="actions">
+                  <form method="post" action="{{ request.url_for('run_job_search', search_profile_id=profile.id) }}">
+                  <button type="submit" class="btn btn-primary">Suche starten</button>
+                </form>
+              </div>
+            </summary>
+
+            <div class="profile-card__details">
+              <ul class="list-clean">
+
+                  <li>
+                  <strong>Nur Remote-Optionen:</strong>
+                  {% if profile.remote_only %}
+                    Ja
+                  {% else %}
+                    —
+                  {% endif %}
+                </li>
+
+                <li>
+                  <strong>Beschäftigungsarten:</strong>
+                  {% if profile.employment_types %}
+                    {% set employment_labels = [] %}
+                    {% for employment_type in profile.employment_types %}
+                      {% if employment_type == "FULLTIME" %}
+                        {% set _ = employment_labels.append("Vollzeit") %}
+                      {% elif employment_type == "PARTTIME" %}
+                        {% set _ = employment_labels.append("Teilzeit") %}
+                      {% elif employment_type == "CONTRACTOR" %}
+                        {% set _ = employment_labels.append("Freelancer / Contract") %}
+                      {% elif employment_type == "INTERN" %}
+                        {% set _ = employment_labels.append("Praktikum") %}
+                      {% else %}
+                        {% set _ = employment_labels.append(employment_type) %}
+                      {% endif %}
+                    {% endfor %}
+                    {{ employment_labels | join(', ') }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </li>
+
+                <li>
+                  <strong>Erfahrungslevel:</strong>
+                  {% if profile.experience_levels %}
+                    {% set experience_labels = [] %}
+                    {% for experience_level in profile.experience_levels %}
+                      {% if experience_level == "no_degree" %}
+                        {% set _ = experience_labels.append("Ohne akademischen Abschluss") %}
+                      {% elif experience_level == "no_experience" %}
+                        {% set _ = experience_labels.append("Ohne Berufserfahrung") %}
+                      {% elif experience_level == "under_3_years_experience" %}
+                        {% set _ = experience_labels.append("Unter 3 Jahre") %}
+                      {% elif experience_level == "more_than_3_years_experience" %}
+                        {% set _ = experience_labels.append("Mehr als 3 Jahre") %}
+                      {% else %}
+                        {% set _ = experience_labels.append(experience_level) %}
+                      {% endif %}
+                    {% endfor %}
+                    {{ experience_labels | join(', ') }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </li>
+
+                <li>
+                  <strong>Suchradius:</strong>
+                  {% if profile.radius_km is not none %}
+                    {{ profile.radius_km }} km
+                  {% else %}
+                    —
+                  {% endif %}
+                </li>
+              </ul>
+
+              <div class="actions">
+                <a href="{{ request.url_for('render_search_profile_edit_page', search_profile_id=profile.id) }}" class="btn btn-secondary">
+                  Profil bearbeiten
+                </a>
+
+                <form method="post" action="{{ request.url_for('delete_search_profile', search_profile_id=profile.id) }}">
+                  <button type="submit" class="btn btn-secondary">Profil löschen</button>
+                </form>
+              </div>
+            </div>
+          </details>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card">
+      <p>Es gibt noch keine Suchprofile.</p>
       <div class="actions">
-        <button type="submit" class="btn btn-primary">Jobs finden</button>
+        <a href="{{ request.url_for('render_search_profile_create_page') }}" class="btn btn-primary">Erstes Suchprofil anlegen</a>
       </div>
     </div>
-
-    <fieldset class="section">
-      <legend>Arbeitsmodell</legend>
-      {% set selected_work_models = form_data.get('work_model', []) %}
-      <div class="checkbox-group">
-        <label class="choice"><input type="checkbox" name="work_model" value="remote" {% if 'remote' in selected_work_models %}checked{% endif %}> Remote</label>
-        <label class="choice"><input type="checkbox" name="work_model" value="hybrid" {% if 'hybrid' in selected_work_models %}checked{% endif %}> Hybrid</label>
-        <label class="choice"><input type="checkbox" name="work_model" value="onsite" {% if 'onsite' in selected_work_models %}checked{% endif %}> Vor Ort</label>
-      </div>
-    </fieldset>
-
-    <details class="section" {% if form_data.get('employment_type') or form_data.get('experience_level') or form_data.get('company') or form_data.get('industry') %}open{% endif %}>
-      <summary>Alle Filter</summary>
-      <div class="stack">
-        <fieldset>
-          <legend>Art der Beschäftigung</legend>
-          {% set selected_employment_types = form_data.get('employment_type', []) %}
-          <div class="checkbox-group">
-            <label class="choice"><input type="checkbox" name="employment_type" value="fulltime" {% if 'fulltime' in selected_employment_types %}checked{% endif %}> Vollzeit</label>
-            <label class="choice"><input type="checkbox" name="employment_type" value="parttime" {% if 'parttime' in selected_employment_types %}checked{% endif %}> Teilzeit</label>
-            <label class="choice"><input type="checkbox" name="employment_type" value="internship" {% if 'internship' in selected_employment_types %}checked{% endif %}> Praktikum</label>
-            <label class="choice"><input type="checkbox" name="employment_type" value="workingstudent" {% if 'workingstudent' in selected_employment_types %}checked{% endif %}> Werkstudentin / Werkstudent</label>
-            <label class="choice"><input type="checkbox" name="employment_type" value="freelance" {% if 'freelance' in selected_employment_types %}checked{% endif %}> Freelance</label>
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend>Berufserfahrung / Position</legend>
-          {% set selected_experience_level = form_data.get('experience_level', '') %}
-          <div class="radio-group">
-            <label class="choice"><input type="radio" name="experience_level" value="entry" {% if selected_experience_level == 'entry' %}checked{% endif %}> Einstieg</label>
-            <label class="choice"><input type="radio" name="experience_level" value="junior" {% if selected_experience_level == 'junior' %}checked{% endif %}> Junior</label>
-            <label class="choice"><input type="radio" name="experience_level" value="mid" {% if selected_experience_level == 'mid' %}checked{% endif %}> Mid-Level</label>
-            <label class="choice"><input type="radio" name="experience_level" value="senior" {% if selected_experience_level == 'senior' %}checked{% endif %}> Senior</label>
-          </div>
-        </fieldset>
-
-        <div class="form-group">
-          <label for="company">Unternehmen</label>
-          <input type="text" id="company" name="company" placeholder="z. B. SAP" value="{{ form_data.get('company', '') }}">
-        </div>
-
-        <fieldset>
-          <legend>Branche</legend>
-          {% set selected_industries = form_data.get('industry', []) %}
-          <div class="checkbox-group">
-            <label class="choice"><input type="checkbox" name="industry" value="it" {% if 'it' in selected_industries %}checked{% endif %}> IT / Software</label>
-            <label class="choice"><input type="checkbox" name="industry" value="finance" {% if 'finance' in selected_industries %}checked{% endif %}> Finance</label>
-            <label class="choice"><input type="checkbox" name="industry" value="healthcare" {% if 'healthcare' in selected_industries %}checked{% endif %}> Healthcare</label>
-            <label class="choice"><input type="checkbox" name="industry" value="education" {% if 'education' in selected_industries %}checked{% endif %}> Education</label>
-          </div>
-        </fieldset>
-      </div>
-    </details>
-  </form>
+  {% endif %}
 </section>
 {% endblock %}

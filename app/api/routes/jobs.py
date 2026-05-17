@@ -1,265 +1,355 @@
-"""Define browser routes for job-search input and results.
-
- Collect raw request values, convert them to a validated ``JobSearchFilters`` object, pass that object to the active
- ``JobSearchProvider``, and render the corresponding templates or redirects.
- """
+"""Define browser routes for profile-based job search runs and history."""
 
 from __future__ import annotations
 
-from typing import Annotated
-from urllib.parse import urlencode
+from datetime import date
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Form, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
-from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
-from app.dependencies.providers import get_job_search_provider
-from app.schemas.job_search import EmploymentType, JobSearchFilters, WorkModel
-from app.services.job_search_provider import JobSearchProvider
+from app.crud.search_profile import get_search_profiles_for_user
+from app.crud.search_run import (
+    count_load_more_actions_for_user_today,
+    count_primary_searches_for_user_today,
+    get_latest_search_run_for_profile,
+    get_search_run_by_id_for_user,
+    get_today_search_run_for_profile,
+    list_search_runs_for_user,
+)
+from app.db.session import get_db
 from app.dependencies.auth import get_current_user
+from app.dependencies.providers import get_job_search_provider
 from app.dependencies.templates import get_base_template_context
 from app.models.user import User
+from app.services.job_search_persistence import (
+    PersistedSearchResult,
+    persist_load_more_response,
+    persist_primary_search_response,
+)
+from app.services.job_search_policy import (
+    PrimarySearchAction,
+    decide_load_more,
+    decide_primary_search,
+)
+from app.services.job_search_provider import JobSearchProvider
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 templates = Jinja2Templates(directory="templates")
 
 
-def _build_form_data(
-    query: str = "",
-    location: str = "Deutschland",
-    work_model: list[WorkModel] | None = None,
-    employment_type: list[EmploymentType] | None = None,
-    experience_level: str | None = None,
-    company: str | None = None,
-    industry: list[str] | None = None,
-) -> dict[str, str | list[str]]:
-    """Build normalized form data for template rendering.
-
-    Convert optional request values into predictable defaults so the search form can be rendered consistently
-    on first load and after validation errors.
-
-    :return: Normalized form data for the template context.
-    """
+def _build_job_search_page_context(
+    request: Request,
+    *,
+    current_user: User,
+    search_profiles: list[Any],
+    page_message: str | None = None,
+) -> dict[str, Any]:
+    """Build the template context for the search-profile overview page."""
     return {
-        "query": query,
-        "location": location,
-        "work_model": work_model or [],
-        "employment_type": employment_type or [],
-        "experience_level": experience_level or "",
-        "company": company or "",
-        "industry": industry or [],
+        **get_base_template_context(request),
+        "current_user": current_user,
+        "search_profiles": search_profiles,
+        "page_message": page_message,
     }
 
 
-def _build_search_filters(
-    query: str,
-    location: str,
-    work_model: list[WorkModel] | None = None,
-    employment_type: list[EmploymentType] | None = None,
-    experience_level: str | None = None,
-    company: str | None = None,
-    industry: list[str] | None = None,
-) -> JobSearchFilters:
-    """Instantiate validated job-search filters from raw request values.
-
-    Normalize optional text fields, preserve list selections, and construct the ``JobSearchFilters`` object used by
-    redirect helpers, providers, and templates as the application's canonical search input.
-
-    :return: Validated job-search filters.
-    """
-    return JobSearchFilters(
-        query=query,
-        location=location,
-        work_model=work_model or [],
-        employment_type=employment_type or [],
-        experience_level=experience_level.strip() if experience_level else None,
-        company=company.strip() if company else None,
-        industry=industry or [],
+def _build_results_page_context(
+    request: Request,
+    *,
+    current_user: User,
+    search_run,
+    page_message: str | None = None,
+) -> dict[str, Any]:
+    """Build the template context for one persisted search run."""
+    search_run_jobs = sorted(
+        search_run.search_run_jobs,
+        key=lambda item: (item.result_position, item.id),
     )
 
+    results = []
+    for item in search_run_jobs:
+        job = item.job
+        results.append(
+            {
+                "id": job.id,
+                "external_job_id": job.external_job_id,
+                "source": job.source,
+                "title": job.title,
+                "company": job.company,
+                "company_logo": job.company_logo,
+                "location": job.location,
+                "is_remote": job.is_remote,
+                "employment_type": job.employment_type,
+                "job_url": job.job_url,
+                "description": job.description,
+                "published_at": job.published_at,
+                "is_previously_seen": item.is_previously_seen,
+                "page_number": item.page_number,
+                "result_position": item.result_position,
+            }
+        )
 
-def _build_results_redirect_url(request: Request, search_data: JobSearchFilters) -> str:
-    """Build the results URL from validated search filters.
-
-    Serialize the ``JobSearchFilters`` object into query parameters for the GET-based results route so the submitted
-    search can be represented in the URL.
-
-    :param request: Incoming HTTP request.
-    :param search_data: Validated job-search filters.
-    :return: Results-page URL with encoded query parameters.
-    """
-    params: list[tuple[str, str]] = [
-        ("query", search_data.query),
-        ("location", search_data.location),
-    ]
-
-    for item in search_data.work_model:
-        params.append(("work_model", item))
-
-    for item in search_data.employment_type:
-        params.append(("employment_type", item))
-
-    if search_data.experience_level:
-        params.append(("experience_level", search_data.experience_level))
-
-    if search_data.company:
-        params.append(("company", search_data.company))
-
-    for item in search_data.industry:
-        params.append(("industry", item))
-
-    base_url = str(request.url_for("render_job_results_page"))
-    return f"{base_url}?{urlencode(params, doseq=True)}"
+    return {
+        **get_base_template_context(request),
+        "current_user": current_user,
+        "search_profile": search_run.search_profile,
+        "search_run": search_run,
+        "search_results": {
+            "results": results,
+            "total": len(results),
+        },
+        "page_message": page_message,
+        "can_load_more": search_run.can_load_more,
+    }
 
 
 @router.get("/search", response_class=HTMLResponse, name="render_job_search_page")
-def render_job_search_page(request: Request, current_user: Annotated[User, Depends(get_current_user)]):
-    """Render the empty job-search form page."""
+def render_job_search_page(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> HTMLResponse:
+    """Render the search-profile overview page."""
+    search_profiles = get_search_profiles_for_user(db, user_id=current_user.id)
+
     return templates.TemplateResponse(
         request=request,
         name="job_search.html",
-        context={
-            **get_base_template_context(request),
-            "errors": {},
-            "form_data": _build_form_data(),
-            "current_user": current_user
-        },
+        context=_build_job_search_page_context(
+            request,
+            current_user=current_user,
+            search_profiles=search_profiles,
+        ),
     )
 
 
-@router.post("/search", response_class=HTMLResponse)
-def submit_job_search(
+@router.post("/search/{search_profile_id}/run", response_class=HTMLResponse, name="run_job_search")
+def run_job_search(
     request: Request,
-    query: Annotated[str, Form()],
-    location: Annotated[str, Form()],
-    work_model: Annotated[list[str] | None, Form()] = None,
-    employment_type: Annotated[list[str] | None, Form()] = None,
-    experience_level: Annotated[str | None, Form()] = None,
-    company: Annotated[str | None, Form()] = None,
-    industry: Annotated[list[str] | None, Form()] = None,
-):
-    """Validate submitted form data and redirect to the results route.
-
-    Build normalized form data from the POST body, try to instantiate a ``JobSearchFilters`` object, and either
-    re-render the form with field errors or redirect to the GET results page built from the validated search object.
-
-    :return: Redirect to results on success, or the form page with errors.
-    """
-    form_data = _build_form_data(
-        query=query,
-        location=location,
-        work_model=work_model,
-        employment_type=employment_type,
-        experience_level=experience_level,
-        company=company,
-        industry=industry,
-    )
-
-    try:
-        search_data = _build_search_filters(
-            query=query,
-            location=location,
-            work_model=work_model,
-            employment_type=employment_type,
-            experience_level=experience_level,
-            company=company,
-            industry=industry,
-        )
-    except ValidationError as e:
-        errors: dict[str, str] = {}
-
-        for error in e.errors():
-            field_name = error["loc"][0]
-
-            if field_name == "query":
-                errors["query"] = "Bitte gib einen Suchbegriff ein."
-            elif field_name == "location":
-                errors["location"] = "Bitte gib einen Ort ein."
-
-        return templates.TemplateResponse(
-            request=request,
-            name="job_search.html",
-            context={
-                **get_base_template_context(request),
-                "errors": errors,
-                "form_data": form_data,
-            },
-            status_code=422,
-        )
-
-    redirect_url = _build_results_redirect_url(request, search_data)
-    return RedirectResponse(url=redirect_url, status_code=303)
-
-
-@router.get("/results", response_class=HTMLResponse, name="render_job_results_page")
-def render_job_results_page(
-    request: Request,
+    search_profile_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
-    query: Annotated[str, Query()],
-    location: Annotated[str, Query()],
-    work_model: Annotated[list[str] | None, Query()] = None,
-    employment_type: Annotated[list[str] | None, Query()] = None,
-    experience_level: Annotated[str | None, Query()] = None,
-    company: Annotated[str | None, Query()] = None,
-    industry: Annotated[list[str] | None, Query()] = None,
+    db: Annotated[Session, Depends(get_db)],
     provider: JobSearchProvider = Depends(get_job_search_provider),
+) -> Response:
+    """Start or resume a search run for the selected search profile."""
+    from app.crud.search_profile import get_search_profile_by_id_for_user
 
-):
-    """Render results for validated query parameters.
-
-    Rebuild the canonical ``JobSearchFilters`` object from the GET parameters, redirect to the search page
-    if validation fails, and use the injected ``JobSearchProvider`` to obtain the normalized `JobSearchResponse``
-    rendered by the results template.
-
-    :return: Rendered results page, or a redirect if validation fails.
-    """
-    try:
-        search_data = _build_search_filters(
-            query=query,
-            location=location,
-            work_model=work_model,
-            employment_type=employment_type,
-            experience_level=experience_level,
-            company=company,
-            industry=industry,
-        )
-    except ValidationError:
+    search_profile = get_search_profile_by_id_for_user(
+        db,
+        search_profile_id=search_profile_id,
+        user_id=current_user.id,
+    )
+    if search_profile is None:
         return RedirectResponse(
             url=str(request.url_for("render_job_search_page")),
             status_code=303,
         )
 
-    search_results = provider.search_jobs(search_data)
+    today = date.today()
+    last_search_run = get_latest_search_run_for_profile(
+        db,
+        user_id=current_user.id,
+        search_profile_id=search_profile.id,
+    )
+    today_search_run = get_today_search_run_for_profile(
+        db,
+        user_id=current_user.id,
+        search_profile_id=search_profile.id,
+        today=today,
+    )
+
+    primary_decision = decide_primary_search(
+        today=today,
+        search_profile=search_profile,
+        last_search_run=last_search_run,
+        user_primary_searches_today_count=count_primary_searches_for_user_today(
+            db,
+            user_id=current_user.id,
+            today=today,
+        ),
+        has_primary_search_for_profile_today=today_search_run is not None,
+    )
+
+    if primary_decision.action == PrimarySearchAction.SHOW_EXISTING_RUN and today_search_run is not None:
+        return RedirectResponse(
+            url=str(
+                request.url_for(
+                    "render_search_run_detail_page",
+                    search_run_id=today_search_run.id,
+                )
+            ),
+            status_code=303,
+        )
+
+    if primary_decision.action in {
+        PrimarySearchAction.BLOCKED_DAILY_LIMIT,
+        PrimarySearchAction.BLOCKED_PROFILE_LIMIT,
+    }:
+        search_profiles = get_search_profiles_for_user(db, user_id=current_user.id)
+        return templates.TemplateResponse(
+            request=request,
+            name="job_search.html",
+            context=_build_job_search_page_context(
+                request,
+                current_user=current_user,
+                search_profiles=search_profiles,
+                page_message=primary_decision.message,
+            ),
+            status_code=409,
+        )
+
+    search_response = provider.search_jobs(
+        search_profile,
+        start_page=primary_decision.start_page,
+        pages_to_fetch=primary_decision.pages_to_fetch,
+        date_posted=primary_decision.date_posted,
+    )
+
+    persisted_result: PersistedSearchResult = persist_primary_search_response(
+        db,
+        user_id=current_user.id,
+        search_profile=search_profile,
+        run_date=today,
+        date_posted=primary_decision.date_posted,
+        loaded_page=primary_decision.loaded_page,
+        search_response=search_response,
+    )
+
+    return RedirectResponse(
+        url=str(
+            request.url_for(
+                "render_search_run_detail_page",
+                search_run_id=persisted_result.search_run.id,
+            )
+        ),
+        status_code=303,
+    )
+
+
+@router.get("/runs/{search_run_id}", response_class=HTMLResponse, name="render_search_run_detail_page")
+def render_search_run_detail_page(
+    request: Request,
+    search_run_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Response:
+    """Render the persisted detail page of one search run."""
+    search_run = get_search_run_by_id_for_user(
+        db,
+        search_run_id=search_run_id,
+        user_id=current_user.id,
+    )
+    if search_run is None:
+        return RedirectResponse(
+            url=str(request.url_for("render_job_search_page")),
+            status_code=303,
+        )
 
     return templates.TemplateResponse(
         request=request,
         name="job_results.html",
-        context={
-            **get_base_template_context(request),
-            "search_data": search_data.model_dump(),
-            "search_results": search_results.model_dump(),
-            "current_user": current_user
-        },
+        context=_build_results_page_context(
+            request,
+            current_user=current_user,
+            search_run=search_run,
+        ),
     )
 
 
-@router.get("/dashboard", response_class=HTMLResponse, name="render_dashboard_page")
-def render_dashboard_page(
+@router.post("/runs/{search_run_id}/load-more", response_class=HTMLResponse, name="load_more_search_run_results")
+def load_more_search_run_results(
+    request: Request,
+    search_run_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    provider: JobSearchProvider = Depends(get_job_search_provider),
+) -> Response:
+    """Load one more provider page into an existing search run."""
+    search_run = get_search_run_by_id_for_user(
+        db,
+        search_run_id=search_run_id,
+        user_id=current_user.id,
+    )
+    if search_run is None:
+        return RedirectResponse(
+            url=str(request.url_for("render_job_search_page")),
+            status_code=303,
+        )
+
+    load_more_decision = decide_load_more(
+        search_run=search_run,
+        user_load_more_actions_today_count=count_load_more_actions_for_user_today(
+            db,
+            user_id=current_user.id,
+            today=date.today(),
+        ),
+    )
+
+    if not load_more_decision.allowed:
+        return templates.TemplateResponse(
+            request=request,
+            name="job_results.html",
+            context=_build_results_page_context(
+                request,
+                current_user=current_user,
+                search_run=search_run,
+                page_message=load_more_decision.message,
+            ),
+            status_code=409,
+        )
+
+    search_response = provider.search_jobs(
+        search_run.search_profile,
+        start_page=load_more_decision.next_page,
+        pages_to_fetch=load_more_decision.pages_to_fetch,
+        date_posted=search_run.date_posted,
+    )
+
+    persisted_result = persist_load_more_response(
+        db,
+        user_id=current_user.id,
+        search_run=search_run,
+        loaded_page=load_more_decision.next_page,
+        search_response=search_response,
+    )
+
+    return RedirectResponse(
+        url=str(
+            request.url_for(
+                "render_search_run_detail_page",
+                search_run_id=persisted_result.search_run.id,
+            )
+        ),
+        status_code=303,
+    )
+
+
+@router.get("/runs", response_class=HTMLResponse, name="render_search_run_history_page")
+def render_search_run_history_page(
     request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    search_profile_id: Annotated[int | None, Query()] = None,
 ) -> HTMLResponse:
-    """Render the dashboard page for the authenticated user.
+    """Render the search-run history page, optionally filtered by search profile."""
+    search_runs = list_search_runs_for_user(
+        db,
+        user_id=current_user.id,
+        search_profile_id=search_profile_id,
+    )
+    search_profiles = get_search_profiles_for_user(db, user_id=current_user.id)
 
-    :param request: Incoming HTTP request.
-    :param current_user: Authenticated user resolved from the current session.
-    :return: Rendered dashboard page.
-    """
     return templates.TemplateResponse(
         request=request,
-        name="dashboard.html",
+        name="search_run_history.html",
         context={
             **get_base_template_context(request),
-            "current_user": current_user
+            "current_user": current_user,
+            "search_runs": search_runs,
+            "search_profiles": search_profiles,
+            "selected_search_profile_id": search_profile_id,
         },
     )

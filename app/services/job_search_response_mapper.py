@@ -59,19 +59,22 @@ def map_job(raw_job: dict) -> JobSearchResult | None:
 
     try:
         return JobSearchResult(
-            provider_job_id=str(job_id),
-            job_posted_at=posted_at or None,
+            external_job_id=str(job_id),
+            published_at=posted_at or None,
             title=title.strip(),
             company=company.strip(),
             company_logo=raw_job.get("employer_logo") or None,
             location=location,
             employment_type=raw_job.get("job_employment_type") or None,
             is_remote=raw_job.get("job_is_remote"),
-            job_description=raw_job.get("job_description") or None,
+            description=raw_job.get("job_description") or None,
             source=raw_job.get("job_publisher") or None,
-            apply_link=apply_link,
+            job_url=apply_link,
         )
-    except ValidationError:
+
+    except ValidationError as exc:
+        print("MAP_JOB_VALIDATION_ERROR:", exc)
+        print("RAW_JOB_KEYS:", raw_job.keys())
         return None
 
 
@@ -88,10 +91,12 @@ def map_payload_to_job_search_response(payload: dict[str, object]) -> JobSearchR
     results: list[JobSearchResult] = []
 
     for raw_job in raw_jobs:
-        # mapped_job = self._map_job(raw_job)
         mapped_job = map_job(raw_job)
         if mapped_job is not None:
             results.append(mapped_job)
+
+    print("RAW_JOBS_COUNT:", len(raw_jobs))
+    print("MAPPED_RESULTS_COUNT:", len(results))
 
     return JobSearchResponse(
         results=results,

@@ -16,7 +16,7 @@ templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/", response_class=HTMLResponse, name="render_index_page")
-def render_index_page(request: Request):
+def render_index_page(request: Request) -> HTMLResponse:
     """Render the landing page template."""
 
     return templates.TemplateResponse(

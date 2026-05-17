@@ -1,56 +1,42 @@
-"""Map internal job-search filters to external API request parameters.
-
- Translate the validated application search object into the flat string-based query format
- expected by the upstream job API.
- """
+"""Map internal job-search filters to external API request parameters."""
 
 from __future__ import annotations
 
-from app.schemas.job_search import JobSearchFilters
+from app.schemas.search_profile import SearchProfileBase
 
 
-def build_job_search_request_params(filters: JobSearchFilters) -> dict[str, str]:
-    """Build upstream request parameters from validated search filters.
-
-     Read the ``JobSearchFilters`` object created in the route layer and derive the query parameters
-     used by ``LiveJobSearchProvider`` for the external ``GET /search`` request.
-
-     :param filters: Validated search criteria from the route layer.
-     :return: Query parameters for the upstream job API.
-     """
+def build_job_search_request_params(
+    filters: SearchProfileBase,
+    *,
+    start_page: int,
+    pages_to_fetch: int,
+    date_posted: str,
+) -> dict[str, str]:
+    """Build upstream request parameters from validated search-profile data."""
     request_params: dict[str, str] = {}
 
-    if filters.location.lower() not in ("deutschland", "germany", "de"):
+    normalized_location = filters.location.strip().casefold()
+
+    if normalized_location not in ("deutschland", "germany"):
         request_params["query"] = f"{filters.query} in {filters.location}"
     else:
         request_params["query"] = filters.query
 
-    request_params["page"] = "1"
-    request_params["num_pages"] = "5"
+    request_params["page"] = str(start_page)
+    request_params["num_pages"] = str(pages_to_fetch)
     request_params["country"] = "de"
-    request_params["date_posted"] = "all"
+    request_params["date_posted"] = date_posted
 
-    # The API only supports filtering explicitly for remote jobs via work_from_home=true.
-    # There is no dedicated "onsite only" flag, so if nothing is set, the API returns all jobs.
-    if "remote" in filters.work_model and len(filters.work_model) == 1:
+    if filters.remote_only:
         request_params["work_from_home"] = "true"
 
-    employment_type_mapping = {
-        "full_time": "FULLTIME",
-        "part_time": "PARTTIME",
-        "internship": "INTERN",
-    }
+    if filters.employment_types:
+        request_params["employment_types"] = ",".join(filters.employment_types)
 
-    mapped_employment_types = [
-        employment_type_mapping[value]
-        for value in filters.employment_type
-        if value in employment_type_mapping
-    ]
+    if filters.experience_levels:
+        request_params["job_requirements"] = ",".join(filters.experience_levels)
 
-    if mapped_employment_types:
-        request_params["employment_types"] = ",".join(mapped_employment_types)
-    # TODO: Lösung überlegen für experience_level, company, industry (+ work_model, employment_type) !
+    if filters.radius_km is not None:
+        request_params["radius"] = str(filters.radius_km)
+
     return request_params
-
-
-

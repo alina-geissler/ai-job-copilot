@@ -439,3 +439,46 @@ a:focus-visible {
   margin-bottom: 0;
   font-size: 0.95rem;
 }
+
+/* Profile overview */
+
+.profile-list,
+.history-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.profile-card,
+.history-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.profile-card__header,
+.history-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.profile-card__title,
+.history-card__title {
+  margin-bottom: var(--space-1);
+}
+
+.profile-card__details,
+.history-card__meta {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}

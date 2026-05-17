@@ -12,17 +12,17 @@ from pydantic import BaseModel, Field
 
 class JobSearchResult(BaseModel):
     """Represent one normalized job entry returned by a provider."""
-    provider_job_id: str
-    job_posted_at: datetime | None = None
+    external_job_id: str
+    published_at: datetime | None = None
     title: str
     company: str
     company_logo: str | None = None
     location: str | None = None
     employment_type: str | None = None
     is_remote: bool | None = None
-    job_description: str | None = None
+    description: str | None = None
     source: str | None = None
-    apply_link: str
+    job_url: str
 
 
 class JobSearchResponse(BaseModel):

@@ -7,7 +7,7 @@ import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -79,7 +79,7 @@ def register_user(
     db: Session = Depends(get_db),
     email: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
-) -> HTMLResponse | RedirectResponse:
+) -> Response:
     """Validate submitted registration data and create a new user.
 
     :param request: Incoming HTTP request.
@@ -157,7 +157,7 @@ def login_user(
     db: Session = Depends(get_db),
     email: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
-) -> HTMLResponse | RedirectResponse:
+) -> Response:
     """Authenticate a user from the login form and start a session.
 
     :param request: Incoming HTTP request.

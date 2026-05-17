@@ -1,16 +1,12 @@
-"""Provide job-search results from the live external API.
-
-Call the upstream job-search service with mapped query parameters and convert the returned payload
-into the application's internal response models.
-"""
+"""Provide job-search results from the live external API."""
 
 from __future__ import annotations
 
 import httpx
 
-from app.schemas.job_search import JobSearchFilters
+from app.schemas.job_search_results import JobSearchResponse
+from app.schemas.search_profile import SearchProfileBase
 from app.services.job_search_provider import JobSearchProvider
-from app.schemas.job_search_results import JobSearchResponse, JobSearchResult
 from app.services.job_search_request_mapper import build_job_search_request_params
 from app.services.job_search_response_mapper import map_payload_to_job_search_response
 
@@ -22,16 +18,21 @@ class LiveJobSearchProvider(JobSearchProvider):
         """Initialize the live provider with a configured HTTP client."""
         self._client = client
 
-    def search_jobs(self, filters: JobSearchFilters) -> JobSearchResponse:
-        """Fetch and map live job-search results.
-
-        Convert the validated ``JobSearchFilters`` object to upstream query parameters, send the external request,
-        parse the JSON payload, and map it to the internal response schema.
-
-        :param filters: Validated search criteria from the route layer.
-        :return: Normalized results from the live API.
-        """
-        params = build_job_search_request_params(filters)
+    def search_jobs(
+        self,
+        filters: SearchProfileBase,
+        *,
+        start_page: int,
+        pages_to_fetch: int,
+        date_posted: str,
+    ) -> JobSearchResponse:
+        """Fetch and map live job-search results."""
+        params = build_job_search_request_params(
+            filters=filters,
+            start_page=start_page,
+            pages_to_fetch=pages_to_fetch,
+            date_posted=date_posted,
+        )
         response = self._client.get("/search", params=params)
         response.raise_for_status()
         payload = response.json()
