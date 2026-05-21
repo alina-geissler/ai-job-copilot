@@ -8,12 +8,6 @@
   <p class="muted">Wähle ein Suchprofil, um eine Suche zu starten oder einen heutigen Suchlauf fortzusetzen.</p>
 </header>
 
-{% if page_message %}
-  <div class="alert alert-error" role="alert">
-    <p>{{ page_message }}</p>
-  </div>
-{% endif %}
-
 <section class="section">
   <div class="actions">
     <a href="{{ request.url_for('render_search_profile_create_page') }}" class="btn btn-primary">Neues Suchprofil anlegen</a>
@@ -116,9 +110,13 @@
                   Profil bearbeiten
                 </a>
 
-                <form method="post" action="{{ request.url_for('delete_search_profile', search_profile_id=profile.id) }}">
+                <form method="post"
+                      action="{{ request.url_for('delete_search_profile', search_profile_id=profile.id) }}"
+                      onsubmit="return confirm('Möchtest du dieses Suchprofil wirklich löschen?');"
+                >
                   <button type="submit" class="btn btn-secondary">Profil löschen</button>
                 </form>
+
               </div>
             </div>
           </details>

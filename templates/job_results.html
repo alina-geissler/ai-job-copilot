@@ -57,12 +57,6 @@
   {% endif %}
 </header>
 
-{% if page_message %}
-  <div class="alert {% if can_load_more %}alert-success{% else %}alert-error{% endif %}" role="alert">
-    <p>{{ page_message }}</p>
-  </div>
-{% endif %}
-
 <section class="section">
   <div class="actions">
     <a href="{{ request.url_for('render_job_search_page') }}" class="btn btn-secondary">Zur Profilübersicht</a>

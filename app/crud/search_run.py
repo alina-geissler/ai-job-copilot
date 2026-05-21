@@ -24,7 +24,7 @@ def create_search_run(
     run_date: date,
     date_posted: str,
     current_page: int,
-    can_load_more: bool = True,
+    can_load_more: bool = True
 ) -> SearchRun:
     """Create and flush a new persisted search run with profile snapshots.
 
@@ -53,7 +53,7 @@ def create_search_run(
         total_jobs_loaded=0,
         total_new_jobs_loaded=0,
         load_more_requests_used=0,
-        can_load_more=can_load_more,
+        can_load_more=can_load_more
     )
     db.add(search_run)
     db.flush()
@@ -68,7 +68,7 @@ def update_search_run_after_fetch(
     total_jobs_loaded: int,
     total_new_jobs_loaded: int,
     increment_load_more_requests_used: int,
-    can_load_more: bool,
+    can_load_more: bool
 ) -> SearchRun:
     """Update counters and continuation state after one provider fetch.
 
@@ -95,7 +95,7 @@ def get_search_run_by_id_for_user(
     db: Session,
     *,
     search_run_id: int,
-    user_id: int,
+    user_id: int
 ) -> SearchRun | None:
     """Return one persisted search run belonging to the given user.
 
@@ -109,7 +109,7 @@ def get_search_run_by_id_for_user(
         .where(SearchRun.id == search_run_id, SearchRun.user_id == user_id)
         .options(
             selectinload(SearchRun.search_profile),
-            selectinload(SearchRun.search_run_jobs).selectinload(SearchRunJob.job),
+            selectinload(SearchRun.search_run_jobs).selectinload(SearchRunJob.job)
         )
     )
     return db.execute(stmt).scalar_one_or_none()
@@ -119,7 +119,7 @@ def get_latest_search_run_for_profile(
     db: Session,
     *,
     user_id: int,
-    search_profile_id: int,
+    search_profile_id: int
 ) -> SearchRun | None:
     """Return the most recent search run of one user's search profile.
 
@@ -132,7 +132,7 @@ def get_latest_search_run_for_profile(
         select(SearchRun)
         .where(
             SearchRun.user_id == user_id,
-            SearchRun.search_profile_id == search_profile_id,
+            SearchRun.search_profile_id == search_profile_id
         )
         .order_by(SearchRun.run_date.desc(), SearchRun.id.desc())
         .limit(1)
@@ -145,7 +145,7 @@ def get_today_search_run_for_profile(
     *,
     user_id: int,
     search_profile_id: int,
-    today: date,
+    today: date
 ) -> SearchRun | None:
     """Return today's search run for one user's search profile, if it exists.
 
@@ -160,7 +160,7 @@ def get_today_search_run_for_profile(
         .where(
             SearchRun.user_id == user_id,
             SearchRun.search_profile_id == search_profile_id,
-            SearchRun.run_date == today,
+            SearchRun.run_date == today
         )
         .limit(1)
     )
@@ -172,7 +172,7 @@ def has_primary_search_for_profile_today(
     *,
     user_id: int,
     search_profile_id: int,
-    today: date,
+    today: date
 ) -> bool:
     """Return whether the user already started this search profile today.
 
@@ -187,7 +187,7 @@ def has_primary_search_for_profile_today(
         .where(
             SearchRun.user_id == user_id,
             SearchRun.search_profile_id == search_profile_id,
-            SearchRun.run_date == today,
+            SearchRun.run_date == today
         )
     )
     return db.execute(stmt).scalar_one() > 0
@@ -197,7 +197,7 @@ def count_primary_searches_for_user_today(
     db: Session,
     *,
     user_id: int,
-    today: date,
+    today: date
 ) -> int:
     """Count how many primary searches the user started today.
 
@@ -210,7 +210,7 @@ def count_primary_searches_for_user_today(
         select(func.count(SearchRun.id))
         .where(
             SearchRun.user_id == user_id,
-            SearchRun.run_date == today,
+            SearchRun.run_date == today
         )
     )
     return db.execute(stmt).scalar_one()
@@ -220,7 +220,7 @@ def count_load_more_actions_for_user_today(
     db: Session,
     *,
     user_id: int,
-    today: date,
+    today: date
 ) -> int:
     """Count how many load-more actions the user has used today.
 
@@ -233,7 +233,7 @@ def count_load_more_actions_for_user_today(
         select(func.coalesce(func.sum(SearchRun.load_more_requests_used), 0))
         .where(
             SearchRun.user_id == user_id,
-            SearchRun.run_date == today,
+            SearchRun.run_date == today
         )
     )
     return db.execute(stmt).scalar_one()
@@ -245,7 +245,7 @@ def list_search_runs_for_user(
     user_id: int,
     search_profile_id: int | None = None,
     run_date: date | None = None,
-    limit: int | None = None,
+    limit: int | None = None
 ) -> list[SearchRun]:
     """Return persisted search runs for the user's history page.
 

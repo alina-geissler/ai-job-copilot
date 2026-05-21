@@ -36,13 +36,13 @@ def get_job_search_api_client() -> httpx.Client:
             connect=settings.job_api_timeout_connect,
             read=settings.job_api_timeout_read,
             write=settings.job_api_timeout_write,
-            pool=settings.job_api_timeout_pool,
+            pool=settings.job_api_timeout_pool
         ),
         headers={
             "x-rapidapi-key": settings.job_api_key,
             "x-rapidapi-host": settings.job_api_host,
             "Content-Type": "application/json"
-        },
+        }
     )
 
 

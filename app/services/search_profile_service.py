@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.crud.search_profile import (
     create_search_profile,
     delete_search_profile,
-    update_search_profile,
+    update_search_profile
 )
 from app.models.search_profile import SearchProfile
 from app.schemas.search_profile import SearchProfileCreate, SearchProfileUpdate
@@ -17,7 +17,7 @@ def create_search_profile_for_user(
     db: Session,
     *,
     user_id: int,
-    search_profile_in: SearchProfileCreate,
+    search_profile_in: SearchProfileCreate
 ) -> SearchProfile:
     """Create and commit a new search profile for one user.
 
@@ -30,7 +30,7 @@ def create_search_profile_for_user(
         search_profile = create_search_profile(
             db,
             user_id=user_id,
-            search_profile_in=search_profile_in,
+            search_profile_in=search_profile_in
         )
         db.commit()
     except Exception:
@@ -45,7 +45,7 @@ def update_search_profile_for_user(
     *,
     profile_id: int,
     user_id: int,
-    search_profile_in: SearchProfileUpdate,
+    search_profile_in: SearchProfileUpdate
 ) -> SearchProfile | None:
     """Update and commit an existing search profile for one user.
 
@@ -60,7 +60,7 @@ def update_search_profile_for_user(
             db,
             profile_id=profile_id,
             user_id=user_id,
-            search_profile_in=search_profile_in,
+            search_profile_in=search_profile_in
         )
         if search_profile is None:
             db.rollback()
@@ -78,7 +78,7 @@ def delete_search_profile_for_user(
     db: Session,
     *,
     profile_id: int,
-    user_id: int,
+    user_id: int
 ) -> bool:
     """Delete and commit one search profile for a user.
 
@@ -91,7 +91,7 @@ def delete_search_profile_for_user(
         deleted = delete_search_profile(
             db,
             profile_id=profile_id,
-            user_id=user_id,
+            user_id=user_id
         )
         if not deleted:
             db.rollback()

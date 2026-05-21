@@ -8,12 +8,6 @@
   <p class="muted">Verwaltung gespeicherter Stellenanzeigen und Bewerbungsstatus.</p>
 </header>
 
-{% if page_message %}
-  <div class="alert alert-success" role="alert">
-    <p>{{ page_message }}</p>
-  </div>
-{% endif %}
-
 <section class="section">
   <div class="actions">
     <a href="{{ request.url_for('render_job_search_page') }}" class="btn btn-secondary">Zur Jobsuche</a>

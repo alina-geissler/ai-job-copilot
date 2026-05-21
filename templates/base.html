@@ -37,6 +37,12 @@
 
   <main class="page">
     <div class="container">
+      {% if feedback %}
+        <div class="alert alert-{{ feedback.type }}" role="alert">
+          <p>{{ feedback.message }}</p>
+        </div>
+      {% endif %}
+
       {% block content %}{% endblock %}
     </div>
   </main>

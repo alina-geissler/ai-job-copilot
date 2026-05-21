@@ -4,19 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from enum import StrEnum
 
 from app.models.search_profile import SearchProfile
 from app.models.search_run import SearchRun
-
-
-class PrimarySearchAction(StrEnum):
-    """Represent the next allowed action for a primary search request."""
-
-    START_NEW_RUN = "start_new_run"
-    SHOW_EXISTING_RUN = "show_existing_run"
-    BLOCKED_DAILY_LIMIT = "blocked_daily_limit"
-    BLOCKED_PROFILE_LIMIT = "blocked_profile_limit"
+from app.core.enums import PrimarySearchAction
 
 
 @dataclass(slots=True)
@@ -56,7 +47,7 @@ def decide_primary_search(
     search_profile: SearchProfile,
     last_search_run: SearchRun | None,
     user_primary_searches_today_count: int,
-    has_primary_search_for_profile_today: bool,
+    has_primary_search_for_profile_today: bool
 ) -> PrimarySearchDecision:
     """Decide how a primary search request should be handled.
 
@@ -69,7 +60,7 @@ def decide_primary_search(
     """
     profile_changed_since_last_run = _has_profile_changed_since_last_run(
         search_profile=search_profile,
-        last_search_run=last_search_run,
+        last_search_run=last_search_run
     )
 
     if has_primary_search_for_profile_today and last_search_run is not None and not profile_changed_since_last_run:
@@ -83,7 +74,7 @@ def decide_primary_search(
             date_posted=None,
             start_page=None,
             pages_to_fetch=None,
-            loaded_page=None,
+            loaded_page=None
         )
 
     if user_primary_searches_today_count >= 100: # TODO: -> 5 !!!
@@ -97,7 +88,7 @@ def decide_primary_search(
             date_posted=None,
             start_page=None,
             pages_to_fetch=None,
-            loaded_page=None,
+            loaded_page=None
         )
 
     if has_primary_search_for_profile_today and profile_changed_since_last_run:
@@ -112,7 +103,7 @@ def decide_primary_search(
             date_posted=None,
             start_page=None,
             pages_to_fetch=None,
-            loaded_page=None,
+            loaded_page=None
         )
 
     return PrimarySearchDecision(
@@ -122,14 +113,14 @@ def decide_primary_search(
         date_posted=decide_date_posted(today=today, last_search_run=last_search_run),
         start_page=1,
         pages_to_fetch=5,
-        loaded_page=5,
+        loaded_page=5
     )
 
 
 def decide_load_more(
     *,
     search_run: SearchRun,
-    user_load_more_actions_today_count: int,
+    user_load_more_actions_today_count: int
 ) -> LoadMoreDecision:
     """Decide whether one more page may be loaded for a persisted search run.
 
@@ -145,7 +136,7 @@ def decide_load_more(
                 "und kannst morgen erneut suchen."
             ),
             next_page=None,
-            pages_to_fetch=None,
+            pages_to_fetch=None
         )
 
     if not search_run.can_load_more:
@@ -156,21 +147,21 @@ def decide_load_more(
                 "Du kannst morgen erneut suchen."
             ),
             next_page=None,
-            pages_to_fetch=None,
+            pages_to_fetch=None
         )
 
     return LoadMoreDecision(
         allowed=True,
         message=None,
         next_page=search_run.current_page + 1,
-        pages_to_fetch=1,
+        pages_to_fetch=1
     )
 
 
 def evaluate_primary_search_load_more_availability(
     *,
     total_jobs_returned: int,
-    new_jobs_for_user_count: int,
+    new_jobs_for_user_count: int
 ) -> LoadMoreStopEvaluation:
     """Evaluate whether further load-more requests remain useful after a primary search.
 
@@ -184,7 +175,7 @@ def evaluate_primary_search_load_more_availability(
             message=(
                 "Heute ist für diesen Suchlauf kein sinnvolles Nachladen mehr möglich. "
                 "Du kannst morgen erneut suchen."
-            ),
+            )
         )
 
     return LoadMoreStopEvaluation(allow_further_load_more=True, message=None)
@@ -193,7 +184,7 @@ def evaluate_primary_search_load_more_availability(
 def evaluate_load_more_availability_after_load_more(
     *,
     total_jobs_returned: int,
-    new_jobs_for_user_count: int,
+    new_jobs_for_user_count: int
 ) -> LoadMoreStopEvaluation:
     """Evaluate whether another load-more request remains useful.
 
@@ -207,7 +198,7 @@ def evaluate_load_more_availability_after_load_more(
             message=(
                 "Heute ist für diesen Suchlauf kein sinnvolles Nachladen mehr möglich. "
                 "Du kannst morgen erneut suchen."
-            ),
+            )
         )
 
     return LoadMoreStopEvaluation(allow_further_load_more=True, message=None)
@@ -241,7 +232,7 @@ def decide_date_posted(*, today: date, last_search_run: SearchRun | None) -> str
 def _has_profile_changed_since_last_run(
     *,
     search_profile: SearchProfile,
-    last_search_run: SearchRun | None,
+    last_search_run: SearchRun | None
 ) -> bool:
     """Return whether the profile has been modified since the last run was created
     to determine whether a new primary search needs to be initiated.

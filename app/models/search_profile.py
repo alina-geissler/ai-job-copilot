@@ -38,7 +38,7 @@ class SearchProfile(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
+        index=True
     )
     profile_name: Mapped[str] = mapped_column(String(255), nullable=False)
     query: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -47,35 +47,35 @@ class SearchProfile(Base):
         Boolean,
         nullable=False,
         default=False,
-        server_default=text("false"),
+        server_default=text("false")
     )
     employment_types: Mapped[list[str]] = mapped_column(
         ARRAY(String(50)),
         nullable=False,
         default=list,
-        server_default=text("'{}'"),
+        server_default=text("'{}'")
     )
     experience_levels: Mapped[list[str]] = mapped_column(
         ARRAY(String(50)),
         nullable=False,
         default=list,
-        server_default=text("'{}'"),
+        server_default=text("'{}'")
     )
     radius_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False,
+        nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False,
+        nullable=False
     )
 
     user: Mapped[User] = relationship("User", back_populates="search_profiles")
     search_runs: Mapped[list[SearchRun]] = relationship(
         "SearchRun",
-        back_populates="search_profile",
+        back_populates="search_profile"
     )

@@ -37,50 +37,50 @@ class ApplicationTrackerEntry(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
+        index=True
     )
     job_id: Mapped[int] = mapped_column(
         ForeignKey("jobs.id"),
         nullable=False,
-        index=True,
+        index=True
     )
     status: Mapped[ApplicationStatus] = mapped_column(
         Enum(ApplicationStatus),
         nullable=False,
-        default=ApplicationStatus.SAVED,
+        default=ApplicationStatus.SAVED
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     applied_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
-        nullable=True,
+        nullable=True
     )
     interview_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
-        nullable=True,
+        nullable=True
     )
     offer_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
-        nullable=True,
+        nullable=True
     )
     rejected_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
-        nullable=True,
+        nullable=True
     )
     withdrawn_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
-        nullable=True,
+        nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False,
+        nullable=False
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         onupdate=func.now(),
-        nullable=True,
+        nullable=True
     )
 
     user: Mapped[User] = relationship("User", back_populates="tracker_entries")

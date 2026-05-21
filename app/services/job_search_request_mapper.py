@@ -10,7 +10,7 @@ def build_job_search_request_params(
     *,
     start_page: int,
     pages_to_fetch: int,
-    date_posted: str,
+    date_posted: str
 ) -> dict[str, str]:
     """Build upstream request parameters from validated search-profile data.
 

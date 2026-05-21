@@ -6,7 +6,7 @@ Expose the main ASGI app for the different endpoints.
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -20,6 +20,8 @@ from app.api.routes.search_profiles import router as search_profiles_router
 from app.api.routes.application_tracker import router as application_tracker_router
 
 from app.core.config import settings
+from app.dependencies.auth import AuthenticationRequiredError, AuthFailureReason
+from app.dependencies.templates import build_feedback_query
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -29,22 +31,41 @@ app.add_middleware(
     session_cookie=settings.session_cookie_name,
     max_age=settings.session_max_age_seconds,
     same_site=settings.session_same_site,
-    https_only=settings.session_https_only,
+    https_only=settings.session_https_only
 )
 
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    """Redirect browser requests for unauthorized protected pages to the auth page.
+@app.exception_handler(AuthenticationRequiredError)
+async def authentication_required_exception_handler(
+    request: Request,
+    exc: AuthenticationRequiredError
+) -> RedirectResponse:
+    """Redirect browser requests for authentication failures to the auth page.
 
     :param request: Incoming HTTP request.
-    :param exc: Raised HTTP exception.
-    :return: Redirect response for unauthorized browser requests, otherwise re-raise.
+    :param exc: Raised authentication failure.
+    :return: Redirect response to the auth page with feedback message.
     """
-    if exc.status_code == 401:
-        redirect_url = request.url_for("render_auth_page").include_query_params(session_expired=1)
-        return RedirectResponse(url=str(redirect_url), status_code=303)
-    raise exc
+    auth_url = str(request.url_for("render_auth_page"))
+
+    if exc.reason == AuthFailureReason.SESSION_EXPIRED:
+        message = "Deine Sitzung ist abgelaufen. Bitte logge dich erneut ein."
+        message_type = "error"
+    elif exc.reason == AuthFailureReason.USER_NOT_FOUND:
+        message = "Dein Benutzerkonto wurde nicht gefunden. Bitte logge dich erneut ein."
+        message_type = "error"
+    else:
+        message = "Bitte logge dich ein, um diese Seite aufzurufen."
+        message_type = "error"
+
+    query_string = build_feedback_query(
+        message=message,
+        message_type=message_type
+    )
+    return RedirectResponse(
+        url=f"{auth_url}?{query_string}",
+        status_code=303
+    )
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")

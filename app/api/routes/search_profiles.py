@@ -11,19 +11,16 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.crud.search_profile import (
-    get_next_default_search_profile_name,
-    get_search_profile_by_id,
-)
+from app.crud.search_profile import get_next_default_search_profile_name, get_search_profile_by_id
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
-from app.dependencies.templates import get_base_template_context
+from app.dependencies.templates import build_feedback_query, get_base_template_context
 from app.models.user import User
 from app.schemas.search_profile import SearchProfileCreate, SearchProfileUpdate
 from app.services.search_profile_service import (
     create_search_profile_for_user,
     delete_search_profile_for_user,
-    update_search_profile_for_user,
+    update_search_profile_for_user
 )
 
 router = APIRouter(prefix="/search-profiles", tags=["search_profiles"])
@@ -37,7 +34,7 @@ def _build_form_data(
     remote_only: bool = False,
     employment_types: list[str] | None = None,
     experience_levels: list[str] | None = None,
-    radius_km: str | None = None,
+    radius_km: str | None = None
 ) -> dict[str, object]:
     """Build normalized form data for the search-profile form.
 
@@ -57,7 +54,7 @@ def _build_form_data(
         "remote_only": remote_only,
         "employment_types": employment_types or [],
         "experience_levels": experience_levels or [],
-        "radius_km": "" if radius_km is None else radius_km,
+        "radius_km": "" if radius_km is None else radius_km
     }
 
 
@@ -117,7 +114,7 @@ def _render_form(
     form_data: dict[str, object],
     errors: dict[str, str],
     search_profile=None,
-    status_code: int = 200,
+    status_code: int = 200
 ) -> HTMLResponse:
     """Render the shared search-profile form template.
 
@@ -137,9 +134,9 @@ def _render_form(
             "current_user": current_user,
             "form_data": form_data,
             "errors": errors,
-            "search_profile": search_profile,
+            "search_profile": search_profile
         },
-        status_code=status_code,
+        status_code=status_code
     )
 
 
@@ -147,7 +144,7 @@ def _render_form(
 def render_search_profile_create_page(
     request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[Session, Depends(get_db)]
 ) -> HTMLResponse:
     """Render the empty form for creating a search profile.
 
@@ -162,7 +159,7 @@ def render_search_profile_create_page(
         request,
         current_user=current_user,
         form_data=_build_form_data(profile_name=default_profile_name),
-        errors={},
+        errors={}
     )
 
 
@@ -177,7 +174,7 @@ def create_search_profile_action(
     remote_only: Annotated[bool, Form()] = False,
     employment_types: Annotated[list[str] | None, Form()] = None,
     experience_levels: Annotated[list[str] | None, Form()] = None,
-    radius_km: Annotated[str | None, Form()] = None,
+    radius_km: Annotated[str | None, Form()] = None
 ) -> Response:
     """Validate and create a new search profile.
 
@@ -200,7 +197,7 @@ def create_search_profile_action(
         remote_only=remote_only,
         employment_types=employment_types,
         experience_levels=experience_levels,
-        radius_km=radius_km,
+        radius_km=radius_km
     )
 
     try:
@@ -211,7 +208,7 @@ def create_search_profile_action(
             remote_only=remote_only,
             employment_types=employment_types or [],
             experience_levels=experience_levels or [],
-            radius_km=radius_km,
+            radius_km=radius_km
         )
 
     except ValidationError as exc:
@@ -221,14 +218,14 @@ def create_search_profile_action(
             current_user=current_user,
             form_data=form_data,
             errors=errors,
-            status_code=422,
+            status_code=422
         )
 
     try:
         create_search_profile_for_user(
             db,
             user_id=current_user.id,
-            search_profile_in=search_profile_in,
+            search_profile_in=search_profile_in
         )
     except (ValueError, IntegrityError):
         errors = {
@@ -239,21 +236,26 @@ def create_search_profile_action(
             current_user=current_user,
             form_data=form_data,
             errors=errors,
-            status_code=422,
+            status_code=422
         )
 
+    search_page_url = str(request.url_for("render_job_search_page"))
+    query_string = build_feedback_query(
+        message="Suchprofil erfolgreich angelegt.",
+        message_type="success"
+    )
     return RedirectResponse(
-        url=str(request.url_for("render_job_search_page")),
-        status_code=303,
+        url=f"{search_page_url}?{query_string}",
+        status_code=303
     )
 
 
 @router.get("/{search_profile_id}/edit", response_class=HTMLResponse, name="render_search_profile_edit_page")
 def render_search_profile_edit_page(
     request: Request,
-    search_profile_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    search_profile_id: int
 ) -> Response:
     """Render the prefilled form for editing one search profile.
 
@@ -266,12 +268,18 @@ def render_search_profile_edit_page(
     search_profile = get_search_profile_by_id(
         db,
         profile_id=search_profile_id,
-        user_id=current_user.id,
+        user_id=current_user.id
     )
+
     if search_profile is None:
+        search_page_url = str(request.url_for("render_job_search_page"))
+        query_string = build_feedback_query(
+            message="Suchprofil nicht gefunden.",
+            message_type="error"
+        )
         return RedirectResponse(
-            url=str(request.url_for("render_job_search_page")),
-            status_code=303,
+            url=f"{search_page_url}?{query_string}",
+            status_code=303
         )
 
     return _render_form(
@@ -284,26 +292,26 @@ def render_search_profile_edit_page(
             remote_only=search_profile.remote_only,
             employment_types=list(search_profile.employment_types or []),
             experience_levels=list(search_profile.experience_levels or []),
-            radius_km=search_profile.radius_km,
+            radius_km=search_profile.radius_km
         ),
         errors={},
-        search_profile=search_profile,
+        search_profile=search_profile
     )
 
 
 @router.post("/{search_profile_id}", response_class=HTMLResponse, name="update_search_profile")
 def update_search_profile_action(
     request: Request,
-    search_profile_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    search_profile_id: int,
     profile_name: Annotated[str | None, Form()] = None,
     query: Annotated[str, Form()] = "",
     location: Annotated[str, Form()] = "Deutschland",
     remote_only: Annotated[bool, Form()] = False,
     employment_types: Annotated[list[str] | None, Form()] = None,
     experience_levels: Annotated[list[str] | None, Form()] = None,
-    radius_km: Annotated[str | None, Form()] = None,
+    radius_km: Annotated[str | None, Form()] = None
 ) -> Response:
     """Validate and update an existing search profile.
 
@@ -323,12 +331,18 @@ def update_search_profile_action(
     existing_profile = get_search_profile_by_id(
         db,
         profile_id=search_profile_id,
-        user_id=current_user.id,
+        user_id=current_user.id
     )
+
     if existing_profile is None:
+        search_page_url = str(request.url_for("render_job_search_page"))
+        query_string = build_feedback_query(
+            message="Suchprofil nicht gefunden.",
+            message_type="error"
+        )
         return RedirectResponse(
-            url=str(request.url_for("render_job_search_page")),
-            status_code=303,
+            url=f"{search_page_url}?{query_string}",
+            status_code=303
         )
 
     form_data = _build_form_data(
@@ -338,7 +352,7 @@ def update_search_profile_action(
         remote_only=remote_only,
         employment_types=employment_types,
         experience_levels=experience_levels,
-        radius_km=radius_km,
+        radius_km=radius_km
     )
 
     try:
@@ -349,7 +363,7 @@ def update_search_profile_action(
             remote_only=remote_only,
             employment_types=employment_types or [],
             experience_levels=experience_levels or [],
-            radius_km=radius_km,
+            radius_km=radius_km
         )
     except ValidationError as exc:
         errors = _map_search_profile_validation_errors(exc)
@@ -359,7 +373,7 @@ def update_search_profile_action(
             form_data=form_data,
             errors=errors,
             search_profile=existing_profile,
-            status_code=422,
+            status_code=422
         )
 
     try:
@@ -367,7 +381,7 @@ def update_search_profile_action(
             db,
             profile_id=search_profile_id,
             user_id=current_user.id,
-            search_profile_in=search_profile_in,
+            search_profile_in=search_profile_in
         )
     except (ValueError, IntegrityError):
         errors = {"profile_name": "Du hast bereits ein Suchprofil mit diesem Namen."}
@@ -377,27 +391,37 @@ def update_search_profile_action(
             form_data=form_data,
             errors=errors,
             search_profile=existing_profile,
-            status_code=422,
+            status_code=422
         )
+
+    search_page_url = str(request.url_for("render_job_search_page"))
 
     if updated_profile is None:
+        query_string = build_feedback_query(
+            message="Suchprofil nicht gefunden.",
+            message_type="error"
+        )
         return RedirectResponse(
-            url=str(request.url_for("render_job_search_page")),
-            status_code=303,
+            url=f"{search_page_url}?{query_string}",
+            status_code=303
         )
 
+    query_string = build_feedback_query(
+        message="Suchprofil erfolgreich gespeichert.",
+        message_type="success"
+    )
     return RedirectResponse(
-        url=str(request.url_for("render_job_search_page")),
-        status_code=303,
+        url=f"{search_page_url}?{query_string}",
+        status_code=303
     )
 
 
 @router.post("/{search_profile_id}/delete", response_class=HTMLResponse, name="delete_search_profile")
 def delete_search_profile_action(
     request: Request,
-    search_profile_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    search_profile_id: int
 ) -> RedirectResponse:
     """Delete one search profile owned by the current user.
 
@@ -410,15 +434,21 @@ def delete_search_profile_action(
     was_deleted = delete_search_profile_for_user(
         db,
         profile_id=search_profile_id,
-        user_id=current_user.id,
+        user_id=current_user.id
     )
 
     message = "Suchprofil erfolgreich gelöscht."
+    message_type = "success"
     if not was_deleted:
         message = "Suchprofil nicht gefunden."
+        message_type = "error"
 
     search_page_url = str(request.url_for("render_job_search_page"))
+    query_string = build_feedback_query(
+        message=message,
+        message_type=message_type
+    )
     return RedirectResponse(
-        url=f"{search_page_url}?message={message}",
-        status_code=303,
+        url=f"{search_page_url}?{query_string}",
+        status_code=303
     )

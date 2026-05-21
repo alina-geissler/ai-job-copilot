@@ -50,7 +50,7 @@ def create_user(db: Session, data: UserCreate) -> User:
 
     user = User(
         email=data.email,
-        password_hash=hash_password(data.password),
+        password_hash=hash_password(data.password)
     )
     db.add(user)
     db.flush()

@@ -17,7 +17,7 @@ class JobSearchProvider(Protocol):
         *,
         start_page: int,
         pages_to_fetch: int,
-        date_posted: str,
+        date_posted: str
     ) -> JobSearchResponse:
         """Fetch normalized job-search results for one provider request.
 

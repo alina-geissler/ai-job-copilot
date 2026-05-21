@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.security import verify_password
 from app.crud.user import get_user_by_email
 from app.db.session import get_db
-from app.dependencies.templates import get_base_template_context
+from app.dependencies.templates import build_feedback_query, get_base_template_context
 from app.schemas.user import UserCreate
 from app.services.auth_service import register_user_account
 
@@ -31,7 +31,7 @@ def _build_register_form_data(email: str = "") -> dict[str, str]:
     :return: Normalized form data for the registration form.
     """
     return {
-        "register_email": email,
+        "register_email": email
     }
 
 
@@ -42,21 +42,15 @@ def _build_login_form_data(email: str = "") -> dict[str, str]:
     :return: Normalized form data for the login form.
     """
     return {
-        "login_email": email,
+        "login_email": email
     }
 
 
 @router.get("", response_class=HTMLResponse, name="render_auth_page")
-def render_auth_page(
-    request: Request,
-    registered: int = 0,
-    session_expired: int = 0,
-) -> HTMLResponse:
+def render_auth_page(request: Request) -> HTMLResponse:
     """Render the authentication page.
 
     :param request: Incoming HTTP request.
-    :param registered: Success flag shown after a completed registration redirect.
-    :param session_expired: Success flag shown after a session expiration redirect.
     :return: Rendered authentication page.
     """
     return templates.TemplateResponse(
@@ -67,20 +61,18 @@ def render_auth_page(
             "errors": {},
             "form_data": {
                 **_build_login_form_data(),
-                **_build_register_form_data(),
-            },
-            "registered": bool(registered),
-            "session_expired": bool(session_expired),
-        },
+                **_build_register_form_data()
+            }
+        }
     )
 
 
-@router.post("/register", response_class=HTMLResponse, response_model=None)
+@router.post("/register", response_class=HTMLResponse)
 def register_user(
     request: Request,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
     email: Annotated[str, Form()] = "",
-    password: Annotated[str, Form()] = "",
+    password: Annotated[str, Form()] = ""
 ) -> Response:
     """Validate submitted registration data and create a new user.
 
@@ -92,12 +84,14 @@ def register_user(
     """
     form_data = {
         **_build_login_form_data(),
-        **_build_register_form_data(email=email),
+        **_build_register_form_data(email=email)
     }
+
     errors: dict[str, str] = {}
 
     try:
         user_in = UserCreate(email=email, password=password)
+
     except ValidationError as exc:
         for error in exc.errors():
             field_name = str(error["loc"][0]) if error["loc"] else "__root__"
@@ -126,14 +120,14 @@ def register_user(
             context={
                 **get_base_template_context(request),
                 "errors": errors,
-                "form_data": form_data,
-                "registered": False,
+                "form_data": form_data
             },
-            status_code=422,
+            status_code=422
         )
 
     try:
         register_user_account(db, user_in)
+
     except (ValueError, IntegrityError):
         errors["register_email"] = "Diese E-Mail-Adresse ist bereits registriert."
 
@@ -143,22 +137,28 @@ def register_user(
             context={
                 **get_base_template_context(request),
                 "errors": errors,
-                "form_data": form_data,
-                "registered": False,
+                "form_data": form_data
             },
-            status_code=422,
+            status_code=422
         )
 
-    redirect_url = request.url_for("render_auth_page").include_query_params(registered=1)
-    return RedirectResponse(url=str(redirect_url), status_code=303)
+    auth_url = str(request.url_for("render_auth_page"))
+    query_string = build_feedback_query(
+        message="Dein Konto wurde erfolgreich erstellt. Bitte logge dich jetzt ein.",
+        message_type="success"
+    )
+    return RedirectResponse(
+        url=f"{auth_url}?{query_string}",
+        status_code=303
+    )
 
 
-@router.post("/login", response_class=HTMLResponse, response_model=None)
+@router.post("/login", response_class=HTMLResponse)
 def login_user(
     request: Request,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
     email: Annotated[str, Form()] = "",
-    password: Annotated[str, Form()] = "",
+    password: Annotated[str, Form()] = ""
 ) -> Response:
     """Authenticate a user from the login form and start a session.
 
@@ -170,8 +170,9 @@ def login_user(
     """
     form_data = {
         **_build_login_form_data(email=email),
-        **_build_register_form_data(),
+        **_build_register_form_data()
     }
+
     errors: dict[str, str] = {}
 
     user = get_user_by_email(db, email)
@@ -185,10 +186,9 @@ def login_user(
             context={
                 **get_base_template_context(request),
                 "errors": errors,
-                "form_data": form_data,
-                "registered": False,
+                "form_data": form_data
             },
-            status_code=422,
+            status_code=422
         )
 
     request.session.clear()
@@ -203,7 +203,7 @@ def login_user(
     return RedirectResponse(url=str(redirect_url), status_code=303)
 
 
-@router.post("/logout", response_model=None)
+@router.post("/logout", response_class=HTMLResponse)
 def logout_user(request: Request) -> RedirectResponse:
     """Clear the current session and redirect the user to the landing page.
 
@@ -212,5 +212,12 @@ def logout_user(request: Request) -> RedirectResponse:
     """
     request.session.clear()
 
-    redirect_url = request.url_for("render_index_page")
-    return RedirectResponse(url=str(redirect_url), status_code=303)
+    index_url = str(request.url_for("render_index_page"))
+    query_string = build_feedback_query(
+        message="Du wurdest erfolgreich ausgeloggt.",
+        message_type="success"
+    )
+    return RedirectResponse(
+        url=f"{index_url}?{query_string}",
+        status_code=303
+    )

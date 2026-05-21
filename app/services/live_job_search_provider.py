@@ -24,14 +24,14 @@ class LiveJobSearchProvider(JobSearchProvider):
         *,
         start_page: int,
         pages_to_fetch: int,
-        date_posted: str,
+        date_posted: str
     ) -> JobSearchResponse:
         """Fetch and map live job-search results."""
         params = build_job_search_request_params(
             filters=filters,
             start_page=start_page,
             pages_to_fetch=pages_to_fetch,
-            date_posted=date_posted,
+            date_posted=date_posted
         )
         response = self._client.get("/search", params=params)
         response.raise_for_status()

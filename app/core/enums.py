@@ -1,7 +1,7 @@
 """Define shared enum types used across the application.
 
-Provide centralized, reusable enums for validated filter values and
-canonical application states used across models, schemas, routes,
+Provide centralized, reusable enums for validated filter values, allowed actions for search requests,
+and canonical application states used across models, schemas, routes,
 templates, services, CRUD functions, and mappers.
 """
 
@@ -42,3 +42,12 @@ class ApplicationStatus(enum.Enum):
     OFFER = "offer"
     REJECTED = "rejected"
     WITHDRAWN = "withdrawn"
+
+
+class PrimarySearchAction(StrEnum):
+    """Represent the next allowed action for a primary search request."""
+
+    START_NEW_RUN = "start_new_run"
+    SHOW_EXISTING_RUN = "show_existing_run"
+    BLOCKED_DAILY_LIMIT = "blocked_daily_limit"
+    BLOCKED_PROFILE_LIMIT = "blocked_profile_limit"

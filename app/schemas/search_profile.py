@@ -15,7 +15,7 @@ from pydantic import (
     Field,
     StringConstraints,
     field_validator,
-    model_validator,
+    model_validator
 )
 
 from app.core.enums import EmploymentType, ExperienceLevel
@@ -23,12 +23,12 @@ from app.core.enums import EmploymentType, ExperienceLevel
 
 NonEmptyStr = Annotated[
     str,
-    StringConstraints(strip_whitespace=True, min_length=1),
+    StringConstraints(strip_whitespace=True, min_length=1)
 ]
 
 OptionalProfileName = Annotated[
     str | None,
-    StringConstraints(strip_whitespace=True, min_length=1),
+    StringConstraints(strip_whitespace=True, min_length=1)
 ]
 
 

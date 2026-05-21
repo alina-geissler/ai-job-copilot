@@ -15,12 +15,12 @@ from app.core.enums import ApplicationStatus
 from app.models.application_tracker_entry import ApplicationTrackerEntry
 
 _STATUS_DATE_FIELD_BY_STATUS: dict[ApplicationStatus, str | None] = {
-    ApplicationStatus.SAVED: None, # saved/offen uses created_at, so there is no separate saved_at field
+    ApplicationStatus.SAVED: None,  # saved/offen uses created_at, so there is no separate saved_at field
     ApplicationStatus.APPLIED: "applied_at",
     ApplicationStatus.INTERVIEW: "interview_at",
     ApplicationStatus.OFFER: "offer_at",
     ApplicationStatus.REJECTED: "rejected_at",
-    ApplicationStatus.WITHDRAWN: "withdrawn_at",
+    ApplicationStatus.WITHDRAWN: "withdrawn_at"
 }
 
 
@@ -40,7 +40,7 @@ def get_tracker_entry_by_job_id_for_user(
     db: Session,
     *,
     user_id: int,
-    job_id: int,
+    job_id: int
 ) -> ApplicationTrackerEntry | None:
     """Return one tracker entry for the given user and job.
 
@@ -53,7 +53,7 @@ def get_tracker_entry_by_job_id_for_user(
         select(ApplicationTrackerEntry)
         .where(
             ApplicationTrackerEntry.user_id == user_id,
-            ApplicationTrackerEntry.job_id == job_id,
+            ApplicationTrackerEntry.job_id == job_id
         )
         .options(joinedload(ApplicationTrackerEntry.job))
         .limit(1)
@@ -65,7 +65,7 @@ def get_tracker_entry_by_id_for_user(
     db: Session,
     *,
     entry_id: int,
-    user_id: int,
+    user_id: int
 ) -> ApplicationTrackerEntry | None:
     """Return one tracker entry by identifier for the given user.
 
@@ -78,7 +78,7 @@ def get_tracker_entry_by_id_for_user(
         select(ApplicationTrackerEntry)
         .where(
             ApplicationTrackerEntry.id == entry_id,
-            ApplicationTrackerEntry.user_id == user_id,
+            ApplicationTrackerEntry.user_id == user_id
         )
         .options(joinedload(ApplicationTrackerEntry.job))
         .limit(1)
@@ -89,7 +89,7 @@ def get_tracker_entry_by_id_for_user(
 def list_tracker_entries_for_user(
     db: Session,
     *,
-    user_id: int,
+    user_id: int
 ) -> list[ApplicationTrackerEntry]:
     """Return all tracker entries for one user ordered by newest first.
 
@@ -110,7 +110,7 @@ def create_tracker_entry(
     db: Session,
     *,
     user_id: int,
-    job_id: int,
+    job_id: int
 ) -> ApplicationTrackerEntry:
     """Create and flush a new tracker entry with saved status.
 
@@ -125,7 +125,7 @@ def create_tracker_entry(
     entry = ApplicationTrackerEntry(
         user_id=user_id,
         job_id=job_id,
-        status=ApplicationStatus.SAVED,
+        status=ApplicationStatus.SAVED
     )
     db.add(entry)
     db.flush()
@@ -136,7 +136,7 @@ def create_tracker_entry_if_missing(
     db: Session,
     *,
     user_id: int,
-    job_id: int,
+    job_id: int
 ) -> tuple[ApplicationTrackerEntry, bool]:
     """Create a tracker entry when it does not exist yet.
 
@@ -148,7 +148,7 @@ def create_tracker_entry_if_missing(
     existing_entry = get_tracker_entry_by_job_id_for_user(
         db,
         user_id=user_id,
-        job_id=job_id,
+        job_id=job_id
     )
     if existing_entry is not None:
         return existing_entry, False
@@ -156,7 +156,7 @@ def create_tracker_entry_if_missing(
     created_entry = create_tracker_entry(
         db,
         user_id=user_id,
-        job_id=job_id,
+        job_id=job_id
     )
     return created_entry, True
 
@@ -165,7 +165,7 @@ def update_tracker_entry_notes(
     db: Session,
     *,
     entry: ApplicationTrackerEntry,
-    notes: str | None,
+    notes: str | None
 ) -> ApplicationTrackerEntry:
     """Update the notes of one tracker entry.
 
@@ -186,7 +186,7 @@ def update_tracker_entry_status(
     *,
     entry: ApplicationTrackerEntry,
     status: ApplicationStatus,
-    status_date: date | None,
+    status_date: date | None
 ) -> ApplicationTrackerEntry:
     """Update the current status and persist the status-specific date.
 
@@ -217,7 +217,7 @@ def update_tracker_entry_status(
 def delete_tracker_entry(
     db: Session,
     *,
-    entry: ApplicationTrackerEntry,
+    entry: ApplicationTrackerEntry
 ) -> None:
     """Delete one tracker entry.
 

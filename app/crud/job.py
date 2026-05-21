@@ -17,7 +17,7 @@ def get_job_by_external_id_and_source(
     db: Session,
     *,
     external_job_id: str,
-    source: str,
+    source: str
 ) -> Job | None:
     """Return one persisted external job identified by provider ID and source.
 
@@ -30,7 +30,7 @@ def get_job_by_external_id_and_source(
         select(Job)
         .where(
             Job.external_job_id == external_job_id,
-            Job.source == source,
+            Job.source == source
         )
         .limit(1)
     )
@@ -40,7 +40,7 @@ def get_job_by_external_id_and_source(
 def create_job_from_search_result(
     db: Session,
     *,
-    job_in: JobSearchResult,
+    job_in: JobSearchResult
 ) -> Job:
     """Create and flush a new persisted job from one normalized search result.
 
@@ -59,7 +59,7 @@ def create_job_from_search_result(
         employment_type=job_in.employment_type,
         job_url=job_in.job_url,
         description=job_in.description,
-        published_at=job_in.published_at,
+        published_at=job_in.published_at
     )
     db.add(job)
     db.flush()
@@ -70,7 +70,7 @@ def update_job_from_search_result(
     db: Session,
     *,
     job: Job,
-    job_in: JobSearchResult,
+    job_in: JobSearchResult
 ) -> Job:
     """Update selected mutable fields of an existing persisted external job.
 
@@ -100,7 +100,7 @@ def update_job_from_search_result(
 def get_or_create_job_from_search_result(
     db: Session,
     *,
-    job_in: JobSearchResult,
+    job_in: JobSearchResult
 ) -> tuple[Job, bool]:
     """Return a persisted job for one normalized provider result.
 
@@ -122,19 +122,19 @@ def get_or_create_job_from_search_result(
     existing_job = get_job_by_external_id_and_source(
         db,
         external_job_id=job_in.external_job_id,
-        source=job_in.source,
+        source=job_in.source
     )
 
     if existing_job is not None:
         updated_job = update_job_from_search_result(
             db,
             job=existing_job,
-            job_in=job_in,
+            job_in=job_in
         )
         return updated_job, False
 
     created_job = create_job_from_search_result(
         db,
-        job_in=job_in,
+        job_in=job_in
     )
     return created_job, True

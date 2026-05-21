@@ -41,7 +41,7 @@ def get_search_profile_by_id(db: Session, profile_id: int, user_id: int) -> Sear
     """
     statement = select(SearchProfile).where(
         SearchProfile.id == profile_id,
-        SearchProfile.user_id == user_id,
+        SearchProfile.user_id == user_id
     )
     return db.scalar(statement)
 
@@ -50,7 +50,7 @@ def get_search_profile_by_id_for_user(
     db: Session,
     *,
     search_profile_id: int,
-    user_id: int,
+    user_id: int
 ) -> SearchProfile | None:
     """Retrieve one search profile by id for a specific user.
 
@@ -84,7 +84,7 @@ def get_next_default_search_profile_name(db: Session, user_id: int) -> str:
 def create_search_profile(
     db: Session,
     user_id: int,
-    search_profile_in: SearchProfileCreate,
+    search_profile_in: SearchProfileCreate
 ) -> SearchProfile:
     """Create and flush a new search profile for a user.
 
@@ -95,7 +95,7 @@ def create_search_profile(
     """
     profile_name = search_profile_in.profile_name or get_next_default_search_profile_name(
         db,
-        user_id=user_id,
+        user_id=user_id
     )
 
     search_profile = SearchProfile(
@@ -106,7 +106,7 @@ def create_search_profile(
         remote_only=search_profile_in.remote_only,
         employment_types=search_profile_in.employment_types,
         experience_levels=search_profile_in.experience_levels,
-        radius_km=search_profile_in.radius_km,
+        radius_km=search_profile_in.radius_km
     )
     db.add(search_profile)
     db.flush()
@@ -118,7 +118,7 @@ def update_search_profile(
     db: Session,
     profile_id: int,
     user_id: int,
-    search_profile_in: SearchProfileUpdate,
+    search_profile_in: SearchProfileUpdate
 ) -> SearchProfile | None:
     """Update an existing search profile belonging to a specific user.
 
@@ -179,7 +179,7 @@ def get_search_profiles_for_user_read(db: Session, user_id: int) -> list[SearchP
 def get_search_profile_by_id_read(
     db: Session,
     profile_id: int,
-    user_id: int,
+    user_id: int
 ) -> SearchProfileRead | None:
     """Retrieve one search profile for a user as a validated read schema.
 

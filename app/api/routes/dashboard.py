@@ -8,18 +8,18 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-router = APIRouter(tags=["dashboard"])
-templates = Jinja2Templates(directory="templates")
-
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import get_base_template_context
 from app.models.user import User
+
+router = APIRouter(tags=["dashboard"])
+templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/dashboard", response_class=HTMLResponse, name="render_dashboard_page")
 def render_dashboard_page(
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user)]
 ) -> HTMLResponse:
     """Render the dashboard page for the authenticated user.
 
@@ -33,5 +33,5 @@ def render_dashboard_page(
         context={
             **get_base_template_context(request),
             "current_user": current_user
-        },
+        }
     )

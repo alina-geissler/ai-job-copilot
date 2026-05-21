@@ -14,7 +14,7 @@ TRACKER_STATUS_ORDER: tuple[ApplicationStatus, ...] = (
     ApplicationStatus.INTERVIEW,
     ApplicationStatus.OFFER,
     ApplicationStatus.REJECTED,
-    ApplicationStatus.WITHDRAWN,
+    ApplicationStatus.WITHDRAWN
 )
 
 TRACKER_STATUS_LABELS: dict[ApplicationStatus, str] = {
@@ -23,7 +23,7 @@ TRACKER_STATUS_LABELS: dict[ApplicationStatus, str] = {
     ApplicationStatus.INTERVIEW: "Interview",
     ApplicationStatus.OFFER: "Angebot",
     ApplicationStatus.REJECTED: "Absage",
-    ApplicationStatus.WITHDRAWN: "Zurückgezogen",
+    ApplicationStatus.WITHDRAWN: "Zurückgezogen"
 }
 
 TRACKER_STATUS_CLASSES: dict[ApplicationStatus, str] = {
@@ -32,7 +32,7 @@ TRACKER_STATUS_CLASSES: dict[ApplicationStatus, str] = {
     ApplicationStatus.INTERVIEW: "tracker-status--interview",
     ApplicationStatus.OFFER: "tracker-status--offer",
     ApplicationStatus.REJECTED: "tracker-status--rejected",
-    ApplicationStatus.WITHDRAWN: "tracker-status--withdrawn",
+    ApplicationStatus.WITHDRAWN: "tracker-status--withdrawn"
 }
 
 TRACKER_STATUS_DATE_FIELDS: dict[ApplicationStatus, str | None] = {
@@ -41,5 +41,5 @@ TRACKER_STATUS_DATE_FIELDS: dict[ApplicationStatus, str | None] = {
     ApplicationStatus.INTERVIEW: "interview_at",
     ApplicationStatus.OFFER: "offer_at",
     ApplicationStatus.REJECTED: "rejected_at",
-    ApplicationStatus.WITHDRAWN: "withdrawn_at",
+    ApplicationStatus.WITHDRAWN: "withdrawn_at"
 }

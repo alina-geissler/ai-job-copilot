@@ -20,7 +20,7 @@ def create_search_run_job(
     job_id: int,
     is_previously_seen: bool,
     page_number: int,
-    result_position: int,
+    result_position: int
 ) -> SearchRunJob:
     """Create and flush one persisted job entry inside a search run.
 
@@ -37,7 +37,7 @@ def create_search_run_job(
         job_id=job_id,
         is_previously_seen=is_previously_seen,
         page_number=page_number,
-        result_position=result_position,
+        result_position=result_position
     )
     db.add(search_run_job)
     db.flush()
@@ -47,7 +47,7 @@ def create_search_run_job(
 def list_search_run_jobs_for_run(
     db: Session,
     *,
-    search_run_id: int,
+    search_run_id: int
 ) -> list[SearchRunJob]:
     """Return all persisted job entries of one search run.
 
@@ -69,7 +69,7 @@ def get_previously_seen_job_ids_for_user(
     *,
     user_id: int,
     job_ids: set[int] | list[int],
-    exclude_search_run_id: int | None = None,
+    exclude_search_run_id: int | None = None
 ) -> set[int]:
     """Return the subset of given jobs that the user already saw before.
 
@@ -88,7 +88,7 @@ def get_previously_seen_job_ids_for_user(
         .join(SearchRun, SearchRun.id == SearchRunJob.search_run_id)
         .where(
             SearchRun.user_id == user_id,
-            SearchRunJob.job_id.in_(normalized_job_ids),
+            SearchRunJob.job_id.in_(normalized_job_ids)
         )
         .distinct()
     )

@@ -17,7 +17,7 @@ from app.crud.application_tracker_entry import (
     get_tracker_entry_by_id_for_user,
     update_tracker_entry_notes,
     update_tracker_entry_status,
-    delete_tracker_entry,
+    delete_tracker_entry
 )
 from app.models.application_tracker_entry import ApplicationTrackerEntry
 
@@ -26,12 +26,9 @@ def create_application_tracker_entry(
     db: Session,
     *,
     user_id: int,
-    job_id: int,
+    job_id: int
 ) -> tuple[ApplicationTrackerEntry, bool]:
-    """Create one tracker entry for the given job when missing.
-
-    Commit the write use case in the service layer and refresh the resulting
-    entry so DB-generated values are available immediately.
+    """Save the given job to the application tracker.
 
     :param db: Active database session.
     :param user_id: Identifier of the owning user.
@@ -43,7 +40,7 @@ def create_application_tracker_entry(
         tracker_entry, created = create_tracker_entry_if_missing(
             db,
             user_id=user_id,
-            job_id=job_id,
+            job_id=job_id
         )
         db.commit()
         return tracker_entry, created
@@ -58,7 +55,7 @@ def change_application_tracker_status(
     entry_id: int,
     user_id: int,
     status: ApplicationStatus,
-    status_date: date | None,
+    status_date: date | None
 ) -> ApplicationTrackerEntry | None:
     """Change the status of one tracker entry owned by the given user.
 
@@ -72,7 +69,7 @@ def change_application_tracker_status(
     tracker_entry = get_tracker_entry_by_id_for_user(
         db,
         entry_id=entry_id,
-        user_id=user_id,
+        user_id=user_id
     )
     if tracker_entry is None:
         return None
@@ -82,7 +79,7 @@ def change_application_tracker_status(
             db,
             entry=tracker_entry,
             status=status,
-            status_date=status_date,
+            status_date=status_date
         )
         db.commit()
         return tracker_entry
@@ -96,7 +93,7 @@ def change_application_tracker_notes(
     *,
     entry_id: int,
     user_id: int,
-    notes: str | None,
+    notes: str | None
 ) -> ApplicationTrackerEntry | None:
     """Change the notes of one tracker entry owned by the given user.
 
@@ -109,7 +106,7 @@ def change_application_tracker_notes(
     tracker_entry = get_tracker_entry_by_id_for_user(
         db,
         entry_id=entry_id,
-        user_id=user_id,
+        user_id=user_id
     )
     if tracker_entry is None:
         return None
@@ -118,7 +115,7 @@ def change_application_tracker_notes(
         update_tracker_entry_notes(
             db,
             entry=tracker_entry,
-            notes=notes,
+            notes=notes
         )
         db.commit()
         return tracker_entry
@@ -131,7 +128,7 @@ def remove_application_tracker_entry(
     db: Session,
     *,
     entry_id: int,
-    user_id: int,
+    user_id: int
 ) -> bool:
     """Delete one tracker entry owned by the given user.
 
@@ -143,7 +140,7 @@ def remove_application_tracker_entry(
     tracker_entry = get_tracker_entry_by_id_for_user(
         db,
         entry_id=entry_id,
-        user_id=user_id,
+        user_id=user_id
     )
     if tracker_entry is None:
         return False
@@ -151,7 +148,7 @@ def remove_application_tracker_entry(
     try:
         delete_tracker_entry(
             db,
-            entry=tracker_entry,
+            entry=tracker_entry
         )
         db.commit()
         return True

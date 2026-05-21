@@ -10,18 +10,14 @@ from sqlalchemy.orm import Session
 
 from app.crud.job import get_or_create_job_from_search_result
 from app.crud.search_run import create_search_run, update_search_run_after_fetch
-from app.crud.search_run_job import (
-    create_search_run_job,
-    get_previously_seen_job_ids_for_user,
-)
+from app.crud.search_run_job import create_search_run_job, get_previously_seen_job_ids_for_user
 from app.models.search_profile import SearchProfile
 from app.models.search_run import SearchRun
 from app.schemas.job_search_results import JobSearchResponse
 from app.services.job_search_policy import (
     evaluate_load_more_availability_after_load_more,
-    evaluate_primary_search_load_more_availability,
+    evaluate_primary_search_load_more_availability
 )
-
 
 @dataclass(slots=True)
 class PersistedSearchResult:
@@ -43,7 +39,7 @@ def persist_primary_search_response(
     run_date: date,
     date_posted: str,
     loaded_page: int,
-    search_response: JobSearchResponse,
+    search_response: JobSearchResponse
 ) -> PersistedSearchResult:
     """Persist the initial five-page provider response as a new search run.
 
@@ -64,7 +60,7 @@ def persist_primary_search_response(
             run_date=run_date,
             date_posted=date_posted,
             current_page=loaded_page,
-            can_load_more=True,
+            can_load_more=True
         )
 
         persistence_batch = _persist_response_jobs_into_run(
@@ -74,12 +70,12 @@ def persist_primary_search_response(
             search_response=search_response,
             page_number=loaded_page,
             starting_result_position=1,
-            exclude_search_run_id=search_run.id,
+            exclude_search_run_id=search_run.id
         )
 
         stop_evaluation = evaluate_primary_search_load_more_availability(
             total_jobs_returned=persistence_batch.total_jobs_in_response,
-            new_jobs_for_user_count=persistence_batch.new_jobs_for_user_count,
+            new_jobs_for_user_count=persistence_batch.new_jobs_for_user_count
         )
 
         update_search_run_after_fetch(
@@ -89,7 +85,7 @@ def persist_primary_search_response(
             total_jobs_loaded=persistence_batch.total_jobs_in_response,
             total_new_jobs_loaded=persistence_batch.new_jobs_for_user_count,
             increment_load_more_requests_used=0,
-            can_load_more=stop_evaluation.allow_further_load_more,
+            can_load_more=stop_evaluation.allow_further_load_more
         )
 
         db.commit()
@@ -105,7 +101,7 @@ def persist_primary_search_response(
         new_jobs_for_user_count=persistence_batch.new_jobs_for_user_count,
         previously_seen_jobs_count=persistence_batch.previously_seen_jobs_count,
         allow_further_load_more=stop_evaluation.allow_further_load_more,
-        message=stop_evaluation.message,
+        message=stop_evaluation.message
     )
 
 
@@ -115,7 +111,7 @@ def persist_load_more_response(
     user_id: int,
     search_run: SearchRun,
     loaded_page: int,
-    search_response: JobSearchResponse,
+    search_response: JobSearchResponse
 ) -> PersistedSearchResult:
     """Persist one additional provider page into an existing search run.
 
@@ -134,12 +130,12 @@ def persist_load_more_response(
             search_response=search_response,
             page_number=loaded_page,
             starting_result_position=search_run.total_jobs_loaded + 1,
-            exclude_search_run_id=search_run.id,
+            exclude_search_run_id=search_run.id
         )
 
         stop_evaluation = evaluate_load_more_availability_after_load_more(
             total_jobs_returned=persistence_batch.total_jobs_in_response,
-            new_jobs_for_user_count=persistence_batch.new_jobs_for_user_count,
+            new_jobs_for_user_count=persistence_batch.new_jobs_for_user_count
         )
 
         update_search_run_after_fetch(
@@ -149,7 +145,7 @@ def persist_load_more_response(
             total_jobs_loaded=search_run.total_jobs_loaded + persistence_batch.total_jobs_in_response,
             total_new_jobs_loaded=search_run.total_new_jobs_loaded + persistence_batch.new_jobs_for_user_count,
             increment_load_more_requests_used=1,
-            can_load_more=stop_evaluation.allow_further_load_more,
+            can_load_more=stop_evaluation.allow_further_load_more
         )
 
         db.commit()
@@ -165,7 +161,7 @@ def persist_load_more_response(
         new_jobs_for_user_count=persistence_batch.new_jobs_for_user_count,
         previously_seen_jobs_count=persistence_batch.previously_seen_jobs_count,
         allow_further_load_more=stop_evaluation.allow_further_load_more,
-        message=stop_evaluation.message,
+        message=stop_evaluation.message
     )
 
 
@@ -186,7 +182,7 @@ def _persist_response_jobs_into_run(
     search_response: JobSearchResponse,
     page_number: int,
     starting_result_position: int,
-    exclude_search_run_id: int | None,
+    exclude_search_run_id: int | None
 ) -> _PersistenceBatch:
     """Persist response jobs and link them to the given search run.
 
@@ -224,7 +220,7 @@ def _persist_response_jobs_into_run(
         db,
         user_id=user_id,
         job_ids=persisted_job_ids,
-        exclude_search_run_id=exclude_search_run_id,
+        exclude_search_run_id=exclude_search_run_id
     )
 
     linked_jobs_count = 0
@@ -239,7 +235,7 @@ def _persist_response_jobs_into_run(
                     job_id=job.id,
                     is_previously_seen=job.id in previously_seen_job_ids,
                     page_number=page_number,
-                    result_position=starting_result_position + linked_jobs_count,
+                    result_position=starting_result_position + linked_jobs_count
                 )
         except IntegrityError:
             continue
@@ -253,5 +249,5 @@ def _persist_response_jobs_into_run(
     return _PersistenceBatch(
         total_jobs_in_response=linked_jobs_count,
         new_jobs_for_user_count=linked_jobs_count - linked_previously_seen_count,
-        previously_seen_jobs_count=linked_previously_seen_count,
+        previously_seen_jobs_count=linked_previously_seen_count
     )

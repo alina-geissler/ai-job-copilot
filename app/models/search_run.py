@@ -49,19 +49,19 @@ class SearchRun(Base):
         Boolean,
         nullable=False,
         default=False,
-        server_default=text("false"),
+        server_default=text("false")
     )
     employment_types_snapshot: Mapped[list[str]] = mapped_column(
         ARRAY(String(50)),
         nullable=False,
         default=list,
-        server_default=text("'{}'"),
+        server_default=text("'{}'")
     )
     experience_levels_snapshot: Mapped[list[str]] = mapped_column(
         ARRAY(String(50)),
         nullable=False,
         default=list,
-        server_default=text("'{}'"),
+        server_default=text("'{}'")
     )
     radius_km_snapshot: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
