@@ -132,7 +132,7 @@
               {% endif %}
 
               <div class="actions">
-                <form method="post" action="{{ request.url_for('create_application_tracker_entry', job_id=job.get('id')) }}">
+                <form method="post" action="{{ request.url_for('create_application_tracker_entry_action', job_id=job.get('id')) }}">
                   <button type="submit" class="btn btn-secondary">Im Bewerbungstracker speichern</button>
                 </form>
 

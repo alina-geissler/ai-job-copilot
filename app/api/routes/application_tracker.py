@@ -207,7 +207,7 @@ def render_application_tracker_detail_page(
     )
 
 
-@router.post("/jobs/{job_id}", response_class=HTMLResponse, name="create_application_tracker_entry")
+@router.post("/jobs/{job_id}", response_class=HTMLResponse, name="create_application_tracker_entry_action")
 def create_application_tracker_entry_route(
         request: Request,
         current_user: Annotated[User, Depends(get_current_user)],
@@ -245,7 +245,7 @@ def create_application_tracker_entry_route(
     )
 
 
-@router.post("/{entry_id}/status", response_class=HTMLResponse, name="update_application_tracker_status")
+@router.post("/{entry_id}/status", response_class=HTMLResponse, name="update_application_tracker_status_action")
 def update_application_tracker_status_route(
         request: Request,
         current_user: Annotated[User, Depends(get_current_user)],
@@ -333,7 +333,7 @@ def update_application_tracker_status_route(
     )
 
 
-@router.post("/{entry_id}/notes", response_class=HTMLResponse, name="update_application_tracker_notes")
+@router.post("/{entry_id}/notes", response_class=HTMLResponse, name="update_application_tracker_notes_action")
 def update_application_tracker_notes_route(
         request: Request,
         current_user: Annotated[User, Depends(get_current_user)],
@@ -391,7 +391,7 @@ def update_application_tracker_notes_route(
     )
 
 
-@router.post("/{entry_id}/delete", response_class=HTMLResponse, name="delete_application_tracker_entry")
+@router.post("/{entry_id}/delete", response_class=HTMLResponse, name="delete_application_tracker_entry_action")
 def delete_application_tracker_entry_route(
         request: Request,
         current_user: Annotated[User, Depends(get_current_user)],

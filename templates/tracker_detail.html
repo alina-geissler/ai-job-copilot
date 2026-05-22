@@ -71,7 +71,7 @@
 
               <form
                 method="post"
-                action="{{ request.url_for('update_application_tracker_status', entry_id=tracker_entry.id) }}"
+                action="{{ request.url_for('update_application_tracker_status_action', entry_id=tracker_entry.id) }}"
                 class="tracker-status-segment__form"
               >
                 <input type="hidden" name="status" value="{{ status_item.value }}">
@@ -93,7 +93,7 @@
           {% else %}
             <form
               method="post"
-              action="{{ request.url_for('update_application_tracker_status', entry_id=tracker_entry.id) }}"
+              action="{{ request.url_for('update_application_tracker_status_action', entry_id=tracker_entry.id) }}"
               class="tracker-status-segment tracker-status-segment--direct"
             >
               <input type="hidden" name="status" value="{{ status_item.value }}">
@@ -116,7 +116,7 @@
         {% endfor %}
       </div>
     </div>
-    <form method="post" action="{{ request.url_for('update_application_tracker_notes', entry_id=tracker_entry.id) }}" class="form">
+    <form method="post" action="{{ request.url_for('update_application_tracker_notes_action', entry_id=tracker_entry.id) }}" class="form">
       <input type="hidden" name="redirect_to" value="detail">
 
       <div class="form-group">
