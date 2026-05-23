@@ -16,7 +16,7 @@ from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import build_feedback_query, get_base_template_context
 from app.models.user import User
-from app.schemas.search_profile import SearchProfileCreate, SearchProfileUpdate
+from app.schemas.search_profile import SearchProfileBase, SearchProfileCreate, SearchProfileUpdate
 from app.services.search_profile_service import (
     create_search_profile_for_user,
     delete_search_profile_for_user,
@@ -140,6 +140,47 @@ def _render_form(
     )
 
 
+def _parse_profile_form(
+    schema_class: type[SearchProfileCreate | SearchProfileUpdate],
+    *,
+    profile_name: str | None,
+    query: str,
+    location: str,
+    remote_only: bool,
+    employment_types: list[str] | None,
+    experience_levels: list[str] | None,
+    radius_km: str | None,
+) -> tuple[SearchProfileBase | None, dict[str, str]]:
+    """Construct and validate a search profile schema from raw form values.
+
+    Return the validated schema and an empty error dict on success, or
+    ``None`` and a populated error dict when validation fails.
+
+    :param schema_class: Schema class to instantiate (create or update variant).
+    :param profile_name: Submitted profile name.
+    :param query: Submitted job query.
+    :param location: Submitted location value.
+    :param remote_only: Submitted remote-only flag.
+    :param employment_types: Submitted employment types.
+    :param experience_levels: Submitted experience levels.
+    :param radius_km: Submitted search radius.
+    :return: Tuple of ``(schema, errors)``.
+    """
+    try:
+        schema = schema_class(
+            profile_name=profile_name.strip() if profile_name else None,
+            query=query,
+            location=location,
+            remote_only=remote_only,
+            employment_types=employment_types or [],
+            experience_levels=experience_levels or [],
+            radius_km=radius_km,
+        )
+        return schema, {}
+    except ValidationError as exc:
+        return None, _map_search_profile_validation_errors(exc)
+
+
 @router.get("/new", response_class=HTMLResponse, name="render_search_profile_create_page")
 def render_search_profile_create_page(
     request: Request,
@@ -200,19 +241,18 @@ def create_search_profile_action(
         radius_km=radius_km
     )
 
-    try:
-        search_profile_in = SearchProfileCreate(
-            profile_name=profile_name.strip() if profile_name else None,
-            query=query,
-            location=location,
-            remote_only=remote_only,
-            employment_types=employment_types or [],
-            experience_levels=experience_levels or [],
-            radius_km=radius_km
-        )
+    search_profile_in, errors = _parse_profile_form(
+        SearchProfileCreate,
+        profile_name=profile_name,
+        query=query,
+        location=location,
+        remote_only=remote_only,
+        employment_types=employment_types,
+        experience_levels=experience_levels,
+        radius_km=radius_km,
+    )
 
-    except ValidationError as exc:
-        errors = _map_search_profile_validation_errors(exc)
+    if search_profile_in is None:
         return _render_form(
             request,
             current_user=current_user,
@@ -355,18 +395,18 @@ def update_search_profile_action(
         radius_km=radius_km
     )
 
-    try:
-        search_profile_in = SearchProfileUpdate(
-            profile_name=profile_name.strip() if profile_name else None,
-            query=query,
-            location=location,
-            remote_only=remote_only,
-            employment_types=employment_types or [],
-            experience_levels=experience_levels or [],
-            radius_km=radius_km
-        )
-    except ValidationError as exc:
-        errors = _map_search_profile_validation_errors(exc)
+    search_profile_in, errors = _parse_profile_form(
+        SearchProfileUpdate,
+        profile_name=profile_name,
+        query=query,
+        location=location,
+        remote_only=remote_only,
+        employment_types=employment_types,
+        experience_levels=experience_levels,
+        radius_km=radius_km,
+    )
+
+    if search_profile_in is None:
         return _render_form(
             request,
             current_user=current_user,

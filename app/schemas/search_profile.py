@@ -6,12 +6,10 @@ structures used to create, update, display, and select search profiles.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Annotated
 
 from pydantic import (
     BaseModel,
-    ConfigDict,
     Field,
     StringConstraints,
     field_validator,
@@ -87,15 +85,3 @@ class SearchProfileUpdate(SearchProfileBase):
     """Represent validated input for updating a search profile."""
 
     profile_name: NonEmptyStr
-
-
-class SearchProfileRead(SearchProfileBase):
-    """Represent full stored search profile data for display purposes."""
-
-    id: int
-    user_id: int
-    profile_name: str
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.search_profile import SearchProfile
-from app.schemas.search_profile import SearchProfileCreate, SearchProfileRead, SearchProfileUpdate
+from app.schemas.search_profile import SearchProfileCreate, SearchProfileUpdate
 
 
 def get_search_profiles_for_user(db: Session, user_id: int) -> list[SearchProfile]:
@@ -165,32 +165,3 @@ def delete_search_profile(db: Session, profile_id: int, user_id: int) -> bool:
     return True
 
 
-def get_search_profiles_for_user_read(db: Session, user_id: int) -> list[SearchProfileRead]:
-    """Retrieve all search profiles for a user as validated read schemas.
-
-    :param db: Active SQLAlchemy database session.
-    :param user_id: Identifier of the owning user.
-    :return: List of validated read schemas.
-    """
-    search_profiles = get_search_profiles_for_user(db, user_id=user_id)
-    return [SearchProfileRead.model_validate(search_profile) for search_profile in search_profiles]
-
-
-def get_search_profile_by_id_read(
-    db: Session,
-    profile_id: int,
-    user_id: int
-) -> SearchProfileRead | None:
-    """Retrieve one search profile for a user as a validated read schema.
-
-    :param db: Active SQLAlchemy database session.
-    :param profile_id: Identifier of the search profile.
-    :param user_id: Identifier of the owning user.
-    :return: Validated read schema, or ``None`` if not found.
-    """
-    search_profile = get_search_profile_by_id(db, profile_id=profile_id, user_id=user_id)
-
-    if search_profile is None:
-        return None
-
-    return SearchProfileRead.model_validate(search_profile)

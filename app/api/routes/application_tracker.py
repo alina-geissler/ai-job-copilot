@@ -15,11 +15,12 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.enums import ApplicationStatus
-from app.crud.application_tracker_entry import get_tracker_entry_by_id_for_user,list_tracker_entries_for_user
+from app.crud.application_tracker_entry import get_tracker_entry_by_id_for_user, list_tracker_entries_for_user
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import build_feedback_query, get_base_template_context
 from app.models.user import User
+from app.schemas.application_tracker import TrackerNotesUpdateForm, TrackerStatusUpdateForm
 from app.services.application_tracker_service import (
     change_application_tracker_notes,
     change_application_tracker_status,
@@ -35,6 +36,28 @@ from app.utils.application_tracker_ui import (
 
 router = APIRouter(prefix="/tracker", tags=["application-tracker"])
 templates = Jinja2Templates(directory="templates")
+
+
+def _resolve_redirect_url(
+        request: Request,
+        *,
+        redirect_to: str,
+        entry_id: int | None,
+        query_string: str,
+) -> str:
+    """Return the redirect URL for the given target and query string.
+
+    :param request: Incoming HTTP request.
+    :param redirect_to: Redirect target identifier, e.g. ``overview`` or ``detail``.
+    :param entry_id: Identifier of the tracker entry; required when redirecting to detail.
+    :param query_string: Pre-built feedback query string to append.
+    :return: Absolute redirect URL with query string.
+    """
+    if redirect_to == "detail" and entry_id is not None:
+        detail_url = str(request.url_for("render_application_tracker_detail_page", entry_id=entry_id))
+        return f"{detail_url}?{query_string}"
+    tracker_url = str(request.url_for("render_application_tracker_page"))
+    return f"{tracker_url}?{query_string}"
 
 
 def _build_tracker_status_items(entry: Any) -> list[dict[str, Any]]:
@@ -251,64 +274,32 @@ def update_application_tracker_status_route(
         current_user: Annotated[User, Depends(get_current_user)],
         db: Annotated[Session, Depends(get_db)],
         entry_id: int,
-        status: Annotated[ApplicationStatus, Form()],
-        status_date: Annotated[str | None, Form()] = None,
-        redirect_to: Annotated[str, Form()] = "overview"
+        form_data: Annotated[TrackerStatusUpdateForm, Form()]
 ) -> RedirectResponse:
     """Update the current status of one tracker entry.
 
     :param request: Incoming HTTP request.
     :param entry_id: Identifier of the tracker entry to update.
-    :param status: New tracker status.
-    :param status_date: Optional date string for the selected status.
-    :param redirect_to: Redirect target identifier, e.g. ``overview`` or ``detail``.
+    :param form_data: Validated status update form data.
     :param current_user: Authenticated user.
     :param db: Active database session.
     :return: Redirect response to the overview or detail page.
     """
-    normalized_status_date: date | None = None
-    if status_date is not None:
-        stripped_status_date = status_date.strip()
-        if stripped_status_date:
-            try:
-                normalized_status_date = date.fromisoformat(stripped_status_date)
-            except ValueError:
-                query_string = build_feedback_query(
-                    message="Ungültiges Datum für den Status.",
-                    message_type="error"
-                )
-
-                if redirect_to == "detail":
-                    detail_url = str(request.url_for("render_application_tracker_detail_page",
-                                                     entry_id=entry_id)
-                                     )
-                    return RedirectResponse(
-                        url=f"{detail_url}?{query_string}",
-                        status_code=303
-                    )
-
-                tracker_url = str(request.url_for("render_application_tracker_page"))
-                return RedirectResponse(
-                    url=f"{tracker_url}?{query_string}",
-                    status_code=303
-                )
-
     tracker_entry = change_application_tracker_status(
         db,
         entry_id=entry_id,
         user_id=current_user.id,
-        status=status,
-        status_date=normalized_status_date
+        status=form_data.status,
+        status_date=form_data.status_date
     )
 
     if tracker_entry is None:
-        tracker_url = str(request.url_for("render_application_tracker_page"))
         query_string = build_feedback_query(
             message="Tracker-Eintrag nicht gefunden.",
             message_type="error"
         )
         return RedirectResponse(
-            url=f"{tracker_url}?{query_string}",
+            url=_resolve_redirect_url(request, redirect_to="overview", entry_id=None, query_string=query_string),
             status_code=303
         )
 
@@ -316,19 +307,10 @@ def update_application_tracker_status_route(
         message="Status erfolgreich aktualisiert.",
         message_type="success"
     )
-
-    if redirect_to == "detail":
-        detail_url = str(request.url_for("render_application_tracker_detail_page",
-                                         entry_id=entry_id)
-                         )
-        return RedirectResponse(
-            url=f"{detail_url}?{query_string}",
-            status_code=303
-        )
-
-    tracker_url = str(request.url_for("render_application_tracker_page"))
     return RedirectResponse(
-        url=f"{tracker_url}?{query_string}",
+        url=_resolve_redirect_url(
+            request, redirect_to=form_data.redirect_to, entry_id=entry_id, query_string=query_string
+        ),
         status_code=303
     )
 
@@ -339,15 +321,13 @@ def update_application_tracker_notes_route(
         current_user: Annotated[User, Depends(get_current_user)],
         db: Annotated[Session, Depends(get_db)],
         entry_id: int,
-        notes: Annotated[str | None, Form()] = None,
-        redirect_to: Annotated[str, Form()] = "overview"
+        form_data: Annotated[TrackerNotesUpdateForm, Form()]
 ) -> RedirectResponse:
     """Update the notes of one tracker entry.
 
     :param request: Incoming HTTP request.
     :param entry_id: Identifier of the tracker entry to update.
-    :param notes: New notes text.
-    :param redirect_to: Redirect target identifier, e.g. ``overview`` or ``detail``.
+    :param form_data: Validated notes update form data.
     :param current_user: Authenticated user.
     :param db: Active database session.
     :return: Redirect response to the overview or detail page.
@@ -356,17 +336,16 @@ def update_application_tracker_notes_route(
         db,
         entry_id=entry_id,
         user_id=current_user.id,
-        notes=notes
+        notes=form_data.notes
     )
 
     if tracker_entry is None:
-        tracker_url = str(request.url_for("render_application_tracker_page"))
         query_string = build_feedback_query(
             message="Tracker-Eintrag nicht gefunden.",
             message_type="error"
         )
         return RedirectResponse(
-            url=f"{tracker_url}?{query_string}",
+            url=_resolve_redirect_url(request, redirect_to="overview", entry_id=None, query_string=query_string),
             status_code=303
         )
 
@@ -374,19 +353,10 @@ def update_application_tracker_notes_route(
         message="Notizen erfolgreich gespeichert.",
         message_type="success"
     )
-
-    if redirect_to == "detail":
-        detail_url = str(request.url_for("render_application_tracker_detail_page",
-                                         entry_id=entry_id)
-                         )
-        return RedirectResponse(
-            url=f"{detail_url}?{query_string}",
-            status_code=303
-        )
-
-    tracker_url = str(request.url_for("render_application_tracker_page"))
     return RedirectResponse(
-        url=f"{tracker_url}?{query_string}",
+        url=_resolve_redirect_url(
+            request, redirect_to=form_data.redirect_to, entry_id=entry_id, query_string=query_string
+        ),
         status_code=303
     )
 

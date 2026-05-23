@@ -174,8 +174,7 @@ def update_tracker_entry_notes(
     :param notes: New notes text, possibly empty.
     :return: Updated tracker entry.
     """
-    normalized_notes = (notes or "").strip()
-    entry.notes = normalized_notes or None
+    entry.notes = notes
 
     db.add(entry)
     return entry
