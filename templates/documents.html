@@ -4,20 +4,106 @@
 
 {% block content %}
 <header class="page-header">
-  <h1>Dokumente / Bewerbungsassistent</h1>
-  <p class="muted">Bereich für generierte Bewerbungsinhalte.</p>
+  <h1>Dokumente</h1>
+  <p class="muted">Verwalte deine hochgeladenen Dokumente und sieh dir extrahierte Inhalte an.</p>
 </header>
 
 <section class="section">
   <div class="card">
-    <ul class="list-clean">
-      <li>Anschreiben</li>
-      <li>Interviewfragen</li>
-      <li>Fragen an das Unternehmen</li>
-      <li>Skill-Gap-Analysen</li>
-      <li>Bewerbungschecklisten</li>
-      <li>PDF-Downloads</li>
-    </ul>
+    <h2>Lebenslauf hochladen</h2>
+    {% if has_existing_cv %}
+      <p class="alert alert-success">Du hast bereits einen Lebenslauf hochgeladen, auf dem deine Profilinformationen basieren. Erneutes Hochladen ersetzt deinen Lebenslauf und passt deine Infos an.</p>
+    {% endif %}
+    <form method="post" action="{{ request.url_for('upload_document_action') }}" enctype="multipart/form-data">
+      <input type="hidden" name="document_type" value="cv">
+      <div class="form-group">
+        <label for="file">PDF-Datei (max. 10 MB)</label>
+        <input type="file" name="file" id="file" accept=".pdf,application/pdf" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Hochladen</button>
+    </form>
   </div>
 </section>
+
+<section class="section">
+  <div class="card">
+    <h2>Meine Dokumente</h2>
+
+    {% if not documents %}
+      <p class="muted">Noch keine Dokumente hochgeladen.</p>
+    {% else %}
+      <ul class="document-list list-clean">
+        {% for doc in documents %}
+          <li class="document-card">
+            <div class="document-card__header">
+              <strong>{{ doc.document_name }}</strong>
+              <span class="document-status-pill {{ doc.processing_status_css_class }}">{{ doc.processing_status_label }}</span>
+            </div>
+
+            <form method="post"
+                  action="{{ request.url_for('update_document_name_action', doc_id=doc.id) }}"
+                  class="document-card__rename-form">
+              <input type="text"
+                     name="name"
+                     value="{{ doc.document_name }}"
+                     required
+                     aria-label="Dokumentname">
+              <button type="submit" class="btn btn-secondary">Umbenennen</button>
+            </form>
+
+            <div class="document-card__meta muted">
+              {{ doc.document_type_label }}
+              &middot;
+              {{ (doc.file_size_bytes / 1024) | round(1) }} KB
+              &middot;
+              {{ doc.created_at.strftime('%d.%m.%Y %H:%M') }}
+              {% if doc.extraction_method_label %}
+                &middot; {{ doc.extraction_method_label }}
+              {% endif %}
+              &middot;
+              <span class="muted">{{ doc.original_filename }}</span>
+            </div>
+
+            {% if doc.processing_status.value in ('pending', 'processing') %}
+              <div class="document-card__processing">
+                <span class="document-spinner" aria-hidden="true"></span>
+                Die Infos aus deinem Lebenslauf werden verarbeitet…
+              </div>
+            {% endif %}
+
+            {% if doc.extraction_error %}
+              <p class="alert alert-error">Fehler: {{ doc.extraction_error }}</p>
+            {% endif %}
+
+            {% if doc.extracted_text %}
+              <div class="document-card__extracted">
+                <p class="muted document-card__extracted-note">Dieser Text wird von der KI verwendet und zeigt, was aus deinem Dokument ausgelesen wurde.</p>
+                <pre class="document-card__text-preview">{{ doc.extracted_text }}</pre>
+              </div>
+            {% endif %}
+
+            <div class="document-card__actions">
+              {% if doc.processing_status.value == 'completed' %}
+                <a href="{{ request.url_for('render_document_view_action', doc_id=doc.id) }}"
+                   target="_blank"
+                   class="btn btn-secondary">Öffnen</a>
+              {% endif %}
+              <form method="post"
+                    action="{{ request.url_for('delete_document_action', document_id=doc.id) }}"
+                    onsubmit="return confirm('Dokument wirklich löschen?');">
+                <button type="submit" class="btn btn-secondary">Löschen</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</section>
+
+<script>
+  if (document.querySelector('.status--pending, .status--processing')) {
+    setTimeout(() => location.reload(), 4000);
+  }
+</script>
 {% endblock %}

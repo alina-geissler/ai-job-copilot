@@ -1,6 +1,7 @@
 """Define and validate runtime configuration for the application.
 
-Load environment-based settings for the FastAPI app, database, OpenAI access, and job-search integration.
+Load environment-based settings for the FastAPI app, database, OpenAI access,
+job-search integration, and object storage.
 Validate provider-specific settings before the application tries to use the live job API.
 """
 
@@ -42,6 +43,13 @@ class Settings(BaseSettings):
     job_api_timeout_read: float = Field(default=30.0, gt=0)
     job_api_timeout_write: float = Field(default=10.0, gt=0)
     job_api_timeout_pool: float = Field(default=5.0, gt=0)
+
+    storage_endpoint_url: str | None = None
+    storage_access_key: str = "minioadmin"
+    storage_secret_key: str = "minioadmin"
+    storage_bucket_name: str = "ai-job-copilot-documents"
+    storage_region: str = "us-east-1"
+    max_upload_size_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

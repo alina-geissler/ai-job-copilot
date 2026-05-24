@@ -51,3 +51,31 @@ class PrimarySearchAction(StrEnum):
     SHOW_EXISTING_RUN = "show_existing_run"
     BLOCKED_DAILY_LIMIT = "blocked_daily_limit"
     BLOCKED_PROFILE_LIMIT = "blocked_profile_limit"
+
+
+class DocumentType(StrEnum):
+    """Represent the type of a stored document.
+
+    Used as a discriminator on the shared ``documents`` table so that uploaded
+    CVs and generated documents such as cover letters share one table.
+    """
+
+    CV = "cv"
+    COVER_LETTER = "cover_letter"
+
+
+class DocumentProcessingStatus(StrEnum):
+    """Represent the text-extraction lifecycle state of a document."""
+
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ExtractionMethod(StrEnum):
+    """Represent the method used to extract text from a PDF document."""
+
+    EMBEDDED_TEXT = "embedded_text"
+    OCR = "ocr"
+    MARKDOWN = "markdown"

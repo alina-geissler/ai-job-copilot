@@ -708,32 +708,121 @@ a:focus-visible {
   }
 }
 
-.tracker-status-pill.tracker-status--saved {
+/* Documents */
+
+.document-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.document-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.document-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.document-card__rename-form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.document-card__rename-form input[type="text"] {
+  width: auto;
+  flex: 1;
+}
+
+.document-card__meta {
+  font-size: 0.9rem;
+}
+
+.document-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.document-card__extracted {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.document-card__extracted-note {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.document-card__text-preview {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.document-status-pill {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.document-status-pill.status--pending {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.document-status-pill.status--processing {
   background: #dbeafe;
   color: #1d4ed8;
 }
 
-.tracker-status-pill.tracker-status--applied {
-  background: #fef3c7;
-  color: #a16207;
+.document-status-pill.status--completed {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
 }
 
-.tracker-status-pill.tracker-status--interview {
-  background: #fed7aa;
-  color: #c2410c;
+.document-status-pill.status--failed {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-border);
 }
 
-.tracker-status-pill.tracker-status--offer {
-  background: #dcfce7;
-  color: #15803d;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.tracker-status-pill.tracker-status--rejected {
-  background: #fee2e2;
-  color: #b91c1c;
+.document-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
 }
 
-.tracker-status-pill.tracker-status--withdrawn {
-  background: #f3e8ff;
-  color: #7e22ce;
+.document-card__processing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-primary);
+  font-size: 0.95rem;
 }

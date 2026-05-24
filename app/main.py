@@ -13,6 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.dashboard import router as dashboard_router
+from app.api.routes.documents import router as documents_router
 from app.api.routes.health import router as health_router
 from app.api.routes.jobs import router as jobs_router
 from app.api.routes.pages import router as pages_router
@@ -77,3 +78,4 @@ app.include_router(jobs_router)
 app.include_router(dashboard_router)
 app.include_router(search_profiles_router)
 app.include_router(application_tracker_router)
+app.include_router(documents_router)
