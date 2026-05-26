@@ -8,7 +8,7 @@
   <p class="muted">Übersicht deiner extrahierten und gepflegten Kandidateninformationen.</p>
 </header>
 
-{% if profile is none %}
+{% if not profile_has_content %}
   <section class="section">
     <div class="card">
       {% if extraction_in_progress %}
@@ -38,8 +38,8 @@
 
   {% if profile.extraction_error %}
     <div class="alert alert-error" role="alert">
-      <p>Die automatische Extraktion ist fehlgeschlagen: {{ profile.extraction_error }}</p>
-      <p>Du kannst dein Profil dennoch manuell bearbeiten.</p>
+      <p>Die automatische Extraktion ist fehlgeschlagen.</p>
+      <p>Du kannst es erneut versuchen oder dein Profil manuell bearbeiten.</p>
       <form method="post" action="{{ request.url_for('retry_profile_extraction_route') }}">
         <button type="submit" class="btn btn-secondary">Erneut versuchen</button>
       </form>

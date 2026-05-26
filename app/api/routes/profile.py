@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.enums import DocumentProcessingStatus, DocumentType
 from app.crud.document import get_document_by_type_for_user
 from app.crud.profile_information import get_profile_for_user, upsert_profile
+from app.models.profile_information import ProfileInformation
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import build_feedback_query, get_base_template_context
@@ -172,6 +173,30 @@ def _parse_profile_form(form) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _profile_has_content(profile: ProfileInformation | None) -> bool:
+    """Return True when the profile row has been meaningfully populated.
+
+    An empty profile row (all fields None, no extraction error) created by
+    the edit form clearing all fields is treated as having no content so the
+    UI shows the correct empty state rather than a blank content block.
+
+    :param profile: ProfileInformation ORM instance or None.
+    :return: True if the profile has extractable data or an extraction error.
+    """
+    if profile is None:
+        return False
+    return bool(
+        profile.extraction_error is not None
+        or profile.name or profile.target_role
+        or profile.work_experience or profile.education
+        or profile.hard_skills or profile.soft_skills
+    )
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -193,15 +218,18 @@ def render_profile_page(
     """
     request.session.pop("redirect_to_profile", None)
     profile = get_profile_for_user(db, user_id=current_user.id)
+    profile_has_content = _profile_has_content(profile)
 
-    extraction_in_progress = False
-    if profile is None:
-        extraction_in_progress = request.session.get("profile_extraction_in_progress", False)
+    extraction_in_progress = request.session.get("profile_extraction_in_progress", False)
+    if extraction_in_progress:
+        if profile_has_content:
+            request.session.pop("profile_extraction_in_progress", None)
+            extraction_in_progress = False
     else:
         request.session.pop("profile_extraction_in_progress", None)
 
     has_completed_cv = False
-    if profile is None and not extraction_in_progress:
+    if not profile_has_content and not extraction_in_progress:
         cv_doc = get_document_by_type_for_user(
             db, user_id=current_user.id, document_type=DocumentType.CV
         )
@@ -217,6 +245,7 @@ def render_profile_page(
             **get_base_template_context(request),
             "current_user": current_user,
             "profile": profile,
+            "profile_has_content": profile_has_content,
             "extraction_in_progress": extraction_in_progress,
             "has_completed_cv": has_completed_cv,
         },

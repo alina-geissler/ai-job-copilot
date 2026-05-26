@@ -41,6 +41,7 @@ def extract_profile_from_cv_text(cv_text: str) -> tuple[CandidateProfile, str]:
     )
     completion = client.beta.chat.completions.parse(
         model=settings.llm_model,
+        max_tokens=4096,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": cv_text},
