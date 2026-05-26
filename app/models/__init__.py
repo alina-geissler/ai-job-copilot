@@ -8,8 +8,9 @@ from app.models.user import User
 from app.models.job import Job
 from app.models.application_tracker_entry import ApplicationTrackerEntry
 from app.models.document import Document
+from app.models.profile_information import ProfileInformation
 from app.models.search_profile import SearchProfile
 from app.models.search_run import SearchRun
 from app.models.search_run_job import SearchRunJob
 
-__all__ = ["User", "Job", "ApplicationTrackerEntry", "Document", "SearchProfile", "SearchRun", "SearchRunJob"]
+__all__ = ["User", "Job", "ApplicationTrackerEntry", "Document", "ProfileInformation", "SearchProfile", "SearchRun", "SearchRunJob"]

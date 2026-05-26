@@ -17,6 +17,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.application_tracker_entry import ApplicationTrackerEntry
     from app.models.document import Document
+    from app.models.profile_information import ProfileInformation
     from app.models.search_profile import SearchProfile
     from app.models.search_run import SearchRun
 
@@ -54,5 +55,8 @@ class User(Base):
     )
     documents: Mapped[list[Document]] = relationship(
         "Document", back_populates="user"
+    )
+    profile_information: Mapped[ProfileInformation | None] = relationship(
+        "ProfileInformation", back_populates="user", uselist=False
     )
 

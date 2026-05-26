@@ -19,6 +19,7 @@ from app.api.routes.jobs import router as jobs_router
 from app.api.routes.pages import router as pages_router
 from app.api.routes.search_profiles import router as search_profiles_router
 from app.api.routes.application_tracker import router as application_tracker_router
+from app.api.routes.profile import router as profile_router
 
 from app.core.config import settings
 from app.dependencies.auth import AuthenticationRequiredError, AuthFailureReason
@@ -79,3 +80,4 @@ app.include_router(dashboard_router)
 app.include_router(search_profiles_router)
 app.include_router(application_tracker_router)
 app.include_router(documents_router)
+app.include_router(profile_router)

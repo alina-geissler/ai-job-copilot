@@ -16,12 +16,13 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.enums import DocumentType
+from app.core.enums import DocumentProcessingStatus, DocumentType
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import build_feedback_query, get_base_template_context
 from app.models.user import User
 from app.crud.document import get_document_by_id_for_user, get_document_by_type_for_user
+from app.crud.profile_information import get_profile_for_user
 from app.services.document_service import (
     delete_user_document,
     list_user_documents,
@@ -112,9 +113,14 @@ def render_documents_page(
     """
     documents = list_user_documents(db, user_id=current_user.id)
     serialized = [_serialize_document(doc) for doc in documents]
-    has_existing_cv = get_document_by_type_for_user(
-        db, user_id=current_user.id, document_type=DocumentType.CV
-    ) is not None
+    cv_doc = get_document_by_type_for_user(db, user_id=current_user.id, document_type=DocumentType.CV)
+    has_existing_cv = (
+        cv_doc is not None
+        and cv_doc.processing_status == DocumentProcessingStatus.COMPLETED
+    )
+    profile = get_profile_for_user(db, user_id=current_user.id)
+    profile_has_error = profile is not None and bool(profile.extraction_error)
+    redirect_to_profile = request.session.get("redirect_to_profile", False)
 
     return templates.TemplateResponse(
         request=request,
@@ -125,6 +131,8 @@ def render_documents_page(
             "documents": serialized,
             "document_types": [(t.value, DOCUMENT_TYPE_LABELS[t]) for t in DocumentType],
             "has_existing_cv": has_existing_cv,
+            "profile_has_error": profile_has_error,
+            "redirect_to_profile": redirect_to_profile,
         },
     )
 
@@ -194,6 +202,9 @@ def upload_document_route(
             message_type="error",
         )
         return RedirectResponse(url=f"{documents_url}?{query_string}", status_code=303)
+
+    request.session["redirect_to_profile"] = True
+    request.session["profile_extraction_in_progress"] = True
 
     query_string = build_feedback_query(
         message="Dokument hochgeladen. Textextraktion läuft im Hintergrund…",

@@ -14,6 +14,14 @@
     {% if has_existing_cv %}
       <p class="alert alert-success">Du hast bereits einen Lebenslauf hochgeladen, auf dem deine Profilinformationen basieren. Erneutes Hochladen ersetzt deinen Lebenslauf und passt deine Infos an.</p>
     {% endif %}
+    {% if profile_has_error %}
+      <div class="alert alert-error">
+        <p>Die automatische Profilerstellung aus deinem Lebenslauf ist fehlgeschlagen.</p>
+        <form method="post" action="{{ request.url_for('retry_profile_extraction_route') }}">
+          <button type="submit" class="btn btn-secondary">Profil erneut erstellen</button>
+        </form>
+      </div>
+    {% endif %}
     <form method="post" action="{{ request.url_for('upload_document_action') }}" enctype="multipart/form-data">
       <input type="hidden" name="document_type" value="cv">
       <div class="form-group">
@@ -102,8 +110,12 @@
 </section>
 
 <script>
-  if (document.querySelector('.status--pending, .status--processing')) {
+  var hasPending = !!document.querySelector('.status--pending, .status--processing');
+  var shouldRedirect = {{ 'true' if redirect_to_profile else 'false' }};
+  if (hasPending) {
     setTimeout(() => location.reload(), 4000);
+  } else if (shouldRedirect) {
+    window.location.href = '{{ request.url_for("render_profile_page") }}';
   }
 </script>
 {% endblock %}

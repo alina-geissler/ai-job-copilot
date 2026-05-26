@@ -4,37 +4,317 @@
 
 {% block content %}
 <header class="page-header">
-  <h1>Profil / Lebenslauf</h1>
-  <p class="muted">Bereich für persönliche Daten, CV und Bewerbungsinformationen.</p>
+  <h1>Mein Profil</h1>
+  <p class="muted">Übersicht deiner extrahierten und gepflegten Kandidateninformationen.</p>
 </header>
 
-<section class="section">
-  <form class="form">
-    <div class="card stack">
-      <div class="form-group">
-        <label for="cv-file">CV hochladen</label>
-        <input type="file" id="cv-file" name="cv-file">
-      </div>
-      <div class="form-group">
-        <label for="profile-name">Name</label>
-        <input type="text" id="profile-name" name="profile-name" placeholder="Name">
-      </div>
-      <div class="form-group">
-        <label for="profile-skills">Skills</label>
-        <textarea id="profile-skills" name="profile-skills" placeholder="Skills"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="profile-experience">Berufserfahrung</label>
-        <textarea id="profile-experience" name="profile-experience" placeholder="Berufserfahrung"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="profile-education">Ausbildung</label>
-        <textarea id="profile-education" name="profile-education" placeholder="Ausbildung"></textarea>
-      </div>
-      <div class="actions">
-        <button type="submit" class="btn btn-primary">Speichern</button>
+{% if profile is none %}
+  <section class="section">
+    <div class="card">
+      {% if extraction_in_progress %}
+        <div class="document-card__processing">
+          <span class="document-spinner" aria-hidden="true"></span>
+          Profil wird aus deinem Lebenslauf erstellt…
+        </div>
+        <p class="muted">Dies kann einige Minuten dauern. Die Seite aktualisiert sich automatisch.</p>
+      {% else %}
+        <p class="muted">Noch kein Profil vorhanden. Lade deinen Lebenslauf unter
+          <a href="{{ request.url_for('render_documents_page') }}">Dokumente</a> hoch, um dein Profil automatisch zu befüllen,
+          oder <a href="{{ request.url_for('render_profile_edit_page') }}">trage deine Daten manuell ein</a>.</p>
+        {% if has_completed_cv %}
+          <form method="post" action="{{ request.url_for('retry_profile_extraction_route') }}" style="margin-top: 0.75rem;">
+            <button type="submit" class="btn btn-secondary">Profil aus Lebenslauf erstellen</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </div>
+  </section>
+
+  {% if extraction_in_progress %}
+  <script>setTimeout(() => location.reload(), 5000);</script>
+  {% endif %}
+
+{% else %}
+
+  {% if profile.extraction_error %}
+    <div class="alert alert-error" role="alert">
+      <p>Die automatische Extraktion ist fehlgeschlagen: {{ profile.extraction_error }}</p>
+      <p>Du kannst dein Profil dennoch manuell bearbeiten.</p>
+      <form method="post" action="{{ request.url_for('retry_profile_extraction_route') }}">
+        <button type="submit" class="btn btn-secondary">Erneut versuchen</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <section class="section">
+    <div class="card">
+      <div class="profile-section-header">
+        <a href="{{ request.url_for('render_profile_edit_page') }}" class="btn btn-primary">Profil bearbeiten</a>
       </div>
     </div>
-  </form>
-</section>
+  </section>
+
+  {# Persönliche Daten #}
+  {% if profile.name or profile.email or profile.address or profile.phone %}
+  <section class="section">
+    <div class="card">
+      <h2>Persönliche Daten</h2>
+      <p class="muted profile-personal-note">Diese Daten werden nicht für die Stellensuche verwendet.</p>
+      <dl class="profile-dl">
+        {% if profile.name %}<dt>Name</dt><dd>{{ profile.name }}</dd>{% endif %}
+        {% if profile.email %}<dt>E-Mail</dt><dd>{{ profile.email }}</dd>{% endif %}
+        {% if profile.address %}<dt>Adresse</dt><dd>{{ profile.address }}</dd>{% endif %}
+        {% if profile.phone %}<dt>Telefon</dt><dd>{{ profile.phone }}</dd>{% endif %}
+      </dl>
+    </div>
+  </section>
+  {% endif %}
+
+  {# Berufliches Profil #}
+  {% if profile.target_role or profile.seniority_level or profile.leadership_experience %}
+  <section class="section">
+    <div class="card">
+      <h2>Berufliches Profil</h2>
+      <dl class="profile-dl">
+        {% if profile.target_role %}<dt>Zielrolle</dt><dd>{{ profile.target_role }}</dd>{% endif %}
+        {% if profile.seniority_level %}<dt>Senioritätsstufe</dt><dd>{{ profile.seniority_level }}</dd>{% endif %}
+        {% if profile.leadership_experience %}<dt>Führungserfahrung</dt><dd>{{ profile.leadership_experience }}</dd>{% endif %}
+      </dl>
+    </div>
+  </section>
+  {% endif %}
+
+  {# Berufserfahrung #}
+  {% if profile.work_experience %}
+  <section class="section">
+    <div class="card">
+      <h2>Berufserfahrung</h2>
+      {% for entry in profile.work_experience %}
+        <div class="profile-entry-card">
+          <div class="profile-entry-card__header">
+            <strong>{{ entry.position or '–' }}</strong>
+            {% if entry.company %}<span class="muted"> · {{ entry.company }}</span>{% endif %}
+            {% if entry.period %}
+              <span class="muted"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
+            {% endif %}
+          </div>
+          {% if entry.responsibilities %}
+            <p class="profile-entry-card__label">Aufgaben</p>
+            <ul class="list-clean profile-bullet-list">
+              {% for r in entry.responsibilities %}<li>{{ r }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+          {% if entry.achievements %}
+            <p class="profile-entry-card__label">Erfolge</p>
+            <ul class="list-clean profile-bullet-list">
+              {% for a in entry.achievements %}<li>{{ a }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+          {% if entry.skills %}
+            <p class="profile-entry-card__label">Tools / Technologien</p>
+            <p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Ausbildung #}
+  {% if profile.education %}
+  <section class="section">
+    <div class="card">
+      <h2>Ausbildung</h2>
+      {% for entry in profile.education %}
+        <div class="profile-entry-card">
+          <div class="profile-entry-card__header">
+            <strong>{{ entry.degree or '–' }}</strong>
+            {% if entry.institution %}<span class="muted"> · {{ entry.institution }}</span>{% endif %}
+            {% if entry.period %}
+              <span class="muted"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
+            {% endif %}
+          </div>
+          {% if entry.grade %}<p class="muted">Note: {{ entry.grade }}</p>{% endif %}
+          {% if entry.coursework %}
+            <p class="profile-entry-card__label">Studieninhalte</p>
+            <ul class="list-clean profile-bullet-list">
+              {% for c in entry.coursework %}<li>{{ c }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Fähigkeiten & Sprachen #}
+  {% if profile.soft_skills or profile.hard_skills or profile.languages %}
+  <section class="section">
+    <div class="card">
+      <h2>Fähigkeiten &amp; Sprachen</h2>
+      {% if profile.soft_skills %}
+        <h3>Soft Skills</h3>
+        <p class="profile-tags">{% for s in profile.soft_skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>
+      {% endif %}
+      {% if profile.hard_skills %}
+        <h3>Hard Skills</h3>
+        <ul class="list-clean profile-bullet-list">
+          {% for hs in profile.hard_skills %}
+            <li>
+              <strong>{{ hs.skill }}</strong>
+              {% if hs.proficiency %} · {{ hs.proficiency }}{% endif %}
+              {% if hs.years_experience %} · {{ hs.years_experience }} Jahre{% endif %}
+              {% if hs.evidence %}<span class="muted"> ({{ hs.evidence }})</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if profile.languages %}
+        <h3>Sprachen</h3>
+        <ul class="list-clean profile-bullet-list">
+          {% for lang in profile.languages %}
+            <li><strong>{{ lang.language }}</strong>{% if lang.level %} · {{ lang.level }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Zertifikate & Kurse #}
+  {% if profile.certifications or profile.courses %}
+  <section class="section">
+    <div class="card">
+      <h2>Zertifikate &amp; Kurse</h2>
+      {% if profile.certifications %}
+        <h3>Zertifikate / Lizenzen</h3>
+        {% for entry in profile.certifications %}
+          <div class="profile-entry-card">
+            <strong>{{ entry.name }}</strong>
+            {% if entry.issuer %}<span class="muted"> · {{ entry.issuer }}</span>{% endif %}
+            {% if entry.issue_date %}<span class="muted"> · {{ entry.issue_date }}</span>{% endif %}
+            {% if entry.skills %}<p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>{% endif %}
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% if profile.courses %}
+        <h3>Kurse</h3>
+        {% for entry in profile.courses %}
+          <div class="profile-entry-card">
+            <strong>{{ entry.name }}</strong>
+            {% if entry.provider %}<span class="muted"> · {{ entry.provider }}</span>{% endif %}
+            {% if entry.period %}
+              <span class="muted"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
+            {% endif %}
+            {% if entry.skills %}<p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>{% endif %}
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Projekte #}
+  {% if profile.projects %}
+  <section class="section">
+    <div class="card">
+      <h2>Projekte</h2>
+      {% for entry in profile.projects %}
+        <div class="profile-entry-card">
+          <div class="profile-entry-card__header">
+            <strong>{{ entry.name }}</strong>
+            {% if entry.period %}<span class="muted"> · {{ entry.period }}</span>{% endif %}
+          </div>
+          {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
+          {% if entry.outcome %}<p class="muted">Ergebnis: {{ entry.outcome }}</p>{% endif %}
+          {% if entry.technologies %}
+            <p class="profile-tags">{% for t in entry.technologies %}<span class="profile-tag">{{ t }}</span>{% endfor %}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Ehrenamt #}
+  {% if profile.volunteering %}
+  <section class="section">
+    <div class="card">
+      <h2>Ehrenamt</h2>
+      {% for entry in profile.volunteering %}
+        <div class="profile-entry-card">
+          <div class="profile-entry-card__header">
+            <strong>{{ entry.role }}</strong>
+            {% if entry.organization %}<span class="muted"> · {{ entry.organization }}</span>{% endif %}
+            {% if entry.cause %}<span class="muted"> · {{ entry.cause }}</span>{% endif %}
+            {% if entry.period %}
+              <span class="muted"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
+            {% endif %}
+          </div>
+          {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
+          {% if entry.skills %}
+            <p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Publikationen #}
+  {% if profile.publications %}
+  <section class="section">
+    <div class="card">
+      <h2>Publikationen</h2>
+      {% for entry in profile.publications %}
+        <div class="profile-entry-card">
+          <strong>{{ entry.title }}</strong>
+          {% if entry.publisher %}<span class="muted"> · {{ entry.publisher }}</span>{% endif %}
+          {% if entry.date %}<span class="muted"> · {{ entry.date }}</span>{% endif %}
+          {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
+          {% if entry.topics %}
+            <p class="profile-tags">{% for t in entry.topics %}<span class="profile-tag">{{ t }}</span>{% endfor %}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Auszeichnungen #}
+  {% if profile.honors_awards %}
+  <section class="section">
+    <div class="card">
+      <h2>Auszeichnungen &amp; Ehrungen</h2>
+      {% for entry in profile.honors_awards %}
+        <div class="profile-entry-card">
+          <strong>{{ entry.title }}</strong>
+          {% if entry.issuer %}<span class="muted"> · {{ entry.issuer }}</span>{% endif %}
+          {% if entry.date %}<span class="muted"> · {{ entry.date }}</span>{% endif %}
+          {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Präferenzen #}
+  {% if profile.target_role or profile.salary_expectation or profile.work_model or profile.availability or profile.employment_types %}
+  <section class="section">
+    <div class="card">
+      <h2>Präferenzen</h2>
+      <dl class="profile-dl">
+        {% if profile.salary_expectation %}<dt>Gehaltsvorstellung</dt><dd>{{ profile.salary_expectation }}</dd>{% endif %}
+        {% if profile.work_model %}<dt>Arbeitsmodell</dt><dd>{{ profile.work_model }}</dd>{% endif %}
+        {% if profile.availability %}<dt>Frühestmöglicher Start</dt><dd>{{ profile.availability }}</dd>{% endif %}
+        {% if profile.employment_types %}
+          <dt>Beschäftigungsarten</dt>
+          <dd>{{ profile.employment_types | join(', ') }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+  </section>
+  {% endif %}
+
+{% endif %}
 {% endblock %}

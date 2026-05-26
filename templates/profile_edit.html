@@ -1,0 +1,620 @@
+{% extends "base.html" %}
+
+{% block title %}Profil bearbeiten | AI Job Copilot{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1>Profil bearbeiten</h1>
+  <p class="muted">Passe deine Profilinformationen an. Alle Änderungen werden mit einem Klick gespeichert.</p>
+</header>
+
+<form method="post" action="{{ request.url_for('save_profile_route') }}" id="profile-edit-form">
+
+  {# Persönliche Daten #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Persönliche Daten <span class="muted profile-personal-note">(nicht für Stellensuche verwendet)</span></h2>
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" value="{{ (profile.name or '') if profile else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="email">E-Mail</label>
+        <input type="email" id="email" name="email" value="{{ (profile.email or '') if profile else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="address">Adresse</label>
+        <input type="text" id="address" name="address" value="{{ (profile.address or '') if profile else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="phone">Telefon</label>
+        <input type="text" id="phone" name="phone" value="{{ (profile.phone or '') if profile else '' }}">
+      </div>
+    </div>
+  </section>
+
+  {# Berufliches Profil #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Berufliches Profil</h2>
+      <div class="form-group">
+        <label for="target_role">Zielrolle</label>
+        <input type="text" id="target_role" name="target_role" value="{{ (profile.target_role or '') if profile else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="seniority_level">Senioritätsstufe</label>
+        <input type="text" id="seniority_level" name="seniority_level" value="{{ (profile.seniority_level or '') if profile else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="leadership_experience">Führungserfahrung</label>
+        <textarea id="leadership_experience" name="leadership_experience" rows="3">{{ (profile.leadership_experience or '') if profile else '' }}</textarea>
+      </div>
+    </div>
+  </section>
+
+  {# Berufserfahrung #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Berufserfahrung</h2>
+      <div id="work_experience-container">
+        {% for entry in ((profile.work_experience or []) if profile else []) %}
+        <div class="profile-card" data-prefix="work_experience" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields">
+            <div class="form-group">
+              <label>Unternehmen</label>
+              <input type="text" name="work_experience_{{ loop.index0 }}_company" value="{{ entry.company }}">
+            </div>
+            <div class="form-group">
+              <label>Position</label>
+              <input type="text" name="work_experience_{{ loop.index0 }}_position" value="{{ entry.position }}">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Von</label>
+                <input type="text" name="work_experience_{{ loop.index0 }}_period_start" value="{{ (entry.period.start or '') if entry.period else '' }}" placeholder="z. B. 2020-03">
+              </div>
+              <div class="form-group">
+                <label>Bis</label>
+                <input type="text" name="work_experience_{{ loop.index0 }}_period_end" value="{{ (entry.period.end or '') if entry.period else '' }}" placeholder="z. B. 2023-06 oder heute">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Aufgaben <span class="muted">(eine pro Zeile)</span></label>
+              <textarea name="work_experience_{{ loop.index0 }}_responsibilities" rows="4">{{ (entry.responsibilities or []) | join('\n') }}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Erfolge <span class="muted">(eine pro Zeile)</span></label>
+              <textarea name="work_experience_{{ loop.index0 }}_achievements" rows="3">{{ (entry.achievements or []) | join('\n') }}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Tools / Technologien <span class="muted">(eine pro Zeile)</span></label>
+              <textarea name="work_experience_{{ loop.index0 }}_skills" rows="3">{{ (entry.skills or []) | join('\n') }}</textarea>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('work_experience')">+ Eintrag hinzufügen</button>
+    </div>
+  </section>
+
+  {# Ausbildung #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Ausbildung</h2>
+      <div id="education-container">
+        {% for entry in ((profile.education or []) if profile else []) %}
+        <div class="profile-card" data-prefix="education" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields">
+            <div class="form-group">
+              <label>Institution</label>
+              <input type="text" name="education_{{ loop.index0 }}_institution" value="{{ entry.institution }}">
+            </div>
+            <div class="form-group">
+              <label>Abschluss / Ausbildungstyp</label>
+              <input type="text" name="education_{{ loop.index0 }}_degree" value="{{ entry.degree }}">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Von</label>
+                <input type="text" name="education_{{ loop.index0 }}_period_start" value="{{ (entry.period.start or '') if entry.period else '' }}">
+              </div>
+              <div class="form-group">
+                <label>Bis</label>
+                <input type="text" name="education_{{ loop.index0 }}_period_end" value="{{ (entry.period.end or '') if entry.period else '' }}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Note</label>
+              <input type="text" name="education_{{ loop.index0 }}_grade" value="{{ entry.grade }}">
+            </div>
+            <div class="form-group">
+              <label>Studieninhalte / Schwerpunkte <span class="muted">(eine pro Zeile)</span></label>
+              <textarea name="education_{{ loop.index0 }}_coursework" rows="3">{{ (entry.coursework or []) | join('\n') }}</textarea>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('education')">+ Eintrag hinzufügen</button>
+    </div>
+  </section>
+
+  {# Fähigkeiten #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Fähigkeiten</h2>
+      <div class="form-group">
+        <label for="soft_skills">Soft Skills <span class="muted">(eine pro Zeile)</span></label>
+        <textarea id="soft_skills" name="soft_skills" rows="5">{{ ((profile.soft_skills or []) | join('\n')) if profile else '' }}</textarea>
+      </div>
+      <h3>Hard Skills</h3>
+      <div id="hard_skills-container">
+        {% for entry in ((profile.hard_skills or []) if profile else []) %}
+        <div class="profile-card" data-prefix="hard_skills" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields profile-card__fields--row">
+            <div class="form-group">
+              <label>Skill</label>
+              <input type="text" name="hard_skills_{{ loop.index0 }}_skill" value="{{ entry.skill }}">
+            </div>
+            <div class="form-group">
+              <label>Niveau</label>
+              <input type="text" name="hard_skills_{{ loop.index0 }}_proficiency" value="{{ entry.proficiency }}">
+            </div>
+            <div class="form-group">
+              <label>Jahre Erfahrung</label>
+              <input type="text" name="hard_skills_{{ loop.index0 }}_years_experience" value="{{ entry.years_experience }}">
+            </div>
+            <div class="form-group">
+              <label>Nachweis / Kontext</label>
+              <input type="text" name="hard_skills_{{ loop.index0 }}_evidence" value="{{ entry.evidence }}">
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('hard_skills')">+ Skill hinzufügen</button>
+    </div>
+  </section>
+
+  {# Sprachen #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Sprachen</h2>
+      <div id="languages-container">
+        {% for entry in ((profile.languages or []) if profile else []) %}
+        <div class="profile-card" data-prefix="languages" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields profile-card__fields--row">
+            <div class="form-group">
+              <label>Sprache</label>
+              <input type="text" name="languages_{{ loop.index0 }}_language" value="{{ entry.language }}">
+            </div>
+            <div class="form-group">
+              <label>Niveau (z. B. B2, Muttersprache)</label>
+              <input type="text" name="languages_{{ loop.index0 }}_level" value="{{ entry.level }}">
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('languages')">+ Sprache hinzufügen</button>
+    </div>
+  </section>
+
+  {# Zertifikate #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Zertifikate &amp; Lizenzen</h2>
+      <div id="certifications-container">
+        {% for entry in ((profile.certifications or []) if profile else []) %}
+        <div class="profile-card" data-prefix="certifications" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" name="certifications_{{ loop.index0 }}_name" value="{{ entry.name }}">
+            </div>
+            <div class="form-group">
+              <label>Ausstellende Organisation</label>
+              <input type="text" name="certifications_{{ loop.index0 }}_issuer" value="{{ entry.issuer }}">
+            </div>
+            <div class="form-group">
+              <label>Ausstellungsdatum</label>
+              <input type="text" name="certifications_{{ loop.index0 }}_issue_date" value="{{ entry.issue_date }}">
+            </div>
+            <div class="form-group">
+              <label>Abgedeckte Skills <span class="muted">(eine pro Zeile)</span></label>
+              <textarea name="certifications_{{ loop.index0 }}_skills" rows="2">{{ (entry.skills or []) | join('\n') }}</textarea>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('certifications')">+ Zertifikat hinzufügen</button>
+    </div>
+  </section>
+
+  {# Kurse #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Kurse</h2>
+      <div id="courses-container">
+        {% for entry in ((profile.courses or []) if profile else []) %}
+        <div class="profile-card" data-prefix="courses" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" name="courses_{{ loop.index0 }}_name" value="{{ entry.name }}">
+            </div>
+            <div class="form-group">
+              <label>Anbieter</label>
+              <input type="text" name="courses_{{ loop.index0 }}_provider" value="{{ entry.provider }}">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Von</label>
+                <input type="text" name="courses_{{ loop.index0 }}_period_start" value="{{ (entry.period.start or '') if entry.period else '' }}">
+              </div>
+              <div class="form-group">
+                <label>Bis</label>
+                <input type="text" name="courses_{{ loop.index0 }}_period_end" value="{{ (entry.period.end or '') if entry.period else '' }}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Skills <span class="muted">(eine pro Zeile)</span></label>
+              <textarea name="courses_{{ loop.index0 }}_skills" rows="2">{{ (entry.skills or []) | join('\n') }}</textarea>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('courses')">+ Kurs hinzufügen</button>
+    </div>
+  </section>
+
+  {# Projekte #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Projekte</h2>
+      <div id="projects-container">
+        {% for entry in ((profile.projects or []) if profile else []) %}
+        <div class="profile-card" data-prefix="projects" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" name="projects_{{ loop.index0 }}_name" value="{{ entry.name }}">
+            </div>
+            <div class="form-group">
+              <label>Zeitraum</label>
+              <input type="text" name="projects_{{ loop.index0 }}_period" value="{{ entry.period }}">
+            </div>
+            <div class="form-group">
+              <label>Beschreibung</label>
+              <textarea name="projects_{{ loop.index0 }}_description" rows="3">{{ entry.description }}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Ergebnis / Outcome</label>
+              <textarea name="projects_{{ loop.index0 }}_outcome" rows="2">{{ entry.outcome }}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Technologien <span class="muted">(eine pro Zeile)</span></label>
+              <textarea name="projects_{{ loop.index0 }}_technologies" rows="2">{{ (entry.technologies or []) | join('\n') }}</textarea>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('projects')">+ Projekt hinzufügen</button>
+    </div>
+  </section>
+
+  {# Ehrenamt #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Ehrenamt</h2>
+      <div id="volunteering-container">
+        {% for entry in ((profile.volunteering or []) if profile else []) %}
+        <div class="profile-card" data-prefix="volunteering" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields">
+            <div class="form-group">
+              <label>Rolle</label>
+              <input type="text" name="volunteering_{{ loop.index0 }}_role" value="{{ entry.role }}">
+            </div>
+            <div class="form-group">
+              <label>Organisation</label>
+              <input type="text" name="volunteering_{{ loop.index0 }}_organization" value="{{ entry.organization }}">
+            </div>
+            <div class="form-group">
+              <label>Zweck / Anliegen</label>
+              <input type="text" name="volunteering_{{ loop.index0 }}_cause" value="{{ entry.cause }}">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Von</label>
+                <input type="text" name="volunteering_{{ loop.index0 }}_period_start" value="{{ (entry.period.start or '') if entry.period else '' }}">
+              </div>
+              <div class="form-group">
+                <label>Bis</label>
+                <input type="text" name="volunteering_{{ loop.index0 }}_period_end" value="{{ (entry.period.end or '') if entry.period else '' }}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Beschreibung</label>
+              <textarea name="volunteering_{{ loop.index0 }}_description" rows="2">{{ entry.description }}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Skills <span class="muted">(eine pro Zeile)</span></label>
+              <textarea name="volunteering_{{ loop.index0 }}_skills" rows="2">{{ (entry.skills or []) | join('\n') }}</textarea>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('volunteering')">+ Eintrag hinzufügen</button>
+    </div>
+  </section>
+
+  {# Publikationen #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Publikationen</h2>
+      <div id="publications-container">
+        {% for entry in ((profile.publications or []) if profile else []) %}
+        <div class="profile-card" data-prefix="publications" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields">
+            <div class="form-group">
+              <label>Titel</label>
+              <input type="text" name="publications_{{ loop.index0 }}_title" value="{{ entry.title }}">
+            </div>
+            <div class="form-group">
+              <label>Verlag / Herausgeber</label>
+              <input type="text" name="publications_{{ loop.index0 }}_publisher" value="{{ entry.publisher }}">
+            </div>
+            <div class="form-group">
+              <label>Datum</label>
+              <input type="text" name="publications_{{ loop.index0 }}_date" value="{{ entry.date }}">
+            </div>
+            <div class="form-group">
+              <label>Beschreibung</label>
+              <textarea name="publications_{{ loop.index0 }}_description" rows="2">{{ entry.description }}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Themen <span class="muted">(eines pro Zeile)</span></label>
+              <textarea name="publications_{{ loop.index0 }}_topics" rows="2">{{ (entry.topics or []) | join('\n') }}</textarea>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('publications')">+ Publikation hinzufügen</button>
+    </div>
+  </section>
+
+  {# Auszeichnungen #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Auszeichnungen &amp; Ehrungen</h2>
+      <div id="honors_awards-container">
+        {% for entry in ((profile.honors_awards or []) if profile else []) %}
+        <div class="profile-card" data-prefix="honors_awards" data-index="{{ loop.index0 }}">
+          <div class="profile-card__fields">
+            <div class="form-group">
+              <label>Titel</label>
+              <input type="text" name="honors_awards_{{ loop.index0 }}_title" value="{{ entry.title }}">
+            </div>
+            <div class="form-group">
+              <label>Verleihende Organisation</label>
+              <input type="text" name="honors_awards_{{ loop.index0 }}_issuer" value="{{ entry.issuer }}">
+            </div>
+            <div class="form-group">
+              <label>Datum</label>
+              <input type="text" name="honors_awards_{{ loop.index0 }}_date" value="{{ entry.date }}">
+            </div>
+            <div class="form-group">
+              <label>Beschreibung</label>
+              <textarea name="honors_awards_{{ loop.index0 }}_description" rows="2">{{ entry.description }}</textarea>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="addCard('honors_awards')">+ Auszeichnung hinzufügen</button>
+    </div>
+  </section>
+
+  {# Präferenzen #}
+  <section class="section">
+    <div class="card stack">
+      <h2>Präferenzen</h2>
+      <div class="form-group">
+        <label for="salary_expectation">Gehaltsvorstellung</label>
+        <input type="text" id="salary_expectation" name="salary_expectation" value="{{ (profile.salary_expectation or '') if profile else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="work_model">Arbeitsmodell</label>
+        <input type="text" id="work_model" name="work_model" value="{{ (profile.work_model or '') if profile else '' }}" placeholder="z. B. Remote, Hybrid, Vor Ort">
+      </div>
+      <div class="form-group">
+        <label for="availability">Frühestmöglicher Start</label>
+        <input type="text" id="availability" name="availability" value="{{ (profile.availability or '') if profile else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="employment_types">Beschäftigungsarten <span class="muted">(eine pro Zeile)</span></label>
+        <textarea id="employment_types" name="employment_types" rows="3">{{ ((profile.employment_types or []) | join('\n')) if profile else '' }}</textarea>
+      </div>
+    </div>
+  </section>
+
+  {# Aktionsleiste #}
+  <section class="section">
+    <div class="card">
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Speichern</button>
+        <a href="{{ request.url_for('render_profile_page') }}" class="btn btn-secondary">Abbrechen</a>
+      </div>
+    </div>
+  </section>
+
+</form>
+
+{# Hidden blank card templates — used by addCard() to clone new entries #}
+<div hidden>
+
+  <div id="tmpl-work_experience" class="profile-card" data-prefix="work_experience">
+    <div class="profile-card__fields">
+      <div class="form-group"><label>Unternehmen</label><input type="text" name="work_experience_TMPL_company" value=""></div>
+      <div class="form-group"><label>Position</label><input type="text" name="work_experience_TMPL_position" value=""></div>
+      <div class="form-row">
+        <div class="form-group"><label>Von</label><input type="text" name="work_experience_TMPL_period_start" value="" placeholder="z. B. 2020-03"></div>
+        <div class="form-group"><label>Bis</label><input type="text" name="work_experience_TMPL_period_end" value="" placeholder="z. B. 2023-06 oder heute"></div>
+      </div>
+      <div class="form-group"><label>Aufgaben <span class="muted">(eine pro Zeile)</span></label><textarea name="work_experience_TMPL_responsibilities" rows="4"></textarea></div>
+      <div class="form-group"><label>Erfolge <span class="muted">(eine pro Zeile)</span></label><textarea name="work_experience_TMPL_achievements" rows="3"></textarea></div>
+      <div class="form-group"><label>Tools / Technologien <span class="muted">(eine pro Zeile)</span></label><textarea name="work_experience_TMPL_skills" rows="3"></textarea></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-education" class="profile-card" data-prefix="education">
+    <div class="profile-card__fields">
+      <div class="form-group"><label>Institution</label><input type="text" name="education_TMPL_institution" value=""></div>
+      <div class="form-group"><label>Abschluss / Ausbildungstyp</label><input type="text" name="education_TMPL_degree" value=""></div>
+      <div class="form-row">
+        <div class="form-group"><label>Von</label><input type="text" name="education_TMPL_period_start" value=""></div>
+        <div class="form-group"><label>Bis</label><input type="text" name="education_TMPL_period_end" value=""></div>
+      </div>
+      <div class="form-group"><label>Note</label><input type="text" name="education_TMPL_grade" value=""></div>
+      <div class="form-group"><label>Studieninhalte <span class="muted">(eine pro Zeile)</span></label><textarea name="education_TMPL_coursework" rows="3"></textarea></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-hard_skills" class="profile-card" data-prefix="hard_skills">
+    <div class="profile-card__fields profile-card__fields--row">
+      <div class="form-group"><label>Skill</label><input type="text" name="hard_skills_TMPL_skill" value=""></div>
+      <div class="form-group"><label>Niveau</label><input type="text" name="hard_skills_TMPL_proficiency" value=""></div>
+      <div class="form-group"><label>Jahre Erfahrung</label><input type="text" name="hard_skills_TMPL_years_experience" value=""></div>
+      <div class="form-group"><label>Nachweis / Kontext</label><input type="text" name="hard_skills_TMPL_evidence" value=""></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-languages" class="profile-card" data-prefix="languages">
+    <div class="profile-card__fields profile-card__fields--row">
+      <div class="form-group"><label>Sprache</label><input type="text" name="languages_TMPL_language" value=""></div>
+      <div class="form-group"><label>Niveau</label><input type="text" name="languages_TMPL_level" value=""></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-certifications" class="profile-card" data-prefix="certifications">
+    <div class="profile-card__fields">
+      <div class="form-group"><label>Name</label><input type="text" name="certifications_TMPL_name" value=""></div>
+      <div class="form-group"><label>Ausstellende Organisation</label><input type="text" name="certifications_TMPL_issuer" value=""></div>
+      <div class="form-group"><label>Ausstellungsdatum</label><input type="text" name="certifications_TMPL_issue_date" value=""></div>
+      <div class="form-group"><label>Skills <span class="muted">(eine pro Zeile)</span></label><textarea name="certifications_TMPL_skills" rows="2"></textarea></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-courses" class="profile-card" data-prefix="courses">
+    <div class="profile-card__fields">
+      <div class="form-group"><label>Name</label><input type="text" name="courses_TMPL_name" value=""></div>
+      <div class="form-group"><label>Anbieter</label><input type="text" name="courses_TMPL_provider" value=""></div>
+      <div class="form-row">
+        <div class="form-group"><label>Von</label><input type="text" name="courses_TMPL_period_start" value=""></div>
+        <div class="form-group"><label>Bis</label><input type="text" name="courses_TMPL_period_end" value=""></div>
+      </div>
+      <div class="form-group"><label>Skills <span class="muted">(eine pro Zeile)</span></label><textarea name="courses_TMPL_skills" rows="2"></textarea></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-projects" class="profile-card" data-prefix="projects">
+    <div class="profile-card__fields">
+      <div class="form-group"><label>Name</label><input type="text" name="projects_TMPL_name" value=""></div>
+      <div class="form-group"><label>Zeitraum</label><input type="text" name="projects_TMPL_period" value=""></div>
+      <div class="form-group"><label>Beschreibung</label><textarea name="projects_TMPL_description" rows="3"></textarea></div>
+      <div class="form-group"><label>Ergebnis / Outcome</label><textarea name="projects_TMPL_outcome" rows="2"></textarea></div>
+      <div class="form-group"><label>Technologien <span class="muted">(eine pro Zeile)</span></label><textarea name="projects_TMPL_technologies" rows="2"></textarea></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-volunteering" class="profile-card" data-prefix="volunteering">
+    <div class="profile-card__fields">
+      <div class="form-group"><label>Rolle</label><input type="text" name="volunteering_TMPL_role" value=""></div>
+      <div class="form-group"><label>Organisation</label><input type="text" name="volunteering_TMPL_organization" value=""></div>
+      <div class="form-group"><label>Zweck / Anliegen</label><input type="text" name="volunteering_TMPL_cause" value=""></div>
+      <div class="form-row">
+        <div class="form-group"><label>Von</label><input type="text" name="volunteering_TMPL_period_start" value=""></div>
+        <div class="form-group"><label>Bis</label><input type="text" name="volunteering_TMPL_period_end" value=""></div>
+      </div>
+      <div class="form-group"><label>Beschreibung</label><textarea name="volunteering_TMPL_description" rows="2"></textarea></div>
+      <div class="form-group"><label>Skills <span class="muted">(eine pro Zeile)</span></label><textarea name="volunteering_TMPL_skills" rows="2"></textarea></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-publications" class="profile-card" data-prefix="publications">
+    <div class="profile-card__fields">
+      <div class="form-group"><label>Titel</label><input type="text" name="publications_TMPL_title" value=""></div>
+      <div class="form-group"><label>Verlag / Herausgeber</label><input type="text" name="publications_TMPL_publisher" value=""></div>
+      <div class="form-group"><label>Datum</label><input type="text" name="publications_TMPL_date" value=""></div>
+      <div class="form-group"><label>Beschreibung</label><textarea name="publications_TMPL_description" rows="2"></textarea></div>
+      <div class="form-group"><label>Themen <span class="muted">(eines pro Zeile)</span></label><textarea name="publications_TMPL_topics" rows="2"></textarea></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+  <div id="tmpl-honors_awards" class="profile-card" data-prefix="honors_awards">
+    <div class="profile-card__fields">
+      <div class="form-group"><label>Titel</label><input type="text" name="honors_awards_TMPL_title" value=""></div>
+      <div class="form-group"><label>Verleihende Organisation</label><input type="text" name="honors_awards_TMPL_issuer" value=""></div>
+      <div class="form-group"><label>Datum</label><input type="text" name="honors_awards_TMPL_date" value=""></div>
+      <div class="form-group"><label>Beschreibung</label><textarea name="honors_awards_TMPL_description" rows="2"></textarea></div>
+    </div>
+    <button type="button" class="btn btn-secondary profile-card__remove" onclick="removeCard(this)">Löschen</button>
+  </div>
+
+</div>
+
+<script>
+  function addCard(prefix) {
+    var container = document.getElementById(prefix + '-container');
+    var template = document.getElementById('tmpl-' + prefix);
+    if (!container || !template) return;
+
+    var index = container.querySelectorAll('.profile-card').length;
+    var clone = template.cloneNode(true);
+    clone.removeAttribute('id');
+
+    clone.querySelectorAll('[name]').forEach(function(el) {
+      el.name = el.name.replace('_TMPL_', '_' + index + '_');
+    });
+
+    container.appendChild(clone);
+  }
+
+  function removeCard(btn) {
+    var card = btn.closest('.profile-card');
+    var container = card.parentElement;
+    card.remove();
+
+    container.querySelectorAll('.profile-card').forEach(function(c, i) {
+      c.querySelectorAll('[name]').forEach(function(el) {
+        el.name = el.name.replace(/_\d+_/, '_' + i + '_');
+      });
+    });
+  }
+</script>
+{% endblock %}

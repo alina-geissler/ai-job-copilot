@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     storage_region: str = "us-east-1"
     max_upload_size_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
 
+    llm_api_url: str = "http://localhost:11434/v1"
+    llm_model: str = "llama3.2"
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
