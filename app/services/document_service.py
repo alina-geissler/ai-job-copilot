@@ -118,6 +118,11 @@ def upload_user_document(
     if existing is not None:
         storage_delete(storage_key=existing.storage_key)
         delete_document(db, document=existing)
+        if document_type == DocumentType.CV:
+            from app.crud.profile_information import get_profile_for_user, delete_profile
+            existing_profile = get_profile_for_user(db, user_id=user_id)
+            if existing_profile is not None:
+                delete_profile(db, profile=existing_profile)
 
     document = create_document(
         db,

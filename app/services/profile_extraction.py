@@ -35,12 +35,15 @@ def extract_profile_from_cv_text(cv_text: str) -> tuple[CandidateProfile, str]:
     :raises openai.OpenAIError: If the LLM request fails.
     """
     client = OpenAI(
-        base_url=settings.llm_api_url,
-        api_key="ollama",
+        # base_url=settings.llm_api_url,
+        base_url=settings.openrouter_api_url,  # for testing
+        # api_key="ollama",
+        api_key=settings.openrouter_api_key,
         timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0),
     )
     completion = client.beta.chat.completions.parse(
-        model=settings.llm_model,
+        # model=settings.llm_model,
+        model="qwen/qwen-2.5-7b-instruct",  # for testing
         max_tokens=4096,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},

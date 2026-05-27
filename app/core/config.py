@@ -51,8 +51,11 @@ class Settings(BaseSettings):
     storage_region: str = "us-east-1"
     max_upload_size_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
 
-    llm_api_url: str = "http://localhost:11434/v1"
-    llm_model: str = "llama3.2"
+    llm_api_url: str = "http://localhost:11434/v1"  # local LLM for CV / profile extraction
+    llm_model: str = "qwen2.5:7b"  # "llama3.2"
+
+    openrouter_api_url: str = "https://openrouter.ai/api/v1"  # for testing (ollama in Docker is very slow)
+    openrouter_api_key: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

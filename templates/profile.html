@@ -31,7 +31,7 @@
   </section>
 
   {% if extraction_in_progress %}
-  <script>setTimeout(() => location.reload(), 5000);</script>
+  <script>setTimeout(() => location.replace(location.pathname), 10000);</script>
   {% endif %}
 
 {% else %}

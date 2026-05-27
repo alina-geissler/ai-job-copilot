@@ -222,7 +222,7 @@ def render_profile_page(
 
     extraction_in_progress = request.session.get("profile_extraction_in_progress", False)
     if extraction_in_progress:
-        if profile_has_content:
+        if profile is not None:
             request.session.pop("profile_extraction_in_progress", None)
             extraction_in_progress = False
     else:
