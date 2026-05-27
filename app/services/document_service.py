@@ -45,6 +45,8 @@ _EVAL_LOG_PATH = "evals/profile_extractions.jsonl"
 def _log_extraction(
     *,
     cv_text: str,
+    step1_text: str,
+    step1_prompt_version: str,
     profile: "CandidateProfile",
     prompt_version: str,
 ) -> None:
@@ -54,17 +56,21 @@ def _log_extraction(
     The CV text is not stored; only a short hash prefix for traceability.
 
     :param cv_text: Raw CV text (used only for hashing).
-    :param profile: Successfully parsed CandidateProfile.
-    :param prompt_version: Active prompt version string (e.g. ``"v1"``).
+    :param step1_text: Reconstructed plain text produced by step 1.
+    :param step1_prompt_version: Active step 1 prompt version string.
+    :param profile: Successfully parsed CandidateProfile from step 2.
+    :param prompt_version: Active step 2 prompt version string.
     """
     try:
         from app.core.config import settings as _settings
         os.makedirs("evals", exist_ok=True)
         record = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "prompt_version": prompt_version,
+            "step1_prompt_version": step1_prompt_version,
+            "step2_prompt_version": prompt_version,
             "model": _settings.llm_model,
             "cv_sha256": hashlib.sha256(cv_text.encode()).hexdigest()[:16],
+            "step1_output": step1_text,
             "output": profile.model_dump(),
         }
         with open(_EVAL_LOG_PATH, "a", encoding="utf-8") as f:
@@ -256,11 +262,18 @@ def _run_extraction_task(*, document_id: int) -> None:
             return
 
         try:
-            profile, prompt_version = extract_profile_from_cv_text(extracted_text)
-            _log_extraction(cv_text=extracted_text, profile=profile, prompt_version=prompt_version)
+            profile, step1_text, step1_version, step2_version = extract_profile_from_cv_text(extracted_text)
+            _log_extraction(
+                cv_text=extracted_text,
+                step1_text=step1_text,
+                step1_prompt_version=step1_version,
+                profile=profile,
+                prompt_version=step2_version,
+            )
             upsert_profile(db, user_id=document.user_id, data={
                 **profile.model_dump(),
                 "extraction_error": None,
+                "cv_reconstruction": step1_text,
             })
         except Exception as profile_exc:
             logger.exception("Profile extraction failed for document %d.", document_id)
@@ -296,11 +309,18 @@ def _run_profile_only_task(*, user_id: int) -> None:
             return
 
         try:
-            profile, prompt_version = extract_profile_from_cv_text(cv_doc.extracted_text)
-            _log_extraction(cv_text=cv_doc.extracted_text, profile=profile, prompt_version=prompt_version)
+            profile, step1_text, step1_version, step2_version = extract_profile_from_cv_text(cv_doc.extracted_text)
+            _log_extraction(
+                cv_text=cv_doc.extracted_text,
+                step1_text=step1_text,
+                step1_prompt_version=step1_version,
+                profile=profile,
+                prompt_version=step2_version,
+            )
             upsert_profile(db, user_id=user_id, data={
                 **profile.model_dump(),
                 "extraction_error": None,
+                "cv_reconstruction": step1_text,
             })
         except Exception as profile_exc:
             logger.exception("Profile retry extraction failed for user %d.", user_id)

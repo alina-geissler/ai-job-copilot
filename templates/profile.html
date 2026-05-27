@@ -46,6 +46,15 @@
     </div>
   {% endif %}
 
+  {% if profile.cv_reconstruction %}
+  <section class="section">
+    <div class="card">
+      <h2>Debug: Rekonstruierter CV-Text (Schritt 1)</h2>
+      <pre style="white-space: pre-wrap; font-size: 0.85em; margin: 0;">{{ profile.cv_reconstruction }}</pre>
+    </div>
+  </section>
+  {% endif %}
+
   <section class="section">
     <div class="card">
       <div class="profile-section-header">
