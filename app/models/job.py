@@ -17,6 +17,8 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.application_tracker_entry import ApplicationTrackerEntry
     from app.models.search_run_job import SearchRunJob
+    from app.models.job_normalization import JobNormalization
+    from app.models.cover_letter import CoverLetter
 
 
 class Job(Base):
@@ -53,4 +55,10 @@ class Job(Base):
     )
     search_run_jobs: Mapped[list[SearchRunJob]] = relationship(
         "SearchRunJob", back_populates="job"
+    )
+    normalizations: Mapped[list[JobNormalization]] = relationship(
+        "JobNormalization", back_populates="job", cascade="all, delete-orphan"
+    )
+    cover_letters: Mapped[list[CoverLetter]] = relationship(
+        "CoverLetter", back_populates="job"
     )

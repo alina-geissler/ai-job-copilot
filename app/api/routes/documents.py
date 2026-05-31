@@ -10,19 +10,20 @@ import logging
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.enums import DocumentProcessingStatus, DocumentType
+from app.crud.cover_letter import get_completed_drafts_for_user, get_saved_cover_letters_for_user
+from app.crud.document import get_document_by_id_for_user, get_document_by_type_for_user
+from app.crud.profile_information import get_profile_for_user
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import build_feedback_query, get_base_template_context
 from app.models.user import User
-from app.crud.document import get_document_by_id_for_user, get_document_by_type_for_user
-from app.crud.profile_information import get_profile_for_user
 from app.services.document_service import (
     delete_user_document,
     list_user_documents,
@@ -42,6 +43,32 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 templates = Jinja2Templates(directory="templates")
 
 _ALLOWED_MIME_TYPES = {"application/pdf"}
+
+_TEMPLATE_LABELS: dict[str, str] = {
+    "classic": "Klassisch",
+    "modern": "Modern",
+    "compact": "Kompakt",
+}
+
+
+def _serialize_cover_letter(cl: Any) -> dict[str, Any]:
+    """Serialize one CoverLetter ORM object into template-friendly data.
+
+    :param cl: CoverLetter ORM object.
+    :return: Dictionary with UI-ready cover letter data.
+    """
+    template_val = cl.template.value if cl.template is not None else ""
+    return {
+        "id": cl.id,
+        "document_name": cl.document_name,
+        "template": template_val,
+        "template_label": _TEMPLATE_LABELS.get(template_val, template_val),
+        "is_saved": cl.is_saved,
+        "generation_status": cl.generation_status,
+        "job_id": cl.job_id,
+        "manual_job_posting_id": cl.manual_job_posting_id,
+        "created_at": cl.created_at,
+    }
 
 
 def _serialize_document(doc: Any) -> dict[str, Any]:
@@ -103,12 +130,18 @@ def render_documents_page(
         request: Request,
         current_user: Annotated[User, Depends(get_current_user)],
         db: Annotated[Session, Depends(get_db)],
+        job_id: Annotated[int | None, Query()] = None,
 ) -> HTMLResponse:
     """Render the documents overview page.
+
+    Shows uploaded documents, saved cover letters, and cover letter drafts.
+    When ``job_id`` is provided, the cover letter sections are filtered to that
+    job and a contextual banner is displayed.
 
     :param request: Incoming HTTP request.
     :param current_user: Authenticated user.
     :param db: Active database session.
+    :param job_id: Optional job identifier to filter cover letter sections.
     :return: Rendered documents page.
     """
     documents = list_user_documents(db, user_id=current_user.id)
@@ -122,6 +155,15 @@ def render_documents_page(
     profile_has_error = profile is not None and bool(profile.extraction_error)
     redirect_to_profile = request.session.get("redirect_to_profile", False)
 
+    saved_cover_letters = [
+        _serialize_cover_letter(cl)
+        for cl in get_saved_cover_letters_for_user(db, user_id=current_user.id, job_id=job_id)
+    ]
+    draft_cover_letters = [
+        _serialize_cover_letter(cl)
+        for cl in get_completed_drafts_for_user(db, user_id=current_user.id, job_id=job_id)
+    ]
+
     return templates.TemplateResponse(
         request=request,
         name="documents.html",
@@ -133,6 +175,9 @@ def render_documents_page(
             "has_existing_cv": has_existing_cv,
             "profile_has_error": profile_has_error,
             "redirect_to_profile": redirect_to_profile,
+            "saved_cover_letters": saved_cover_letters,
+            "draft_cover_letters": draft_cover_letters,
+            "job_id_filter": job_id,
         },
     )
 

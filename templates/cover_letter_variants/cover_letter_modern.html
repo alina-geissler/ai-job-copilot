@@ -1,0 +1,42 @@
+{#- =========================================================================
+    templates/cover_letter_variants/cover_letter_modern.html
+
+    Letterhead: large name (left) + right-side contact WITH icons, in the
+    order address -> mail -> phone (address shown as one combined line). The
+    thick left accent rule + recipient/bottom hairlines come from modern.css.
+    Footer: closing/signature, then attachments beneath the bottom hairline.
+
+    Render with {% include %}.
+========================================================================= -#}
+{%- import "cover_letter_variants/_macros.html" as cl -%}
+{%- set theme   = theme   | default('theme-blue') -%}
+{%- set font    = font    | default('font-arial') -%}
+{%- set size    = size    | default('size-medium') -%}
+{%- set spacing = spacing | default('spacing-normal') -%}
+
+<article class="cover-letter variant-modern {{ theme }} {{ font }} {{ size }} {{ spacing }}{% if doc_classes %} {{ doc_classes }}{% endif %}">
+
+  <header class="cl-sender" data-field-group="sender">
+    {{ cl.name_block(candidate_first_name, candidate_last_name) }}
+
+    {% if candidate_street or candidate_city or candidate_email or candidate_phone %}
+    <div class="cl-sender-contact" data-field-group="sender_contact">
+      {% if candidate_street or candidate_city %}
+      <p class="cl-sender-address" data-field-group="address">{{ cl.icon('pin') }}<span>
+        {%- if candidate_street %}<span class="cl-field" data-field="candidate_street">{{ candidate_street }}</span>{% endif -%}
+        {%- if candidate_street and candidate_city %}, {% endif -%}
+        {%- if candidate_city %}<span class="cl-field" data-field="candidate_city">{{ candidate_city }}</span>{% endif -%}
+      </span></p>
+      {% endif %}
+      {% if candidate_email %}<p class="cl-field cl-sender-email" data-field="candidate_email">{{ cl.icon('mail') }}<span>{{ candidate_email }}</span></p>{% endif %}
+      {% if candidate_phone %}<p class="cl-field cl-sender-phone" data-field="candidate_phone">{{ cl.icon('phone') }}<span>{{ candidate_phone }}</span></p>{% endif %}
+    </div>
+    {% endif %}
+  </header>
+
+  {% include "cover_letter_variants/_content.html" %}
+
+  {{ cl.signature(closing, candidate_first_name, candidate_last_name) }}
+  {{ cl.attachments(attachments) }}
+
+</article>

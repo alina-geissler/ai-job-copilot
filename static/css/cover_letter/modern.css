@@ -1,0 +1,47 @@
+/* =========================================================================
+   cover_letter/modern.css
+   Variant: "modern"  (reference template 2)
+
+   Coloured elements (per spec): candidate name + thick left accent rule.
+   Contact (with icons) sits on the right, but each line is left-aligned so
+   the icons/line-starts line up vertically. Slim hairlines above + below the
+   recipient and one at the bottom (inset to the text column); attachments
+   sit beneath the bottom hairline.
+   ========================================================================= */
+
+.cover-letter.variant-modern {
+  --doc-fs-name: 26pt;
+  /* Compensate for border-left so text still lands at DIN 5008's 2.5 cm. */
+  --doc-margin-left: calc(2.5cm - 16px);
+  /* Thick full-height accent rule down the left edge (~4x the previous 4px).
+     A real page-box border = decorative, no positioned text, no pseudo. */
+  border-left: 16px solid var(--doc-accent);
+}
+
+/* Letterhead: large name left, contact block right. */
+.variant-modern .cl-sender {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.variant-modern .cl-sender-name .cl-name { color: var(--doc-accent); }
+
+/* Contact pinned right, but lines left-aligned (icons aligned at the start). */
+.variant-modern .cl-sender-contact {
+  text-align: left;
+  font-size: calc(var(--doc-fs-sub) - 1pt);
+}
+.variant-modern .cl-sender-contact p { justify-content: flex-start; }
+
+/* Slim hairlines around the recipient, kept within the text column. */
+.variant-modern .cl-recipient {
+  border-top: 1px solid var(--doc-hairline);
+  border-bottom: 1px solid var(--doc-hairline);
+  padding: calc(var(--doc-line) * 0.5) 0;
+}
+
+/* Bottom hairline with the attachments beneath it. */
+.variant-modern .cl-attachments {
+  margin-top: calc(var(--doc-line) * 2);
+  padding-top: calc(var(--doc-line) * 0.7);
+  border-top: 1px solid var(--doc-hairline);
+}

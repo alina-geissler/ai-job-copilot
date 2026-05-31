@@ -1,0 +1,59 @@
+{#- =========================================================================
+    templates/cover_letter_variants/cover_letter_compact.html
+
+    Letterhead: left cluster = address column (street over city, pin icon)
+    + comm column (phone over email; phone -> speech-bubble icon, email ->
+    envelope) ; name stacked on the RIGHT. DOM keeps name first; compact.css
+    flips it visually with row-reverse so the ATS still reads name first.
+    Footer: closing/signature on the left, attachments on the right.
+
+    Render with {% include %}.
+========================================================================= -#}
+{%- import "cover_letter_variants/_macros.html" as cl -%}
+{%- set theme   = theme   | default('theme-grey') -%}
+{%- set font    = font    | default('font-arial') -%}
+{%- set size    = size    | default('size-medium') -%}
+{%- set spacing = spacing | default('spacing-normal') -%}
+
+<article class="cover-letter variant-compact {{ theme }} {{ font }} {{ size }} {{ spacing }}{% if doc_classes %} {{ doc_classes }}{% endif %}">
+
+  <header class="cl-sender" data-field-group="sender">
+    {{ cl.name_block(candidate_first_name, candidate_last_name) }}
+
+    {% if candidate_street or candidate_city or candidate_phone or candidate_email %}
+    <div class="cl-sender-contact" data-field-group="sender_contact">
+
+      {% if candidate_street or candidate_city %}
+      <div class="cl-contact-col cl-contact-postal" data-field-group="address">
+        {{ cl.icon('pin') }}
+        <span class="cl-contact-lines">
+          {% if candidate_street %}<span class="cl-field" data-field="candidate_street">{{ candidate_street }}</span>{% endif %}
+          {% if candidate_city %}<span class="cl-field" data-field="candidate_city">{{ candidate_city }}</span>{% endif %}
+        </span>
+      </div>
+      {% endif %}
+
+      {% if candidate_phone or candidate_email %}
+      <div class="cl-contact-col cl-contact-comm">
+        {{ cl.icon('bubble') }}
+        <span class="cl-contact-lines">
+          {% if candidate_phone %}<span class="cl-field cl-sender-phone" data-field="candidate_phone">{{ candidate_phone }}</span>{% endif %}
+          {% if candidate_email %}<span class="cl-field cl-sender-email" data-field="candidate_email">{{ candidate_email }}</span>{% endif %}
+        </span>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endif %}
+  </header>
+
+  {% include "cover_letter_variants/_content.html" %}
+
+  <div class="cl-footer">
+    <div class="cl-footer-main">
+      {{ cl.signature(closing, candidate_first_name, candidate_last_name) }}
+    </div>
+    {{ cl.attachments(attachments) }}
+  </div>
+
+</article>

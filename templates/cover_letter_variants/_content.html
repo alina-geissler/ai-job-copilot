@@ -1,0 +1,67 @@
+{#- =========================================================================
+    templates/cover_letter_variants/_content.html
+
+    The part of the letter that is IDENTICAL across all variants:
+        recipient -> date -> subject + reference -> salutation
+        -> introduction -> main_body[] -> conclusion
+
+    Included by each variant template (with context), positioned between the
+    variant-specific letterhead and the variant-specific footer
+    (closing / signature / attachments).
+
+    Every field is optional and carries a stable data-field hook for edit mode.
+    No icons live here (icons belong to the letterhead only).
+========================================================================= -#}
+
+{#- ===== RECIPIENT ============================================= -#}
+{% if company_name or contact_person or company_street or company_city %}
+<section class="cl-recipient" data-field-group="recipient">
+  {% if company_name %}<p class="cl-field cl-company-name" data-field="company_name">{{ company_name }}</p>{% endif %}
+  {% if contact_person %}<p class="cl-field cl-contact-person" data-field="contact_person">{{ contact_person }}</p>{% endif %}
+  {% if company_street %}<p class="cl-field cl-company-street" data-field="company_street">{{ company_street }}</p>{% endif %}
+  {% if company_city %}<p class="cl-field cl-company-city" data-field="company_city">{{ company_city }}</p>{% endif %}
+</section>
+{% endif %}
+
+{#- ===== DATE LINE (right-aligned) ============================= -#}
+{% if candidate_location or date %}
+<section class="cl-date-line" data-field-group="date">
+  <p class="cl-date">
+    {%- if candidate_location %}<span class="cl-field cl-date-location" data-field="candidate_location">{{ candidate_location }}</span>{% endif -%}
+    {%- if candidate_location and date %}, {% endif -%}
+    {%- if date %}<span class="cl-field cl-date-value" data-field="date">{{ date }}</span>{% endif -%}
+  </p>
+</section>
+{% endif %}
+
+{#- ===== SUBJECT + REFERENCE =================================== -#}
+{% if subject_line or reference_number %}
+<section class="cl-subject" data-field-group="subject">
+  {% if subject_line %}<h1 class="cl-field cl-subject-line" data-field="subject_line">{{ subject_line }}</h1>{% endif %}
+  {% if reference_number %}<p class="cl-field cl-reference" data-field="reference_number">{{ reference_number }}</p>{% endif %}
+</section>
+{% endif %}
+
+{#- ===== SALUTATION ============================================ -#}
+{% if salutation %}
+<p class="cl-field cl-salutation" data-field="salutation">{{ salutation }}</p>
+{% endif %}
+
+{#- ===== BODY: introduction + main_body[] + conclusion ========= -#}
+{% if introduction or main_body or conclusion %}
+<div class="cl-body" data-field-group="body">
+  {% if introduction %}
+  <p class="cl-field cl-introduction" data-field="introduction">{{ introduction }}</p>
+  {% endif %}
+  {% if main_body %}
+  <div class="cl-field cl-main-body" data-field="main_body">
+    {% for paragraph in main_body %}
+    <p class="cl-paragraph">{{ paragraph }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if conclusion %}
+  <p class="cl-field cl-conclusion" data-field="conclusion">{{ conclusion }}</p>
+  {% endif %}
+</div>
+{% endif %}

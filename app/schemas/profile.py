@@ -116,9 +116,12 @@ class CandidateProfile(BaseModel):
     """Structured representation of all information extracted from a CV."""
 
     # Personal information — stored but not used for job matching
-    name: str = ""
+    first_name: str = ""
+    last_name: str = ""
     email: str = ""
-    address: str = ""
+    street: str = ""
+    city: str = ""
+    location: str = ""
     phone: str = ""
 
     # Professional identity

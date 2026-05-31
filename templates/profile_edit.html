@@ -14,21 +14,37 @@
   <section class="section">
     <div class="card stack">
       <h2>Persönliche Daten <span class="muted profile-personal-note">(nicht für Stellensuche verwendet)</span></h2>
-      <div class="form-group">
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name" value="{{ (profile.name or '') if profile else '' }}">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="first_name">Vorname</label>
+          <input type="text" id="first_name" name="first_name" value="{{ (profile.first_name or '') if profile else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="last_name">Nachname</label>
+          <input type="text" id="last_name" name="last_name" value="{{ (profile.last_name or '') if profile else '' }}">
+        </div>
       </div>
       <div class="form-group">
         <label for="email">E-Mail</label>
         <input type="email" id="email" name="email" value="{{ (profile.email or '') if profile else '' }}">
       </div>
       <div class="form-group">
-        <label for="address">Adresse</label>
-        <input type="text" id="address" name="address" value="{{ (profile.address or '') if profile else '' }}">
-      </div>
-      <div class="form-group">
         <label for="phone">Telefon</label>
         <input type="text" id="phone" name="phone" value="{{ (profile.phone or '') if profile else '' }}">
+      </div>
+      <div class="form-group">
+        <label for="street">Straße &amp; Hausnummer</label>
+        <input type="text" id="street" name="street" value="{{ (profile.street or '') if profile else '' }}" placeholder="z. B. Musterstraße 12">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="city">PLZ &amp; Ort</label>
+          <input type="text" id="city" name="city" value="{{ (profile.city or '') if profile else '' }}" placeholder="z. B. 10115 Berlin">
+        </div>
+        <div class="form-group">
+          <label for="location">Standort <span class="muted">(nur Stadtname für Anschreiben)</span></label>
+          <input type="text" id="location" name="location" value="{{ (profile.location or '') if profile else '' }}" placeholder="z. B. Berlin">
+        </div>
       </div>
     </div>
   </section>

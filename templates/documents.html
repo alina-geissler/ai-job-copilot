@@ -5,9 +5,17 @@
 {% block content %}
 <header class="page-header">
   <h1>Dokumente</h1>
-  <p class="muted">Verwalte deine hochgeladenen Dokumente und sieh dir extrahierte Inhalte an.</p>
+  {% if job_id_filter %}
+    <div class="alert alert-info">
+      <p>Zeige Anschreiben für diese Stelle. <a href="{{ request.url_for('render_documents_page') }}">Alle Dokumente anzeigen</a></p>
+    </div>
+  {% else %}
+    <p class="muted">Verwalte deine hochgeladenen Dokumente und Anschreiben.</p>
+  {% endif %}
 </header>
 
+{# ── 1. Hochgeladene Dokumente ── #}
+{% if not job_id_filter %}
 <section class="section">
   <div class="card">
     <h2>Lebenslauf hochladen</h2>
@@ -35,7 +43,7 @@
 
 <section class="section">
   <div class="card">
-    <h2>Meine Dokumente</h2>
+    <h2>Hochgeladene Dokumente</h2>
 
     {% if not documents %}
       <p class="muted">Noch keine Dokumente hochgeladen.</p>
@@ -108,12 +116,80 @@
     {% endif %}
   </div>
 </section>
+{% endif %}
+
+{# ── 2. Gespeicherte Anschreiben ── #}
+<section class="section">
+  <div class="card">
+    <h2>Gespeicherte Anschreiben</h2>
+    {% if not saved_cover_letters %}
+      <p class="muted">Noch keine gespeicherten Anschreiben.</p>
+    {% else %}
+      <ul class="document-list list-clean">
+        {% for cl in saved_cover_letters %}
+          <li class="document-card">
+            <div class="document-card__header">
+              <strong>{{ cl.document_name or 'Unbenanntes Anschreiben' }}</strong>
+              <span class="document-status-pill status--completed">{{ cl.template_label }}</span>
+            </div>
+            <div class="document-card__meta muted">
+              Erstellt am {{ cl.created_at.strftime('%d.%m.%Y') }}
+            </div>
+            <div class="document-card__actions">
+              <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
+                 class="btn btn-secondary">Bearbeiten</a>
+              <form method="post"
+                    action="{{ request.url_for('delete_cover_letter_action', cover_letter_id=cl.id) }}"
+                    onsubmit="return confirm('Anschreiben wirklich löschen?');">
+                <button type="submit" class="btn btn-secondary">Löschen</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</section>
+
+{# ── 3. Entwürfe ── #}
+<section class="section">
+  <div class="card">
+    <h2>Entwürfe</h2>
+    {% if not draft_cover_letters %}
+      <p class="muted">Keine ungespeicherten Entwürfe vorhanden.</p>
+    {% else %}
+      <ul class="document-list list-clean">
+        {% for cl in draft_cover_letters %}
+          <li class="document-card">
+            <div class="document-card__header">
+              <strong>{{ cl.document_name or 'Unbenannter Entwurf' }}</strong>
+              <span class="document-status-pill status--pending">Entwurf</span>
+              <span class="document-status-pill">{{ cl.template_label }}</span>
+            </div>
+            <div class="document-card__meta muted">
+              Erstellt am {{ cl.created_at.strftime('%d.%m.%Y') }}
+            </div>
+            <div class="document-card__actions">
+              <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
+                 class="btn btn-primary">Öffnen &amp; Speichern</a>
+              <form method="post"
+                    action="{{ request.url_for('delete_cover_letter_action', cover_letter_id=cl.id) }}"
+                    onsubmit="return confirm('Anschreiben wirklich löschen?');">
+                <button type="submit" class="btn btn-secondary">Löschen</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</section>
 
 <script>
   var hasPending = !!document.querySelector('.status--pending, .status--processing');
   var shouldRedirect = {{ 'true' if redirect_to_profile else 'false' }};
-  if (hasPending) {
-    setTimeout(() => location.reload(), 4000);
+  if (hasPending && !shouldRedirect) {
+    setTimeout(function () { location.reload(); }, 4000);
   } else if (shouldRedirect) {
     window.location.href = '{{ request.url_for("render_profile_page") }}';
   }

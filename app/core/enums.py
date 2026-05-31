@@ -79,3 +79,36 @@ class ExtractionMethod(StrEnum):
     EMBEDDED_TEXT = "embedded_text"
     OCR = "ocr"
     MARKDOWN = "markdown"
+
+
+class CoverLetterTemplate(StrEnum):
+    """Represent the visual template selected for a generated cover letter."""
+
+    CLASSIC = "classic"
+    MODERN = "modern"
+    COMPACT = "compact"
+
+
+class CoverLetterTone(StrEnum):
+    """Represent the tone selected for a generated cover letter."""
+
+    FORMAL = "formal"
+    NEUTRAL = "neutral"
+    CASUAL = "casual"
+
+
+class CoverLetterGenerationStatus(StrEnum):
+    """Represent the lifecycle state of a cover letter generation task."""
+
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class CoverLetterRevisionType(StrEnum):
+    """Represent the origin of a cover letter content snapshot."""
+
+    INITIAL = "INITIAL"
+    AI_REVISION = "AI_REVISION"
+    USER_REVISION = "USER_REVISION"

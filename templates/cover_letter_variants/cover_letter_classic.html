@@ -1,0 +1,43 @@
+{#- =========================================================================
+    templates/cover_letter_variants/cover_letter_classic.html
+
+    Letterhead: name (left) + plain contact (right), with a single accent rule
+    ABOVE the block. No contact icons. Footer: closing/signature then
+    attachments beneath.
+
+    Style presets default per template; override via context vars
+    (theme/font/size/spacing) or pass extra root classes via doc_classes.
+    Render it from the editor page with {% include %}.
+========================================================================= -#}
+{%- import "cover_letter_variants/_macros.html" as cl -%}
+{%- set theme   = theme   | default('theme-blue') -%}
+{%- set font    = font    | default('font-georgia') -%}
+{%- set size    = size    | default('size-large') -%}
+{%- set spacing = spacing | default('spacing-normal') -%}
+
+<article class="cover-letter variant-classic {{ theme }} {{ font }} {{ size }} {{ spacing }}{% if doc_classes %} {{ doc_classes }}{% endif %}">
+
+  <header class="cl-sender" data-field-group="sender">
+    {{ cl.name_block(candidate_first_name, candidate_last_name) }}
+
+    {% if candidate_email or candidate_street or candidate_city or candidate_phone %}
+    <div class="cl-sender-contact" data-field-group="sender_contact">
+      {% if candidate_street or candidate_city %}
+      <p class="cl-sender-address" data-field-group="address">
+        {%- if candidate_street %}<span class="cl-field" data-field="candidate_street">{{ candidate_street }}</span>{% endif -%}
+        {%- if candidate_street and candidate_city %}, {% endif -%}
+        {%- if candidate_city %}<span class="cl-field" data-field="candidate_city">{{ candidate_city }}</span>{% endif -%}
+      </p>
+      {% endif %}
+      {% if candidate_email %}<p class="cl-field cl-sender-email" data-field="candidate_email">{{ candidate_email }}</p>{% endif %}
+      {% if candidate_phone %}<p class="cl-field cl-sender-phone" data-field="candidate_phone">{{ candidate_phone }}</p>{% endif %}
+    </div>
+    {% endif %}
+  </header>
+
+  {% include "cover_letter_variants/_content.html" %}
+
+  {{ cl.signature(closing, candidate_first_name, candidate_last_name) }}
+  {{ cl.attachments(attachments) }}
+
+</article>

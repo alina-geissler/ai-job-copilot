@@ -8,6 +8,23 @@
   <p class="muted">Übersicht deiner extrahierten und gepflegten Kandidateninformationen.</p>
 </header>
 
+{% if request.query_params.get('needs_profile') %}
+  <section class="section">
+    <div class="alert alert-info" role="alert">
+      <p>
+        <strong>Wir brauchen zunächst deine Profildaten.</strong>
+        Bitte lade deinen Lebenslauf hoch oder trage deine Informationen manuell ein.
+      </p>
+      <p class="muted">Sobald dein Profil vorhanden ist, kannst du direkt mit der Anschreiben-Generierung fortfahren.</p>
+      <div class="actions">
+        <a href="{{ request.url_for('render_cover_letter_setup_page') }}" class="btn btn-primary">
+          Weiter zum Anschreiben-Generator
+        </a>
+      </div>
+    </div>
+  </section>
+{% endif %}
+
 {% if not profile_has_content %}
   <section class="section">
     <div class="card">
@@ -64,16 +81,21 @@
   </section>
 
   {# Persönliche Daten #}
-  {% if profile.name or profile.email or profile.address or profile.phone %}
+  {% if profile.first_name or profile.last_name or profile.email or profile.street or profile.city or profile.location or profile.phone %}
   <section class="section">
     <div class="card">
       <h2>Persönliche Daten</h2>
       <p class="muted profile-personal-note">Diese Daten werden nicht für die Stellensuche verwendet.</p>
       <dl class="profile-dl">
-        {% if profile.name %}<dt>Name</dt><dd>{{ profile.name }}</dd>{% endif %}
+        {% if profile.first_name or profile.last_name %}
+          <dt>Name</dt>
+          <dd>{{ ((profile.first_name or '') ~ ' ' ~ (profile.last_name or '')) | trim or '–' }}</dd>
+        {% endif %}
         {% if profile.email %}<dt>E-Mail</dt><dd>{{ profile.email }}</dd>{% endif %}
-        {% if profile.address %}<dt>Adresse</dt><dd>{{ profile.address }}</dd>{% endif %}
         {% if profile.phone %}<dt>Telefon</dt><dd>{{ profile.phone }}</dd>{% endif %}
+        {% if profile.street %}<dt>Straße</dt><dd>{{ profile.street }}</dd>{% endif %}
+        {% if profile.city %}<dt>Ort</dt><dd>{{ profile.city }}</dd>{% endif %}
+        {% if profile.location %}<dt>Standort</dt><dd>{{ profile.location }}</dd>{% endif %}
       </dl>
     </div>
   </section>

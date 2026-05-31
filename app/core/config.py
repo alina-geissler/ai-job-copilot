@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     storage_region: str = "us-east-1"
     max_upload_size_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
 
+    openai_model: str = "gpt-4o-mini"  # model used for job normalisation and cover letter generation
+
     llm_api_url: str = "http://localhost:11434/v1"  # local LLM for CV / profile extraction
     llm_model: str = "qwen2.5:7b"  # "llama3.2"
 

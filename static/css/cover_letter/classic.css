@@ -1,0 +1,32 @@
+/* =========================================================================
+   cover_letter/classic.css
+   Variant: "classic"  (reference template 1)
+
+   Coloured elements (per spec): candidate name + ONE accent rule ABOVE the
+   name/contact block. No contact icons. No rule under the recipient.
+   Date line stays where the base puts it (right-aligned below recipient).
+   ========================================================================= */
+
+.cover-letter.variant-classic { --doc-fs-name: 20pt; }
+
+/* Accent rule sits ABOVE the letterhead. */
+.variant-classic .cl-sender {
+  align-items: flex-start;
+  justify-content: space-between;
+  border-top: 2px solid var(--doc-accent);
+  padding-top: calc(var(--doc-line) * 0.7);
+}
+
+/* Coloured, spaced-caps name (content stays normal-case for the ATS). */
+.variant-classic .cl-sender-name .cl-name {
+  color: var(--doc-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Contact on the right; lines left-aligned within that column. */
+.variant-classic .cl-sender-contact { text-align: left; }
+
+/* No recipient underline in this variant (base adds none; nothing to undo). */
+
+.variant-classic .cl-subject-line { letter-spacing: 0.02em; }

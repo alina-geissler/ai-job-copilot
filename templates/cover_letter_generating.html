@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Anschreiben wird erstellt… | AI Job Copilot{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1>Anschreiben wird erstellt</h1>
+</header>
+
+<section class="section">
+  <div class="card stack">
+    {% if cover_letter.generation_status == 'failed' %}
+      <div class="alert alert-error" role="alert">
+        <p>Bei der Generierung ist ein Fehler aufgetreten.</p>
+        {% if cover_letter.generation_error %}
+          <p class="muted">{{ cover_letter.generation_error }}</p>
+        {% endif %}
+        <div class="actions">
+          <a href="{{ request.url_for('render_cover_letter_setup_page') }}{% if cover_letter.job_id %}?job_id={{ cover_letter.job_id }}{% elif cover_letter.manual_job_posting_id %}?manual_job_id={{ cover_letter.manual_job_posting_id }}{% endif %}" class="btn btn-secondary">
+            Erneut versuchen
+          </a>
+        </div>
+      </div>
+    {% else %}
+      <div class="document-card__processing">
+        <span class="document-spinner" aria-hidden="true"></span>
+        Dein persönliches Anschreiben wird erstellt. Das kann einen Moment dauern…
+      </div>
+      <p class="muted">Die Seite aktualisiert sich automatisch.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% if cover_letter.generation_status != 'failed' %}
+  <script>setTimeout(() => location.replace(location.pathname), 10000);</script>
+{% endif %}
+{% endblock %}

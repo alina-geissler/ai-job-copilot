@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ default_document_name }} | AI Job Copilot
+{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/classic.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/modern.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/compact.css') }}">
+  <link rel="stylesheet" media="print" href="{{ url_for('static', path='css/cover_letter/print.css') }}">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <style>
+    /* Editor chrome — screen only, not printed */
+    .editor-layout {
+      display: flex;
+      gap: 0;
+      height: calc(100vh - 120px);
+      /* Break out of the 980px container to span the full viewport */
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+      margin-right: calc(-50vw + 50%);
+    }
+    .editor-sidebar {
+      width: 300px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      background: #f5f5f7;
+      border-right: 1px solid #d0d0d6;
+      padding: 1rem;
+    }
+    .editor-preview-bg {
+      flex: 1;
+      background: #c8cdd4;
+      padding: 2rem;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      /* align-items: stretch (default) lets #preview-pane fill the full width
+         so .cover-letter { margin: 0 auto } can center the A4 card within it */
+    }
+    /* min-width: 21cm ensures the pane never collapses narrower than A4.
+       When narrower than 21cm, overflow goes rightward only (no left-clipping). */
+    #preview-pane { min-width: 21cm; }
+    /* Sidebar sections */
+    .sidebar-section { margin-bottom: 1.25rem; }
+    .sidebar-section h3 { font-size: 0.78rem; text-transform: uppercase;
+                          letter-spacing: 0.06em; color: #666; margin-bottom: 0.5rem; }
+    .sidebar-section + .sidebar-section { border-top: 1px solid #d0d0d6; padding-top: 1.25rem; }
+
+    /* Template radio cards */
+    .tpl-cards { display: flex; flex-direction: column; gap: 0.4rem; }
+    .tpl-card { display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
+                padding: 0.4rem 0.5rem; border-radius: 5px; border: 1px solid #d0d0d6;
+                background: #fff; font-size: 0.9rem; }
+    .tpl-card:has(input:checked) { border-color: #33567d; background: #eef3f9; }
+    .tpl-card input[type="radio"] { margin: 0; }
+
+    /* Theme swatches */
+    .theme-swatches { display: flex; gap: 0.5rem; }
+    .theme-swatch { position: relative; width: 28px; height: 28px; border-radius: 50%;
+                    cursor: pointer; border: 2px solid transparent; }
+    .theme-swatch.swatch-blue   { background: #33567d; }
+    .theme-swatch.swatch-green  { background: #356054; }
+    .theme-swatch.swatch-grey   { background: #4d4d4d; }
+    .theme-swatch input[type="radio"] { position: absolute; inset: 0; opacity: 0;
+                                        width: 100%; height: 100%; cursor: pointer; margin: 0; }
+    .theme-swatch:has(input:checked) { border-color: #000; }
+
+    /* Generic radio rows */
+    .radio-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .radio-pill { display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem;
+                  padding: 0.25rem 0.6rem; border-radius: 20px;
+                  border: 1px solid #d0d0d6; background: #fff; cursor: pointer; }
+    .radio-pill:has(input:checked) { border-color: #33567d; background: #eef3f9; }
+    .radio-pill input[type="radio"] { margin: 0; }
+
+    /* Form inputs in sidebar */
+    .sidebar-input { width: 100%; padding: 0.35rem 0.5rem; font-size: 0.85rem;
+                     border: 1px solid #d0d0d6; border-radius: 4px; background: #fff; }
+    .sidebar-label { display: block; font-size: 0.82rem; color: #555;
+                     margin-bottom: 0.2rem; margin-top: 0.5rem; }
+
+    /* Compact attachments control visibility */
+    .compact-attachments-control { display: none; }
+    .compact-attachments-control.visible { display: block; }
+
+    /* Action buttons in sidebar */
+    .sidebar-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+
+    @media print {
+      .editor-sidebar,
+      .site-header,
+      .site-footer,
+      .alert { display: none !important; }
+      .page      { padding: 0 !important; }
+      .container { width: 100% !important; margin: 0 !important; }
+      .editor-layout { display: block !important; height: auto !important; width: 100% !important; margin: 0 !important; }
+      .editor-preview-bg { background: none !important; padding: 0 !important; display: block !important; }
+      #preview-pane { min-width: 0 !important; width: 100% !important; }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+{%- set preview_url = request.url_for('render_cover_letter_preview', cover_letter_id=cover_letter.id) -%}
+{%- set save_url    = request.url_for('save_cover_letter_document_action', cover_letter_id=cover_letter.id) -%}
+{%- set delete_url  = request.url_for('delete_cover_letter_action', cover_letter_id=cover_letter.id) -%}
+{%- set current_tpl = cover_letter.template.value -%}
+
+<div class="editor-layout">
+
+  {# ── Sidebar ── #}
+  <aside class="editor-sidebar no-print">
+    <form
+      id="editor-form"
+      method="post"
+      action="{{ save_url }}"
+      hx-boost="false"
+    >
+
+      {# Template cards #}
+      <div class="sidebar-section">
+        <h3>Vorlage</h3>
+        <div class="tpl-cards">
+          {% for tpl in [('classic', 'Klassisch'), ('modern', 'Modern'), ('compact', 'Kompakt')] %}
+          <label class="tpl-card">
+            <input
+              type="radio"
+              name="template"
+              value="{{ tpl[0] }}"
+              {% if current_tpl == tpl[0] %}checked{% endif %}
+              hx-get="{{ preview_url }}"
+              hx-target="#preview-pane"
+              hx-trigger="change"
+              hx-include="#editor-form"
+              hx-indicator="#preview-pane"
+            >
+            {{ tpl[1] }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Theme colour swatches #}
+      <div class="sidebar-section">
+        <h3>Farbe</h3>
+        <div class="theme-swatches">
+          {% for (val, cls, label) in [('theme-blue','swatch-blue','Blau'),('theme-green','swatch-green','Grün'),('theme-grey','swatch-grey','Grau')] %}
+          <label class="theme-swatch {{ cls }}" title="{{ label }}">
+            <input
+              type="radio"
+              name="theme_key"
+              value="{{ val }}"
+              {% if layout.theme_key == val %}checked{% endif %}
+              hx-get="{{ preview_url }}"
+              hx-target="#preview-pane"
+              hx-trigger="change"
+              hx-include="#editor-form"
+            >
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Font dropdown #}
+      <div class="sidebar-section">
+        <h3>Schrift</h3>
+        <select
+          name="font_key"
+          class="sidebar-input"
+          hx-get="{{ preview_url }}"
+          hx-target="#preview-pane"
+          hx-trigger="change"
+          hx-include="#editor-form"
+        >
+          {% for (val, label) in [('font-arial','Arial'),('font-verdana','Verdana'),('font-georgia','Georgia'),('font-times-new-roman','Times New Roman')] %}
+          <option value="{{ val }}" {% if layout.font_key == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Font size radios #}
+      <div class="sidebar-section">
+        <h3>Schriftgröße</h3>
+        <div class="radio-row">
+          {% for (val, label) in [('size-small','S'),('size-medium','M'),('size-large','L')] %}
+          <label class="radio-pill">
+            <input
+              type="radio"
+              name="size_key"
+              value="{{ val }}"
+              {% if layout.size_key == val %}checked{% endif %}
+              hx-get="{{ preview_url }}"
+              hx-target="#preview-pane"
+              hx-trigger="change"
+              hx-include="#editor-form"
+            >
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Spacing radios #}
+      <div class="sidebar-section">
+        <h3>Zeilenabstand</h3>
+        <div class="radio-row">
+          {% for (val, label) in [('spacing-normal','Normal'),('spacing-large','Weit')] %}
+          <label class="radio-pill">
+            <input
+              type="radio"
+              name="spacing_key"
+              value="{{ val }}"
+              {% if layout.spacing_key == val %}checked{% endif %}
+              hx-get="{{ preview_url }}"
+              hx-target="#preview-pane"
+              hx-trigger="change"
+              hx-include="#editor-form"
+            >
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Recipient position #}
+      <div class="sidebar-section">
+        <h3>Empfängeradresse</h3>
+        <select
+          name="recipient_pos"
+          class="sidebar-input"
+          hx-get="{{ preview_url }}"
+          hx-target="#preview-pane"
+          hx-trigger="change"
+          hx-include="#editor-form"
+        >
+          <option value="standard" {% if layout.recipient_pos == 'standard' %}selected{% endif %}>Standard (Empfohlen)</option>
+          <option value="high"     {% if layout.recipient_pos == 'high' %}selected{% endif %}>Höher</option>
+        </select>
+      </div>
+
+      {# Signature space #}
+      <div class="sidebar-section">
+        <h3>Unterschriftsbereich</h3>
+        <select
+          name="signature_space"
+          class="sidebar-input"
+          hx-get="{{ preview_url }}"
+          hx-target="#preview-pane"
+          hx-trigger="change"
+          hx-include="#editor-form"
+        >
+          <option value="standard" {% if layout.signature_space == 'standard' %}selected{% endif %}>Standard (Empfohlen)</option>
+          <option value="compact"  {% if layout.signature_space == 'compact' %}selected{% endif %}>Kompakt</option>
+        </select>
+      </div>
+
+      {# Compact attachments — only shown for compact template #}
+      <div class="sidebar-section compact-attachments-control{% if current_tpl == 'compact' %} visible{% endif %}" id="compact-attachments-section">
+        <h3>Anlagen Position</h3>
+        <select
+          name="compact_attachments_pos"
+          class="sidebar-input"
+          hx-get="{{ preview_url }}"
+          hx-target="#preview-pane"
+          hx-trigger="change"
+          hx-include="#editor-form"
+        >
+          <option value="standard"   {% if layout.compact_attachments_pos == 'standard' %}selected{% endif %}>Standard</option>
+          <option value="higher"     {% if layout.compact_attachments_pos == 'higher' %}selected{% endif %}>Höher</option>
+          <option value="very-high"  {% if layout.compact_attachments_pos == 'very-high' %}selected{% endif %}>Noch höher</option>
+        </select>
+      </div>
+
+      {# ── Divider ── #}
+      <div class="sidebar-section">
+        <h3>Dokument speichern</h3>
+
+        <label class="sidebar-label" for="document_name">Name</label>
+        <input
+          type="text"
+          id="document_name"
+          name="document_name"
+          value="{{ default_document_name }}"
+          placeholder="Anschreiben benennen…"
+          class="sidebar-input"
+        >
+
+        <label class="sidebar-label" for="document_filename">Dateiname (ohne Endung)</label>
+        <input
+          type="text"
+          id="document_filename"
+          name="document_filename"
+          value="{{ default_document_filename }}"
+          placeholder="Anschreiben_Name_Firma"
+          class="sidebar-input"
+        >
+
+        <div class="sidebar-actions">
+          <button type="submit" class="btn btn-primary">Speichern</button>
+          <button type="button" class="btn btn-secondary" onclick="window.print()">Als PDF exportieren</button>
+          <button type="submit" form="delete-form" class="btn btn-danger" style="width:100%">Löschen</button>
+        </div>
+      </div>
+
+    </form>
+  </aside>
+
+  {# ── Preview pane ── #}
+  <div class="editor-preview-bg">
+    <div id="preview-pane">
+      {% if content %}
+        {%- set doc_classes = '' -%}
+        {# Build doc_classes from current layout settings #}
+        {%- set doc_classes = layout.theme_key ~ ' ' ~ layout.font_key ~ ' ' ~ layout.size_key ~ ' ' ~ layout.spacing_key -%}
+        {%- if layout.recipient_pos == 'high' -%}{%- set doc_classes = doc_classes ~ ' recipient-pos-high' -%}{%- endif -%}
+        {%- if layout.signature_space == 'compact' -%}{%- set doc_classes = doc_classes ~ ' signature-space-compact' -%}{%- endif -%}
+        {%- if layout.compact_attachments_pos == 'higher' -%}{%- set doc_classes = doc_classes ~ ' compact-attachments-higher' -%}
+        {%- elif layout.compact_attachments_pos == 'very-high' -%}{%- set doc_classes = doc_classes ~ ' compact-attachments-very-high' -%}{%- endif -%}
+        {%- set theme   = layout.theme_key -%}
+        {%- set font    = layout.font_key -%}
+        {%- set size    = layout.size_key -%}
+        {%- set spacing = layout.spacing_key -%}
+        {% with %}
+          {% set candidate_first_name = content.candidate_first_name %}
+          {% set candidate_last_name  = content.candidate_last_name %}
+          {% set candidate_street     = content.candidate_street %}
+          {% set candidate_city       = content.candidate_city %}
+          {% set candidate_location   = content.candidate_location %}
+          {% set candidate_phone      = content.candidate_phone %}
+          {% set candidate_email      = content.candidate_email %}
+          {% set company_name         = content.company_name %}
+          {% set contact_person       = content.contact_person %}
+          {% set company_street       = content.company_street %}
+          {% set company_city         = content.company_city %}
+          {% set date                 = content.date %}
+          {% set subject_line         = content.subject_line %}
+          {% set reference_number     = content.reference_number %}
+          {% set salutation           = content.salutation %}
+          {% set introduction         = content.introduction %}
+          {% set main_body            = content.main_body %}
+          {% set conclusion           = content.conclusion %}
+          {% set closing              = content.closing %}
+          {% set attachments          = content.attachments %}
+          {% if current_tpl == 'classic' %}
+            {% include "cover_letter_variants/cover_letter_classic.html" %}
+          {% elif current_tpl == 'modern' %}
+            {% include "cover_letter_variants/cover_letter_modern.html" %}
+          {% elif current_tpl == 'compact' %}
+            {% include "cover_letter_variants/cover_letter_compact.html" %}
+          {% endif %}
+        {% endwith %}
+      {% else %}
+        <p class="muted">Kein Inhalt verfügbar.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{# Delete form lives outside #editor-form to avoid the nested-form HTML violation #}
+<form id="delete-form" method="post" action="{{ delete_url }}" onsubmit="return confirm('Anschreiben wirklich löschen?')"></form>
+
+<script>
+  // Show / hide "Anlagen Position" control depending on selected template.
+  (function () {
+    const form = document.getElementById('editor-form');
+    const section = document.getElementById('compact-attachments-section');
+    if (!form || !section) return;
+
+    function syncCompactVisibility() {
+      const tpl = form.querySelector('input[name="template"]:checked');
+      section.classList.toggle('visible', tpl && tpl.value === 'compact');
+    }
+
+    form.querySelectorAll('input[name="template"]').forEach(function (r) {
+      r.addEventListener('change', syncCompactVisibility);
+    });
+    syncCompactVisibility();
+  }());
+</script>
+{% endblock %}

@@ -93,10 +93,13 @@ def _parse_profile_form(form) -> dict:
     """
     return {
         # Simple string fields
-        "name": form.get("name", "").strip(),
+        "first_name": form.get("first_name", "").strip(),
+        "last_name": form.get("last_name", "").strip(),
         "email": form.get("email", "").strip(),
-        "address": form.get("address", "").strip(),
         "phone": form.get("phone", "").strip(),
+        "street": form.get("street", "").strip(),
+        "city": form.get("city", "").strip(),
+        "location": form.get("location", "").strip(),
         "target_role": form.get("target_role", "").strip(),
         "seniority_level": form.get("seniority_level", "").strip(),
         "leadership_experience": form.get("leadership_experience", "").strip(),
@@ -190,7 +193,7 @@ def _profile_has_content(profile: ProfileInformation | None) -> bool:
         return False
     return bool(
         profile.extraction_error is not None
-        or profile.name or profile.target_role
+        or profile.first_name or profile.last_name or profile.target_role
         or profile.work_experience or profile.education
         or profile.hard_skills or profile.soft_skills
     )

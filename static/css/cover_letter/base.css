@@ -1,0 +1,197 @@
+/* =========================================================================
+   cover_letter/base.css
+   Shared document base stylesheet for the cover-letter document system.
+
+   Responsibilities of THIS file:
+     - A4 page geometry + DIN 5008 margins
+     - Design tokens (CSS custom properties) + style presets
+     - Typography, vertical rhythm, field/region structure common to all
+       variants
+
+   Per-variant layout/decoration: classic.css | modern.css | compact.css
+   Print/PDF overrides: print.css
+
+   Load order (in the editor page):
+     base.css  ->  <variant>.css  ->  print.css (media="print")
+
+   Template files: _macros.html + _content.html + classic|modern|compact.html
+   "Switch template" = render a different variant template.
+   "Swap a class"    = change a STYLE preset (theme/font/size/spacing) only.
+
+   ATS notes:
+     - Linear DOM order = logical reading order.
+     - No position:absolute/fixed for text, no display:none on text,
+       no generated text via ::before/::after content.
+     - Decorative rules use real borders; decorative glyphs are real
+       characters in the markup, never pseudo-element content.
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   1. TOKENS + DEFAULTS  (defaults = largest size + normal spacing)
+   ------------------------------------------------------------------------- */
+.cover-letter {
+  /* Public contract consumed by variant CSS */
+  --doc-accent: #4d4d4d;
+  --doc-font-body: Arial, Helvetica, sans-serif;
+  --doc-line-height: 1.15;
+
+  /* Font-size tiers (size presets override):
+     A body + bullets | B subheadings + addresses + date | C main heading */
+  --doc-fs-body: 12pt;
+  --doc-fs-sub:  14pt;
+  --doc-fs-head: 16pt;
+
+  /* Candidate name = design object, sized independently (variants override) */
+  --doc-fs-name: 22pt;
+
+  /* Hairline colour for the modern variant's slim rules */
+  --doc-hairline: #9a9a9a;
+
+  /* DIN 5008 page margins */
+  --doc-margin-top: 2cm;
+  --doc-margin-right: 2cm;
+  --doc-margin-bottom: 2cm;
+  --doc-margin-left: 2.5cm;
+
+  /* One "blank line" = body-font-size × line-height.
+     Hardcoded per size/spacing combo in the presets section — avoids
+     calc(var × var) which browsers can silently evaluate to 0.
+     Default = size-large + spacing-normal. */
+  --doc-line: 13.8pt;
+
+  font-family: var(--doc-font-body);
+  font-size: var(--doc-fs-body);
+  line-height: var(--doc-line-height);
+  color: #000;                 /* text is always black */
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+}
+
+/* -------------------------------------------------------------------------
+   2. STYLE PRESETS (orthogonal to the layout variant)
+   ------------------------------------------------------------------------- */
+.cover-letter.theme-blue  { --doc-accent: #33567d; }
+.cover-letter.theme-green { --doc-accent: #356054; }
+.cover-letter.theme-grey  { --doc-accent: #4d4d4d; }
+
+.cover-letter.font-arial           { --doc-font-body: Arial, Helvetica, sans-serif; }
+.cover-letter.font-verdana         { --doc-font-body: Verdana, Geneva, sans-serif; }
+.cover-letter.font-georgia         { --doc-font-body: Georgia, serif; }
+.cover-letter.font-times-new-roman { --doc-font-body: "Times New Roman", Times, serif; }
+
+.cover-letter.size-small  { --doc-fs-body: 10pt; --doc-fs-sub: 12pt; --doc-fs-head: 14pt; }
+.cover-letter.size-medium { --doc-fs-body: 11pt; --doc-fs-sub: 13pt; --doc-fs-head: 15pt; }
+.cover-letter.size-large  { --doc-fs-body: 12pt; --doc-fs-sub: 14pt; --doc-fs-head: 16pt; }
+
+.cover-letter.spacing-normal { --doc-line-height: 1.15; }
+.cover-letter.spacing-large  { --doc-line-height: 1.5; }
+
+/* --doc-line explicit overrides for every size × spacing combination
+   (body-pt × line-height, no calc needed)                             */
+.cover-letter.size-small                { --doc-line: 11.5pt;  }  /* 10 × 1.15 */
+.cover-letter.size-medium               { --doc-line: 12.65pt; }  /* 11 × 1.15 */
+.cover-letter.size-large                { --doc-line: 13.8pt;  }  /* 12 × 1.15 (= default) */
+.cover-letter.size-small.spacing-large  { --doc-line: 15pt;    }  /* 10 × 1.5  */
+.cover-letter.size-medium.spacing-large { --doc-line: 16.5pt;  }  /* 11 × 1.5  */
+.cover-letter.size-large.spacing-large  { --doc-line: 18pt;    }  /* 12 × 1.5  */
+
+/* Position adjustments — applied via layout_settings keys */
+
+/* Recipient address — move up (reduce gap between sender header and address) */
+.cover-letter.recipient-pos-high .cl-recipient { margin-top: calc(var(--doc-line) * 2); }
+
+/* Closing-to-signature gap — compact reduces space to 2 blank lines */
+.cover-letter.signature-space-compact .cl-signature-name { margin-top: calc(var(--doc-line) * 2); }
+
+/* -------------------------------------------------------------------------
+   3. PAGE GEOMETRY (screen preview; print.css hands margins to @page)
+   ------------------------------------------------------------------------- */
+.cover-letter {
+  box-sizing: border-box;
+  width: 21cm;
+  min-height: 29.7cm;
+  margin: 0 auto;
+  padding: var(--doc-margin-top) var(--doc-margin-right)
+           var(--doc-margin-bottom) var(--doc-margin-left);
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+}
+.cover-letter * { box-sizing: border-box; }
+.cover-letter p,
+.cover-letter h1,
+.cover-letter ul,
+.cover-letter li { margin: 0; padding: 0; }
+.cover-letter ul { list-style: none; }
+
+/* -------------------------------------------------------------------------
+   4. FIELD / REGION SCAFFOLD
+   Each backend field sits in a stable wrapper carrying data-field="<name>"
+   (groups carry data-field-group). These are the hooks a future edit mode
+   targets WITHOUT changing structure. Keep them intact.
+   ------------------------------------------------------------------------- */
+
+/* 4a. Sender / letterhead — base is layout-neutral; variants arrange it. */
+.cl-sender { display: flex; flex-wrap: wrap; gap: 0.6cm; }
+
+/* Name is a design object: first name over last name, stacked. */
+.cl-sender-name { display: flex; flex-direction: column; line-height: 1.05; }
+.cl-name { font-size: var(--doc-fs-name); font-weight: 700; }
+
+.cl-sender-contact { display: flex; flex-direction: column; gap: 2pt;
+                     font-size: var(--doc-fs-sub); }
+.cl-sender-contact p { display: flex; align-items: center; gap: 6pt; }
+
+.cl-icon { flex: 0 0 auto; width: 1em; height: 1em; fill: currentColor; }
+
+/* 4b. Recipient */
+.cl-recipient {
+  margin-top: calc(var(--doc-line) * 4);   /* 4 blank lines after sender */
+  font-size: var(--doc-fs-sub);
+  text-align: left;
+}
+.cl-company-name { font-weight: 700; }      /* company name bold */
+
+/* 4c. Date line — always right-aligned */
+.cl-date-line {
+  margin-top: calc(var(--doc-line) * 1.5);  /* 1–2 lines below recipient */
+  font-size: var(--doc-fs-sub);
+  text-align: right;
+}
+
+/* 4d. Subject + reference */
+.cl-subject { margin-top: calc(var(--doc-line) * 2); }   /* 2 lines below date */
+.cl-subject-line { font-size: var(--doc-fs-head); font-weight: 700; line-height: 1.2; }
+.cover-letter .cl-reference { margin-top: calc(var(--doc-line) * 0.5); font-size: var(--doc-fs-body); }
+
+/* 4e. Salutation — 2 blank lines after reference (or subject if no reference) */
+.cover-letter .cl-salutation { margin-top: calc(var(--doc-line) * 2); }
+
+/* 4f. Body: introduction + main_body[] + conclusion
+   "1 blank line after salutation / introduction / main body / conclusion" */
+.cl-body { margin-top: var(--doc-line); }                /* after salutation  */
+.cl-introduction,
+.cl-conclusion,
+.cl-paragraph { text-align: justify; text-justify: inter-word; }
+.cl-main-body { margin-top: var(--doc-line); }           /* after introduction */
+.cl-main-body .cl-paragraph + .cl-paragraph { margin-top: var(--doc-line); }
+.cover-letter .cl-conclusion { margin-top: var(--doc-line); }   /* after main body */
+
+/* 4g. Closing + signature name (in the variant footer) */
+.cover-letter .cl-closing { margin-top: var(--doc-line); }             /* after conclusion */
+.cl-signature-name {
+  margin-top: calc(var(--doc-line) * 4);                 /* >=3 blank lines    */
+  font-size: var(--doc-fs-body);
+}
+
+/* 4h. Attachments */
+.cl-attachments { margin-top: calc(var(--doc-line) * 2); }
+.cl-attachments-label { font-size: var(--doc-fs-sub); font-weight: 700; }
+.cl-attachments-list { margin-top: calc(var(--doc-line) * 0.4); }
+.cl-attachments-list li { font-size: var(--doc-fs-body); }
+.cl-attachments-list li > .cl-bullet { margin-right: 0.4em; }
+
+/* -------------------------------------------------------------------------
+   5. ATS / accessibility safety net
+   ------------------------------------------------------------------------- */
+.cover-letter [hidden] { display: none; }
+.cl-icon { pointer-events: none; }

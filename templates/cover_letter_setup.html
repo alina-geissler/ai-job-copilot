@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Anschreiben generieren | AI Job Copilot{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/classic.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/modern.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/compact.css') }}">
+  <style>
+    /* Scale a full A4 render (794 px wide) down to ~210 px card preview */
+    .template-card__preview-wrapper {
+      width: 210px;
+      height: 280px;
+      overflow: hidden;
+      border-radius: 4px;
+      pointer-events: none;   /* clicks pass through to the label */
+    }
+    .template-card__preview-scaler {
+      transform: scale(0.265);
+      transform-origin: top left;
+      width: 794px;           /* 21 cm at 96 dpi */
+    }
+    /* Override the generic template-card__preview so it doesn't add extra height */
+    .template-card .template-card__preview { padding: 0; background: none; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1>Anschreiben generieren</h1>
+  {% if job_context.title or job_context.company %}
+    <p class="muted">
+      {% if job_context.title %}<strong>{{ job_context.title }}</strong>{% endif %}
+      {% if job_context.title and job_context.company %} bei {% endif %}
+      {% if job_context.company %}{{ job_context.company }}{% endif %}
+    </p>
+  {% endif %}
+</header>
+
+<form
+  method="post"
+  action="{{ request.url_for('submit_cover_letter_setup_action') }}"
+  id="setup-form"
+>
+  {# Hidden context fields #}
+  {% if job_id %}<input type="hidden" name="job_id" value="{{ job_id }}">{% endif %}
+  {% if manual_job_id %}<input type="hidden" name="manual_job_id" value="{{ manual_job_id }}">{% endif %}
+
+  {# ── Template selection ── #}
+  <section class="section">
+    <div class="card stack">
+      <h2>1. Vorlage wählen <span class="required-marker">*</span></h2>
+      <div class="template-cards">
+        {% for tpl in templates %}
+          <label class="template-card {% if prefill.get('template') == tpl.value %}template-card--selected{% endif %}">
+            <input
+              type="radio"
+              name="template"
+              value="{{ tpl.value }}"
+              class="template-card__input"
+              required
+              {% if prefill.get('template') == tpl.value %}checked{% endif %}
+            >
+            <div class="template-card__preview">
+              <div class="template-card__preview-wrapper">
+                <div class="template-card__preview-scaler">
+
+                  {# -- Classic preview -- #}
+                  {% if tpl.value == 'classic' %}
+                    {% with
+                      candidate_first_name='Max', candidate_last_name='Mustermann',
+                      candidate_street='Musterstraße 12', candidate_city='10115 Berlin',
+                      candidate_location='Berlin', candidate_phone='+49 30 1234567',
+                      candidate_email='max@beispiel.de',
+                      company_name='Muster GmbH', contact_person='Frau Schmidt',
+                      company_street='Hauptstraße 1', company_city='80331 München',
+                      date='30.05.2026',
+                      subject_line='Bewerbung als Softwareentwicklerin',
+                      reference_number=none,
+                      salutation='Sehr geehrte Frau Schmidt,',
+                      introduction='mit großem Interesse habe ich Ihre Stellenanzeige gelesen und bewerbe mich hiermit auf diese Position.',
+                      main_body=['Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.', 'Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.'],
+                      conclusion='Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.',
+                      closing='Mit freundlichen Grüßen',
+                      attachments=['Lebenslauf'],
+                      theme='theme-blue', font='font-georgia', size='size-large', spacing='spacing-normal',
+                      doc_classes=''
+                    %}
+                      {% include "cover_letter_variants/cover_letter_classic.html" %}
+                    {% endwith %}
+
+                  {# -- Modern preview -- #}
+                  {% elif tpl.value == 'modern' %}
+                    {% with
+                      candidate_first_name='Max', candidate_last_name='Mustermann',
+                      candidate_street='Musterstraße 12', candidate_city='10115 Berlin',
+                      candidate_location='Berlin', candidate_phone='+49 30 1234567',
+                      candidate_email='max@beispiel.de',
+                      company_name='Muster GmbH', contact_person='Frau Schmidt',
+                      company_street='Hauptstraße 1', company_city='80331 München',
+                      date='30.05.2026',
+                      subject_line='Bewerbung als Softwareentwicklerin',
+                      reference_number=none,
+                      salutation='Sehr geehrte Frau Schmidt,',
+                      introduction='mit großem Interesse habe ich Ihre Stellenanzeige gelesen und bewerbe mich hiermit auf diese Position.',
+                      main_body=['Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.', 'Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.'],
+                      conclusion='Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.',
+                      closing='Mit freundlichen Grüßen',
+                      attachments=['Lebenslauf'],
+                      theme='theme-blue', font='font-arial', size='size-medium', spacing='spacing-normal',
+                      doc_classes=''
+                    %}
+                      {% include "cover_letter_variants/cover_letter_modern.html" %}
+                    {% endwith %}
+
+                  {# -- Compact preview -- #}
+                  {% elif tpl.value == 'compact' %}
+                    {% with
+                      candidate_first_name='Max', candidate_last_name='Mustermann',
+                      candidate_street='Musterstraße 12', candidate_city='10115 Berlin',
+                      candidate_location='Berlin', candidate_phone='+49 30 1234567',
+                      candidate_email='max@beispiel.de',
+                      company_name='Muster GmbH', contact_person='Frau Schmidt',
+                      company_street='Hauptstraße 1', company_city='80331 München',
+                      date='30.05.2026',
+                      subject_line='Bewerbung als Softwareentwicklerin',
+                      reference_number=none,
+                      salutation='Sehr geehrte Frau Schmidt,',
+                      introduction='mit großem Interesse habe ich Ihre Stellenanzeige gelesen und bewerbe mich hiermit auf diese Position.',
+                      main_body=['Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.', 'Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.'],
+                      conclusion='Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.',
+                      closing='Mit freundlichen Grüßen',
+                      attachments=['Lebenslauf'],
+                      theme='theme-grey', font='font-arial', size='size-medium', spacing='spacing-normal',
+                      doc_classes=''
+                    %}
+                      {% include "cover_letter_variants/cover_letter_compact.html" %}
+                    {% endwith %}
+                  {% endif %}
+
+                </div>
+              </div>
+            </div>
+            <span class="template-card__label">{{ template_labels[tpl] }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {# ── Tone selection ── #}
+  <section class="section">
+    <div class="card stack">
+      <h2>2. Ton wählen <span class="required-marker">*</span></h2>
+      <div class="tone-options">
+        {% for tn in tones %}
+          <label class="choice">
+            <input
+              type="radio"
+              name="tone"
+              value="{{ tn.value }}"
+              required
+              {% if prefill.get('tone') == tn.value %}checked{% endif %}
+            >
+            {{ tone_labels[tn] }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {# ── Optional personalisation ── #}
+  <section class="section">
+    <div class="card stack">
+      <div class="personalisation-hint">
+        <h2>Persönliche Details <span class="muted">(optional)</span></h2>
+        <p class="muted">Mach dein Anschreiben noch persönlicher mit ein paar zusätzlichen Angaben.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="must_haves">Must-haves &amp; No-gos</label>
+        <textarea
+          id="must_haves"
+          name="must_haves"
+          rows="3"
+          placeholder="Was muss unbedingt erwähnt werden – oder was soll auf keinen Fall vorkommen?"
+        >{{ prefill.get('must_haves', '') }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="personal_motivation">Persönliche Motivation</label>
+        <textarea
+          id="personal_motivation"
+          name="personal_motivation"
+          rows="3"
+          placeholder="Was reizt dich an dieser Stelle besonders? Was treibt dich an?"
+        >{{ prefill.get('personal_motivation', '') }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="why_company">Warum dieses Unternehmen?</label>
+        <textarea
+          id="why_company"
+          name="why_company"
+          rows="3"
+          placeholder="Was weißt du über das Unternehmen? Was schätzt du daran?"
+        >{{ prefill.get('why_company', '') }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="added_value">Mehrwert, den du mitbringst</label>
+        <textarea
+          id="added_value"
+          name="added_value"
+          rows="3"
+          placeholder="Welche konkreten Stärken, Erfahrungen oder Erfolge hebst du hervor?"
+        >{{ prefill.get('added_value', '') }}</textarea>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="actions">
+      <button
+        type="submit"
+        class="btn btn-primary"
+        id="generate-btn"
+        disabled
+      >
+        Anschreiben jetzt generieren
+      </button>
+      <p class="muted" id="generate-hint">Bitte wähle eine Vorlage und einen Ton aus.</p>
+    </div>
+  </section>
+</form>
+
+<script>
+  (function () {
+    var form = document.getElementById('setup-form');
+    var btn = document.getElementById('generate-btn');
+    var hint = document.getElementById('generate-hint');
+
+    function checkReady() {
+      var tpl = form.querySelector('input[name="template"]:checked');
+      var tone = form.querySelector('input[name="tone"]:checked');
+      var ready = tpl && tone;
+      btn.disabled = !ready;
+      hint.style.display = ready ? 'none' : '';
+    }
+
+    form.addEventListener('change', checkReady);
+    checkReady();
+  })();
+</script>
+{% endblock %}

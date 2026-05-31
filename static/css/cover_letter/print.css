@@ -1,0 +1,57 @@
+/* =========================================================================
+   cover_letter/print.css   (load with media="print", or always for the
+   server-side PDF renderer)
+
+   Hands page geometry to the @page margin box so DIN 5008 margins are applied
+   once (no double margins from the screen padding), and keeps accent/black
+   rules visible in the PDF.
+   ========================================================================= */
+
+/* @page margin: 0 suppresses browser print headers/footers (they live in the
+   margin area). DIN 5008 margins are applied as document padding below.
+   Phase 2 note: when WeasyPrint is added, server-side PDF will need separate
+   CSS handling since WeasyPrint uses @page for its own layout model. */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html, body { margin: 0; padding: 0; background: #fff; }
+
+  .cover-letter {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 2cm 2cm 2cm 2.5cm;  /* DIN 5008 margins as document padding */
+    box-shadow: none;
+    background: #fff;
+  }
+
+  /* Make accent / black / hairline rules print and embed into the PDF. */
+  .cover-letter,
+  .cover-letter * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Reassert decorative borders for the print context.
+     padding-left restores DIN 5008 margin (border eats into @page's 2.5 cm). */
+  .cover-letter.variant-modern {
+    border-left: 16px solid var(--doc-accent);
+    padding-left: calc(2.5cm - 16px);
+  }
+  .cover-letter.variant-compact .cl-sender { border-bottom: 2px solid #000; }
+
+  /* Page-break hygiene for multi-page letters. */
+  .cl-paragraph,
+  .cl-introduction,
+  .cl-conclusion,
+  .cl-salutation { orphans: 2; widows: 2; }
+  .cl-subject,
+  .cl-salutation { break-after: avoid-page; }
+  .cl-closing,
+  .cl-signature-name,
+  .cl-footer,
+  .cl-attachments { break-inside: avoid; }
+}

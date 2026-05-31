@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from app.models.profile_information import ProfileInformation
     from app.models.search_profile import SearchProfile
     from app.models.search_run import SearchRun
+    from app.models.manual_job_posting import ManualJobPosting
+    from app.models.cover_letter import CoverLetter
 
 
 class User(Base):
@@ -58,5 +60,11 @@ class User(Base):
     )
     profile_information: Mapped[ProfileInformation | None] = relationship(
         "ProfileInformation", back_populates="user", uselist=False
+    )
+    manual_job_postings: Mapped[list[ManualJobPosting]] = relationship(
+        "ManualJobPosting", back_populates="user"
+    )
+    cover_letters: Mapped[list[CoverLetter]] = relationship(
+        "CoverLetter", back_populates="user"
     )
 

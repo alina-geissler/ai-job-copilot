@@ -34,9 +34,12 @@ class ProfileInformation(Base):
     )
 
     # Personal information
-    name: Mapped[str | None] = mapped_column(String(255))
+    first_name: Mapped[str | None] = mapped_column(String(255))
+    last_name: Mapped[str | None] = mapped_column(String(255))
     email: Mapped[str | None] = mapped_column(String(255))
-    address: Mapped[str | None] = mapped_column(String(512))
+    street: Mapped[str | None] = mapped_column(String(512))
+    city: Mapped[str | None] = mapped_column(String(255))
+    location: Mapped[str | None] = mapped_column(String(255))
     phone: Mapped[str | None] = mapped_column(String(100))
 
     # Professional identity

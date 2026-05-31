@@ -5,45 +5,70 @@
 {% block content %}
 <header class="page-header">
   <h1>Single Job Analysis</h1>
-  <p class="muted">Analyse einer einzelnen Stellenanzeige im Guest Mode oder Logged-in Mode.</p>
+  <p class="muted">Wähle eine Stellenanzeige aus oder füge sie direkt hier ein.</p>
 </header>
 
 <section class="section">
-  <form class="form">
-    <div class="card stack">
-      <div class="form-group">
-        <label for="job-text">Stellenanzeige</label>
-        <textarea id="job-text" name="job-text" placeholder="Stellenanzeige einfügen"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="job-link">Oder Link einfügen</label>
-        <input type="url" id="job-link" name="job-link" placeholder="https://...">
-      </div>
-    </div>
+  <div class="card stack">
+    <p>
+      Wähle eine Stellenanzeige aus deinem
+      <a href="{{ request.url_for('render_application_tracker_page') }}">Bewerbungstracker</a>,
+      aus früheren <a href="{{ request.url_for('render_search_run_history_page') }}">Suchen</a>
+      oder <a href="{{ request.url_for('render_job_search_page') }}">finde zuerst den richtigen Job</a>.
+    </p>
+    <p class="muted">Oder füge eine Stellenanzeige direkt hier ein:</p>
+  </div>
+</section>
 
-    <div class="card stack">
-      <h2>Profildaten</h2>
-      <p class="muted">Guest: CV hochladen oder Daten manuell eingeben. Logged-in: gespeichertes Profil nutzen.</p>
+<section class="section">
+  <div class="card stack">
+    <h2>Stellenanzeige einfügen</h2>
+
+    <form method="post" action="{{ request.url_for('save_manual_job_action') }}" class="form stack">
       <div class="form-group">
-        <label for="cv-upload">CV hochladen</label>
-        <input type="file" id="cv-upload" name="cv-upload">
+        <label for="title">Bezeichnung der Stelle <span class="muted">(optional)</span></label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          placeholder="z. B. Senior Backend-Entwicklerin"
+          class="form-control"
+        >
       </div>
-    </div>
 
-    <fieldset>
-      <legend>Ausgabe wählen</legend>
-      <div class="checkbox-group">
-        <label class="choice"><input type="checkbox" name="output" value="cover-letter"> Anschreiben</label>
-        <label class="choice"><input type="checkbox" name="output" value="interview-questions"> Mögliche Interviewfragen</label>
-        <label class="choice"><input type="checkbox" name="output" value="company-questions"> Fragen an das Unternehmen</label>
-        <label class="choice"><input type="checkbox" name="output" value="skill-gap"> Skill-Gap-Analyse</label>
-        <label class="choice"><input type="checkbox" name="output" value="checklist"> Bewerbungscheckliste</label>
+      <div class="form-group">
+        <label for="company">Unternehmen <span class="muted">(optional)</span></label>
+        <input
+          type="text"
+          id="company"
+          name="company"
+          placeholder="z. B. Musterunternehmen GmbH"
+          class="form-control"
+        >
       </div>
-    </fieldset>
 
-    <div class="actions">
-      <button type="submit" class="btn btn-primary">Generieren / Analysieren</button>
-    </div>
-  </form>
+      <div class="form-group">
+        <label for="raw_text">Stellenanzeige <span class="muted">(vollständigen Text einfügen)</span></label>
+        <textarea
+          id="raw_text"
+          name="raw_text"
+          rows="12"
+          placeholder="Füge den vollständigen Text der Stellenanzeige hier ein…"
+          required
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="choice">
+          <input type="checkbox" name="save_to_tracker" value="1">
+          Im Bewerbungstracker speichern
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Weiter zum Generator</button>
+      </div>
+    </form>
+  </div>
 </section>
 {% endblock %}

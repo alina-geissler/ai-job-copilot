@@ -1,0 +1,57 @@
+/* =========================================================================
+   cover_letter/compact.css
+   Variant: "compact"  (reference template 3, WITHOUT the bottom graphic)
+
+   No coloured elements — fully black.
+   Letterhead: left cluster = address column (street over city, pin icon)
+   + comm column (phone over email; phone uses a speech-bubble icon, email an
+   envelope) ; the name sits on the RIGHT. Black rule beneath the header.
+   DOM keeps name -> contact (logical order); the visual swap is flex
+   row-reverse, so the ATS still reads the name first.
+   Bottom: closing + signature on the left, attachments on the right.
+   ========================================================================= */
+
+.cover-letter.variant-compact { --doc-fs-name: 18pt; }
+
+/* Header: name visually right, contact cluster left. */
+.variant-compact .cl-sender {
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: calc(var(--doc-line) * 0.5);
+  border-bottom: 2px solid #000;            /* black header rule */
+}
+.variant-compact .cl-sender-name {
+  text-align: right;
+}
+.variant-compact .cl-sender-name .cl-name {
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Left cluster: two side-by-side contact columns, each = one icon + a
+   stacked pair of lines (pin -> street/city ; bubble -> phone/email). */
+.variant-compact .cl-sender-contact {
+  flex-direction: row;
+  gap: 0.9cm;
+  font-size: var(--doc-fs-sub);
+}
+.variant-compact .cl-contact-col { display: flex; align-items: center; gap: 6pt; }
+.variant-compact .cl-contact-lines { display: flex; flex-direction: column; }
+
+/* Footer: closing/signature left, attachments right, top-aligned. */
+.variant-compact .cl-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.2cm;
+}
+.variant-compact .cl-footer-main { flex: 1 1 auto; }
+/* Attachments default: below candidate_name (lower than original design). */
+.variant-compact .cl-attachments { margin-top: calc(var(--doc-line) * 5); }
+
+/* User-selectable higher positions. */
+.cover-letter.compact-attachments-higher.variant-compact    .cl-attachments { margin-top: calc(var(--doc-line) * 4); }
+.cover-letter.compact-attachments-very-high.variant-compact .cl-attachments { margin-top: calc(var(--doc-line) * 3); }
+.variant-compact .cl-attachments-label { letter-spacing: 0.02em; }

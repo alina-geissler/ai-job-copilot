@@ -25,8 +25,11 @@
       </a>
     {% endif %}
 
-    <a href="#" class="btn btn-secondary">Bewerbungsdokumente erstellen</a>
-    <a href="#" class="btn btn-secondary">Dokumente einsehen</a>
+    <a
+      href="{{ request.url_for('render_cover_letter_setup_page') }}?tracker_entry_id={{ tracker_entry.id }}"
+      class="btn btn-secondary"
+    >Anschreiben generieren</a>
+    <a href="{{ request.url_for('render_documents_page') }}?job_id={{ tracker_entry.job_id }}" class="btn btn-secondary">Dokumente einsehen</a>
     <span class="muted">Match-Analyse (optional später)</span>
   </div>
 </section>
