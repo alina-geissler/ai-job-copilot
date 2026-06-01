@@ -62,12 +62,12 @@ provided CV text into the schema fields. Follow these rules exactly:
 - For languages, include the CEFR level or descriptive level as found in the CV.
 
 Personal contact fields — extract carefully:
-- first_name: The candidate's given name(s). For compound given names (e.g. "Hans-Peter",
+- first_name: The candidate's given name(s). For compound given names (e.g. "Hans Peter",
   "Marie-Claire"), include the full compound. Use "" if not found.
-- last_name: The candidate's family name. For multi-part surnames (e.g. "von der Berg",
-  "García López"), include the full surname. Use "" if not found.
+- last_name: The candidate's family name. For multi-part surnames (e.g. "van der Berg",
+  "García López", "Schneider-Hess"), include the full surname. Use "" if not found.
 - street: Street name and house number from the candidate's residential address only
-  (e.g. "Musterstraße 12"). Do NOT put a P.O. Box / Postfach here. Use "" if not found.
+  (e.g. "Musterstraße 12"). Use "" if not found.
 - city: Postal code and city from the candidate's residential address (e.g. "12345 Berlin").
   Use "" if not found.
 - location: Only the bare city name from the address (e.g. "Berlin"). Used for the date line

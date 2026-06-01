@@ -1,0 +1,44 @@
+{#- Standalone HTML document rendered server-side by WeasyPrint.
+    Does not extend base.html — no editor chrome, no navigation.
+    CSS is loaded via absolute URLs using base_url so WeasyPrint can fetch
+    them from the running server. -#}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="{{ base_url }}static/css/cover_letter/base.css">
+  <link rel="stylesheet" href="{{ base_url }}static/css/cover_letter/{{ template_name }}.css">
+  <link rel="stylesheet" href="{{ base_url }}static/css/cover_letter/weasyprint.css">
+</head>
+<body>
+{% with %}
+  {% set candidate_first_name = content.candidate_first_name %}
+  {% set candidate_last_name  = content.candidate_last_name %}
+  {% set candidate_street     = content.candidate_street %}
+  {% set candidate_city       = content.candidate_city %}
+  {% set candidate_location   = content.candidate_location %}
+  {% set candidate_phone      = content.candidate_phone %}
+  {% set candidate_email      = content.candidate_email %}
+  {% set company_name         = content.company_name %}
+  {% set contact_person       = content.contact_person %}
+  {% set company_street       = content.company_street %}
+  {% set company_city         = content.company_city %}
+  {% set date                 = content.date %}
+  {% set subject_line         = content.subject_line %}
+  {% set reference_number     = content.reference_number %}
+  {% set salutation           = content.salutation %}
+  {% set introduction         = content.introduction %}
+  {% set main_body            = content.main_body %}
+  {% set conclusion           = content.conclusion %}
+  {% set closing              = content.closing %}
+  {% set attachments          = content.attachments %}
+  {% if template_name == 'classic' %}
+    {% include "cover_letter_variants/cover_letter_classic.html" %}
+  {% elif template_name == 'modern' %}
+    {% include "cover_letter_variants/cover_letter_modern.html" %}
+  {% elif template_name == 'compact' %}
+    {% include "cover_letter_variants/cover_letter_compact.html" %}
+  {% endif %}
+{% endwith %}
+</body>
+</html>

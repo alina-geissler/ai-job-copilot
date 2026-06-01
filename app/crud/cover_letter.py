@@ -27,6 +27,7 @@ def create_cover_letter(
     personal_motivation: str | None = None,
     why_company: str | None = None,
     added_value: str | None = None,
+    document_name: str | None = None,
 ) -> CoverLetter:
     """Create and flush a new cover letter record with PENDING status.
 
@@ -40,6 +41,7 @@ def create_cover_letter(
     :param personal_motivation: Optional personal motivation text.
     :param why_company: Optional why-this-company text.
     :param added_value: Optional added-value text.
+    :param document_name: Human-readable draft title, e.g. "Entwurf für …".
     :return: Newly created CoverLetter record.
     """
     cover_letter = CoverLetter(
@@ -52,6 +54,7 @@ def create_cover_letter(
         personal_motivation=personal_motivation or None,
         why_company=why_company or None,
         added_value=added_value or None,
+        document_name=document_name or None,
         generation_status=CoverLetterGenerationStatus.PENDING,
     )
     db.add(cover_letter)
@@ -226,6 +229,27 @@ def save_cover_letter_document(
             cover_letter.template = CoverLetterTemplate(template)
         except ValueError:
             pass
+    db.add(cover_letter)
+    return cover_letter
+
+
+def set_cover_letter_content(
+    db: Session,
+    *,
+    cover_letter: CoverLetter,
+    content: dict[str, Any],
+) -> CoverLetter:
+    """Update only the content of a cover letter without changing its status.
+
+    Used for user-initiated content revisions. Does not alter
+    ``generation_status`` or ``job_normalization_id``.
+
+    :param db: Active database session.
+    :param cover_letter: Existing cover letter record.
+    :param content: Serialised ``CoverLetterContent`` dict.
+    :return: Updated cover letter.
+    """
+    cover_letter.content = content
     db.add(cover_letter)
     return cover_letter
 

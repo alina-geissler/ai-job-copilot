@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/base.css') }}?v=2">
   <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/classic.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/modern.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/compact.css') }}">
@@ -300,9 +300,69 @@
 
         <div class="sidebar-actions">
           <button type="submit" class="btn btn-primary">Speichern</button>
-          <button type="button" class="btn btn-secondary" onclick="window.print()">Als PDF exportieren</button>
+          <a href="{{ pdf_url }}" class="btn btn-secondary" style="text-align:center">Als PDF exportieren</a>
           <button type="submit" form="delete-form" class="btn btn-danger" style="width:100%">Löschen</button>
         </div>
+      </div>
+
+      {# ── Unterschrift ── #}
+      {# Forms live outside #editor-form (see below) — referenced by id via the form="" attribute #}
+      <div class="sidebar-section">
+        <h3>Unterschrift</h3>
+        {% if profile_signature_image %}
+          <div style="margin-bottom:0.5rem;">
+            <img src="{{ profile_signature_image }}"
+                 alt="Profilunterschrift"
+                 style="max-width:100%;max-height:60px;opacity:0.9;border:1px solid #e0e0e0;padding:0.3rem;background:#fff;display:block;">
+          </div>
+          <button form="sig-insert-form" type="submit"
+                  class="btn btn-primary" style="width:100%;font-size:0.82rem;margin-bottom:0.4rem">
+            In Anschreiben einfügen
+          </button>
+          <label class="btn btn-secondary" style="display:block;text-align:center;cursor:pointer;font-size:0.82rem;">
+            Unterschrift ersetzen
+            <input type="file" name="file" accept="image/png,image/jpeg"
+                   form="sig-upload-form"
+                   style="display:none"
+                   onchange="document.getElementById('sig-upload-form').submit()">
+          </label>
+        {% else %}
+          <p style="font-size:0.8rem;color:#666;margin-bottom:0.5rem;">
+            Dunkle Unterschrift auf weißem Papier, gut ausgeleuchtet, scharf und ohne Schatten hochladen.
+          </p>
+          <label class="btn btn-secondary" style="display:block;text-align:center;cursor:pointer;">
+            Unterschrift hochladen
+            <input type="file" name="file" accept="image/png,image/jpeg"
+                   form="sig-upload-form"
+                   style="display:none"
+                   onchange="document.getElementById('sig-upload-form').submit()">
+          </label>
+        {% endif %}
+        {% if has_signature %}
+        <button form="sig-remove-form" type="submit"
+                class="btn btn-secondary" style="width:100%;font-size:0.82rem;margin-top:0.4rem">
+          Aus Anschreiben entfernen
+        </button>
+        {% endif %}
+      </div>
+
+      {# ── Inhalt speichern ── #}
+      <div class="sidebar-section">
+        <h3>Inhalt bearbeiten</h3>
+        <p style="font-size:0.8rem;color:#666;margin-bottom:0.5rem;">
+          Text direkt in der Vorschau bearbeiten, dann hier speichern.
+        </p>
+        <button
+          id="save-content-btn"
+          type="button"
+          class="btn btn-secondary"
+          style="width:100%"
+          hx-post="{{ content_save_url }}"
+          hx-include="#content-save-form"
+          hx-target="#content-save-status"
+          hx-swap="innerHTML"
+        >Inhalt speichern</button>
+        <span id="content-save-status" style="font-size:0.82rem;display:block;margin-top:0.35rem;"></span>
       </div>
 
     </form>
@@ -363,22 +423,182 @@
 {# Delete form lives outside #editor-form to avoid the nested-form HTML violation #}
 <form id="delete-form" method="post" action="{{ delete_url }}" onsubmit="return confirm('Anschreiben wirklich löschen?')"></form>
 
+{# Signature forms also live outside #editor-form for the same reason #}
+<form id="sig-insert-form" method="post" action="{{ sig_insert_url }}"></form>
+<form id="sig-upload-form" method="post" action="{{ request.url_for('upload_profile_signature_action') }}" enctype="multipart/form-data">
+  <input type="hidden" name="next" value="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cover_letter.id) }}">
+</form>
+<form id="sig-remove-form" method="post" action="{{ sig_remove_url }}"></form>
+
+{# Hidden form that mirrors contenteditable fields for HTMX content-save submission #}
+<form id="content-save-form" style="display:none">
+  {# Body fields #}
+  <input type="hidden" name="subject_line" value="">
+  <input type="hidden" name="salutation" value="">
+  <input type="hidden" name="introduction" value="">
+  <input type="hidden" name="conclusion" value="">
+  <input type="hidden" name="closing" value="">
+  {# Sender contact fields — pre-populated so unchanged values survive the merge #}
+  <input type="hidden" name="candidate_first_name" value="{{ content.candidate_first_name or '' if content else '' }}">
+  <input type="hidden" name="candidate_last_name"  value="{{ content.candidate_last_name  or '' if content else '' }}">
+  <input type="hidden" name="candidate_email"       value="{{ content.candidate_email      or '' if content else '' }}">
+  <input type="hidden" name="candidate_phone"       value="{{ content.candidate_phone      or '' if content else '' }}">
+  <input type="hidden" name="candidate_street"      value="{{ content.candidate_street     or '' if content else '' }}">
+  <input type="hidden" name="candidate_city"        value="{{ content.candidate_city       or '' if content else '' }}">
+  <input type="hidden" name="candidate_location"    value="{{ content.candidate_location   or '' if content else '' }}">
+  {# Recipient fields #}
+  <input type="hidden" name="company_name"    value="{{ content.company_name    or '' if content else '' }}">
+  <input type="hidden" name="contact_person"  value="{{ content.contact_person  or '' if content else '' }}">
+  <input type="hidden" name="company_street"  value="{{ content.company_street  or '' if content else '' }}">
+  <input type="hidden" name="company_city"    value="{{ content.company_city    or '' if content else '' }}">
+  {# main_body_N inputs are created dynamically by JS #}
+</form>
+
+{# Profile-sync dialog — shown when saved content differs from stored profile #}
+<dialog id="profile-sync-dialog" style="padding:1.5rem;border:1px solid #d0d0d6;border-radius:8px;max-width:480px;width:90%">
+  <h3 style="margin-top:0;font-size:1rem">Profil aktualisieren?</h3>
+  <p style="font-size:0.9rem;color:#444">Die folgenden Kontaktdaten weichen von deinem gespeicherten Profil ab:</p>
+  <ul id="profile-sync-list" style="font-size:0.9rem;padding-left:1.2rem;margin-bottom:1rem"></ul>
+  <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+    <button id="profile-sync-dismiss" type="button" class="btn btn-secondary" style="font-size:0.85rem">Nein, danke</button>
+    <button id="profile-sync-confirm" type="button" class="btn btn-primary"   style="font-size:0.85rem">Ja, übernehmen</button>
+  </div>
+</dialog>
+
 <script>
-  // Show / hide "Anlagen Position" control depending on selected template.
+  // ── Compact-attachments visibility ───────────────────────────────────────
   (function () {
     const form = document.getElementById('editor-form');
     const section = document.getElementById('compact-attachments-section');
     if (!form || !section) return;
-
     function syncCompactVisibility() {
       const tpl = form.querySelector('input[name="template"]:checked');
       section.classList.toggle('visible', tpl && tpl.value === 'compact');
     }
-
     form.querySelectorAll('input[name="template"]').forEach(function (r) {
       r.addEventListener('change', syncCompactVisibility);
     });
     syncCompactVisibility();
+  }());
+
+  // ── Contenteditable ↔ hidden-form sync ───────────────────────────────────
+  (function () {
+    // Collect current contenteditable state into a plain object.
+    function _captureContent() {
+      var state = {};
+      document.querySelectorAll('[contenteditable][data-field]').forEach(function (el) {
+        state[el.dataset.field] = el.innerText;
+      });
+      var bodyItems = [];
+      document.querySelectorAll('[data-list-field="main_body"]').forEach(function (el) {
+        bodyItems.push({ idx: parseInt(el.dataset.listIndex, 10), text: el.innerText });
+      });
+      if (bodyItems.length) {
+        bodyItems.sort(function (a, b) { return a.idx - b.idx; });
+        state._main_body = bodyItems;
+      }
+      return state;
+    }
+
+    // Re-apply captured state to contenteditable elements after HTMX swap.
+    function _restoreContent(state) {
+      Object.keys(state).forEach(function (field) {
+        if (field === '_main_body') return;
+        var el = document.querySelector('[contenteditable][data-field="' + field + '"]');
+        if (el) el.innerText = state[field];
+      });
+      var items = state._main_body || [];
+      items.forEach(function (item) {
+        var el = document.querySelector('[data-list-field="main_body"][data-list-index="' + item.idx + '"]');
+        if (el) el.innerText = item.text;
+      });
+    }
+
+    // Keep hidden form inputs in sync with contenteditable values.
+    function _syncHiddenInputs() {
+      var form = document.getElementById('content-save-form');
+      if (!form) return;
+      document.querySelectorAll('[contenteditable][data-field]').forEach(function (el) {
+        var inp = form.querySelector('[name="' + el.dataset.field + '"]');
+        if (inp) inp.value = el.innerText.trim();
+      });
+      document.querySelectorAll('[data-list-field="main_body"]').forEach(function (el) {
+        var name = 'main_body_' + el.dataset.listIndex;
+        var inp = form.querySelector('[name="' + name + '"]');
+        if (!inp) {
+          inp = document.createElement('input');
+          inp.type = 'hidden';
+          inp.name = name;
+          form.appendChild(inp);
+        }
+        inp.value = el.innerText.trim();
+      });
+    }
+
+    var _savedState = {};
+
+    // Save state before HTMX design-control swap replaces preview pane.
+    document.addEventListener('htmx:beforeRequest', function () {
+      _savedState = _captureContent();
+    });
+    // Restore state after HTMX swap and re-sync hidden inputs.
+    document.addEventListener('htmx:afterSettle', function () {
+      _restoreContent(_savedState);
+      _syncHiddenInputs();
+    });
+
+    // Keep hidden inputs live as user types.
+    var preview = document.getElementById('preview-pane');
+    if (preview) {
+      preview.addEventListener('input', _syncHiddenInputs);
+    }
+
+    // Initial sync in case the page already has content.
+    _syncHiddenInputs();
+
+    // Show save-status feedback and profile-sync dialog on content-save response.
+    var _saveBtn = document.getElementById('save-content-btn');
+    if (_saveBtn) {
+      _saveBtn.addEventListener('htmx:afterRequest', function (e) {
+        var status = document.getElementById('content-save-status');
+        var resp = null;
+        try { resp = JSON.parse(e.detail.xhr.responseText); } catch (_) {}
+        if (status) {
+          if (resp && resp.ok) {
+            status.textContent = 'Gespeichert (Version ' + resp.version + ')';
+            status.style.color = '#356054';
+          } else {
+            status.textContent = 'Fehler beim Speichern.';
+            status.style.color = '#b00';
+          }
+        }
+        if (!resp || !resp.ok) return;
+        var changes = resp.profile_changes || {};
+        if (Object.keys(changes).length === 0) return;
+        var _LABELS = {
+          first_name: 'Vorname', last_name: 'Nachname', email: 'E-Mail',
+          phone: 'Telefon', street: 'Straße', city: 'Stadt', location: 'Standort'
+        };
+        var list = document.getElementById('profile-sync-list');
+        var dialog = document.getElementById('profile-sync-dialog');
+        if (!list || !dialog) return;
+        list.innerHTML = Object.values(changes).map(function (c) {
+          var label = _LABELS[c.profile_field] || c.profile_field;
+          return '<li><strong>' + label + '</strong>: &ldquo;' + c.profile_value + '&rdquo; &rarr; &ldquo;' + c.new_value + '&rdquo;</li>';
+        }).join('');
+        dialog.showModal();
+        document.getElementById('profile-sync-confirm').onclick = function () {
+          var body = {};
+          Object.values(changes).forEach(function (c) { body[c.profile_field] = c.new_value; });
+          fetch('{{ profile_update_url }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          }).finally(function () { dialog.close(); });
+        };
+        document.getElementById('profile-sync-dismiss').onclick = function () { dialog.close(); };
+      });
+    }
   }());
 </script>
 {% endblock %}

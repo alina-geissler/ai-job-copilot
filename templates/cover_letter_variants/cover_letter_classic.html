@@ -24,20 +24,20 @@
     <div class="cl-sender-contact" data-field-group="sender_contact">
       {% if candidate_street or candidate_city %}
       <p class="cl-sender-address" data-field-group="address">
-        {%- if candidate_street %}<span class="cl-field" data-field="candidate_street">{{ candidate_street }}</span>{% endif -%}
+        {%- if candidate_street %}<span class="cl-field" data-field="candidate_street" contenteditable="true">{{ candidate_street }}</span>{% endif -%}
         {%- if candidate_street and candidate_city %}, {% endif -%}
-        {%- if candidate_city %}<span class="cl-field" data-field="candidate_city">{{ candidate_city }}</span>{% endif -%}
+        {%- if candidate_city %}<span class="cl-field" data-field="candidate_city" contenteditable="true">{{ candidate_city }}</span>{% endif -%}
       </p>
       {% endif %}
-      {% if candidate_email %}<p class="cl-field cl-sender-email" data-field="candidate_email">{{ candidate_email }}</p>{% endif %}
-      {% if candidate_phone %}<p class="cl-field cl-sender-phone" data-field="candidate_phone">{{ candidate_phone }}</p>{% endif %}
+      {% if candidate_email %}<p class="cl-field cl-sender-email" data-field="candidate_email" contenteditable="true">{{ candidate_email }}</p>{% endif %}
+      {% if candidate_phone %}<p class="cl-field cl-sender-phone" data-field="candidate_phone" contenteditable="true">{{ candidate_phone }}</p>{% endif %}
     </div>
     {% endif %}
   </header>
 
   {% include "cover_letter_variants/_content.html" %}
 
-  {{ cl.signature(closing, candidate_first_name, candidate_last_name) }}
+  {{ cl.signature(closing, candidate_first_name, candidate_last_name, signature_image=signature_image|default(None)) }}
   {{ cl.attachments(attachments) }}
 
 </article>

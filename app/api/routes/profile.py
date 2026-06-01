@@ -9,8 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -251,6 +251,7 @@ def render_profile_page(
             "profile_has_content": profile_has_content,
             "extraction_in_progress": extraction_in_progress,
             "has_completed_cv": has_completed_cv,
+            "has_signature": bool(profile and profile.signature_image),
         },
     )
 
@@ -308,6 +309,117 @@ async def save_profile_route(
 
     query_string = build_feedback_query(message="Profil gespeichert.", message_type="success")
     return RedirectResponse(url=f"{profil_url}?{query_string}", status_code=303)
+
+
+@router.post("/fields", name="update_profile_fields_action")
+async def update_profile_fields_action(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> JSONResponse:
+    """Update a subset of profile contact fields from a JSON body.
+
+    Accepts a JSON object mapping field names to new string values. Only the
+    explicitly allowed contact fields are written; all other keys are ignored.
+
+    :param request: Incoming HTTP request (JSON body ``{field_name: value}``).
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :return: JSON ``{"ok": true}`` on success.
+    """
+    _ALLOWED_FIELDS = frozenset(
+        {"first_name", "last_name", "email", "phone", "street", "city", "location"}
+    )
+    body: dict = await request.json()
+    updates = {k: str(v).strip() for k, v in body.items() if k in _ALLOWED_FIELDS}
+    if updates:
+        profile = get_profile_for_user(db, user_id=current_user.id)
+        if profile is None:
+            upsert_profile(db, user_id=current_user.id, data=updates)
+        else:
+            for field, value in updates.items():
+                setattr(profile, field, value or None)
+            db.add(profile)
+        db.commit()
+    return JSONResponse({"ok": True})
+
+
+@router.post("/signatur", name="upload_profile_signature_action")
+async def upload_profile_signature_action(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> RedirectResponse:
+    """Accept a signature image, process it into a transparent PNG, and store it on the profile.
+
+    Validates MIME type (image/png or image/jpeg only) and size (≤ 300 KB).
+    Runs SignatureProcessor to remove the background, crop to the ink bounding
+    box, and produce a transparent PNG. Stores the result as a base64 data URL
+    in ``profile_information.signature_image`` so it persists across all cover
+    letters.
+
+    :param request: Incoming HTTP request with multipart form data.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :return: Redirect to the documents page with a feedback message.
+    """
+    import base64
+
+    from app.services.signature_processor import SignatureProcessor
+
+    documents_url = str(request.url_for("render_documents_page"))
+
+    form = await request.form()
+
+    # Optional return URL supplied by the caller (e.g. the cover letter editor).
+    next_url = str(form.get("next") or "").strip()
+
+    file: UploadFile | None = form.get("file")  # type: ignore[assignment]
+    if file is None or not hasattr(file, "read"):
+        query_string = build_feedback_query(message="Keine Datei empfangen.", message_type="error")
+        target = next_url or documents_url
+        return RedirectResponse(url=f"{target}?{query_string}", status_code=303)
+
+    content_type = file.content_type or ""
+    if content_type not in ("image/png", "image/jpeg"):
+        query_string = build_feedback_query(
+            message="Ungültiger Dateityp. Bitte PNG oder JPEG hochladen.",
+            message_type="error",
+        )
+        target = next_url or documents_url
+        return RedirectResponse(url=f"{target}?{query_string}", status_code=303)
+
+    image_bytes = await file.read()
+    if len(image_bytes) > 300 * 1024:
+        query_string = build_feedback_query(
+            message="Datei zu groß. Maximal 300 KB erlaubt.",
+            message_type="error",
+        )
+        target = next_url or documents_url
+        return RedirectResponse(url=f"{target}?{query_string}", status_code=303)
+
+    try:
+        png_bytes = SignatureProcessor.process(image_bytes, content_type)
+    except ValueError as exc:
+        query_string = build_feedback_query(message=str(exc), message_type="error")
+        target = next_url or documents_url
+        return RedirectResponse(url=f"{target}?{query_string}", status_code=303)
+
+    data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
+
+    profile = get_profile_for_user(db, user_id=current_user.id)
+    if profile is None:
+        upsert_profile(db, user_id=current_user.id, data={"signature_image": data_url})
+    else:
+        profile.signature_image = data_url
+        db.add(profile)
+    db.commit()
+
+    query_string = build_feedback_query(
+        message="Signatur erfolgreich hochgeladen.", message_type="success"
+    )
+    target = next_url or documents_url
+    return RedirectResponse(url=f"{target}?{query_string}", status_code=303)
 
 
 @router.post("/extrahieren", name="retry_profile_extraction_route")

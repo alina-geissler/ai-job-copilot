@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session
 
 from app.core.enums import ApplicationStatus
 from app.crud.application_tracker_entry import get_tracker_entry_by_id_for_user, list_tracker_entries_for_user
+from app.crud.cover_letter import get_completed_drafts_for_user, get_saved_cover_letters_for_user
+from app.crud.job_normalization import get_normalization_by_job_id
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import build_feedback_query, get_base_template_context
@@ -110,6 +112,7 @@ def _serialize_tracker_entry(entry: Any) -> dict[str, Any]:
     """
     return {
         "id": entry.id,
+        "job_id": entry.job_id,
         "status": entry.status,
         "status_label": TRACKER_STATUS_LABELS[entry.status],
         "status_css_class": TRACKER_STATUS_CLASSES[entry.status],
@@ -125,19 +128,22 @@ def _build_tracker_overview_context(
         request: Request,
         *,
         current_user: User,
-        tracker_entries: list[Any]
+        tracker_entries: list[Any],
+        jobs_with_cover_letters: set[int],
 ) -> dict[str, Any]:
     """Build the template context for the tracker overview page.
 
     :param request: Incoming HTTP request.
     :param current_user: Authenticated user.
     :param tracker_entries: Tracker entries visible to the user.
+    :param jobs_with_cover_letters: Set of job IDs that have at least one cover letter.
     :return: Template context for the tracker overview page.
     """
     return {
         **get_base_template_context(request),
         "current_user": current_user,
-        "tracker_entries": [_serialize_tracker_entry(entry) for entry in tracker_entries]
+        "tracker_entries": [_serialize_tracker_entry(entry) for entry in tracker_entries],
+        "jobs_with_cover_letters": jobs_with_cover_letters,
     }
 
 
@@ -145,19 +151,25 @@ def _build_tracker_detail_context(
         request: Request,
         *,
         current_user: User,
-        tracker_entry: Any
+        tracker_entry: Any,
+        normalization: Any = None,
+        cover_letters: list[Any] | None = None,
 ) -> dict[str, Any]:
     """Build the template context for one tracker detail page.
 
     :param request: Incoming HTTP request.
     :param current_user: Authenticated user.
     :param tracker_entry: Tracker entry to display.
+    :param normalization: Optional JobNormalization ORM object for the entry's job.
+    :param cover_letters: Cover letters associated with the entry's job.
     :return: Template context for the tracker detail page.
     """
     return {
         **get_base_template_context(request),
         "current_user": current_user,
-        "tracker_entry": _serialize_tracker_entry(tracker_entry)
+        "tracker_entry": _serialize_tracker_entry(tracker_entry),
+        "normalization": normalization.normalized_data if normalization is not None else None,
+        "cover_letters": cover_letters or [],
     }
 
 
@@ -176,13 +188,20 @@ def render_application_tracker_page(
     """
     tracker_entries = list_tracker_entries_for_user(db, user_id=current_user.id)
 
+    all_cls = (
+        get_saved_cover_letters_for_user(db, user_id=current_user.id)
+        + get_completed_drafts_for_user(db, user_id=current_user.id)
+    )
+    jobs_with_cover_letters = {cl.job_id for cl in all_cls if cl.job_id is not None}
+
     return templates.TemplateResponse(
         request=request,
         name="tracker.html",
         context=_build_tracker_overview_context(
             request,
             current_user=current_user,
-            tracker_entries=tracker_entries
+            tracker_entries=tracker_entries,
+            jobs_with_cover_letters=jobs_with_cover_letters,
         )
     )
 
@@ -219,13 +238,24 @@ def render_application_tracker_detail_page(
             status_code=303
         )
 
+    normalization = None
+    cover_letters: list[Any] = []
+    if tracker_entry.job_id is not None:
+        normalization = get_normalization_by_job_id(db, job_id=tracker_entry.job_id)
+        cover_letters = (
+            get_saved_cover_letters_for_user(db, user_id=current_user.id, job_id=tracker_entry.job_id)
+            + get_completed_drafts_for_user(db, user_id=current_user.id, job_id=tracker_entry.job_id)
+        )
+
     return templates.TemplateResponse(
         request=request,
         name="tracker_detail.html",
         context=_build_tracker_detail_context(
             request,
             current_user=current_user,
-            tracker_entry=tracker_entry
+            tracker_entry=tracker_entry,
+            normalization=normalization,
+            cover_letters=cover_letters,
         )
     )
 

@@ -25,16 +25,17 @@
 {#- Letterhead name, first over last (design object). -#}
 {%- macro name_block(first, last) -%}
   <div class="cl-field cl-sender-name" data-field-group="name">
-    {% if first %}<span class="cl-name cl-name-first" data-field="candidate_first_name">{{ first }}</span>{% endif %}
-    {% if last %}<span class="cl-name cl-name-last" data-field="candidate_last_name">{{ last }}</span>{% endif %}
+    {% if first %}<span class="cl-name cl-name-first" data-field="candidate_first_name" contenteditable="true">{{ first }}</span>{% endif %}
+    {% if last %}<span class="cl-name cl-name-last" data-field="candidate_last_name" contenteditable="true">{{ last }}</span>{% endif %}
   </div>
 {%- endmacro -%}
 
 {#- Closing line + typed signature name (first + last on one line).
     The signature is a derived echo of the name fields, not its own backend
     field, so it is marked data-derived rather than data-field. -#}
-{%- macro signature(closing, first, last) -%}
-  {% if closing %}<p class="cl-field cl-closing" data-field="closing">{{ closing }}</p>{% endif %}
+{%- macro signature(closing, first, last, signature_image=None) -%}
+  {% if closing %}<p class="cl-field cl-closing" data-field="closing" contenteditable="true" spellcheck="true">{{ closing }}</p>{% endif %}
+  {% if signature_image %}<img class="cl-signature-img" src="{{ signature_image }}" alt="Unterschrift">{% endif %}
   {% if first or last %}<div class="cl-signature-name" data-derived="name">{{ first }}{% if first and last %} {% endif %}{{ last }}</div>{% endif %}
 {%- endmacro -%}
 

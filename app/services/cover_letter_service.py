@@ -23,20 +23,73 @@ from app.core.enums import (
 from app.crud.cover_letter import (
     create_cover_letter,
     get_cover_letter_by_id,
+    set_cover_letter_content,
     update_cover_letter_content,
     update_cover_letter_status,
 )
-from app.crud.cover_letter_snapshot import create_snapshot
+from app.crud.cover_letter_snapshot import create_snapshot, list_snapshots_for_cover_letter
+from app.crud.job_normalization import get_normalization_by_job_id, get_normalization_by_manual_job_id
 from app.crud.profile_information import get_profile_for_user
 from app.db.session import SessionLocal
 from app.models.cover_letter import CoverLetter
+from app.models.job import Job
 from app.models.job_normalization import JobNormalization
+from app.models.manual_job_posting import ManualJobPosting
 from app.models.profile_information import ProfileInformation
 from app.schemas.cover_letter import CoverLetterContent
 from app.schemas.job_normalization import JobNormalizationSchema
 from app.services.job_normalization_service import get_or_create_normalization
 
 logger = logging.getLogger(__name__)
+
+
+def _build_draft_name(
+    db: Session,
+    *,
+    job_id: int | None,
+    manual_job_posting_id: int | None,
+) -> str | None:
+    """Build a human-readable draft title from the associated job record.
+
+    Tries the normalization cache first (has canonical title + company name),
+    then falls back to the raw Job or ManualJobPosting row. Returns ``None``
+    if no title information is available.
+
+    :param db: Active database session.
+    :param job_id: FK to an API-sourced job, or ``None``.
+    :param manual_job_posting_id: FK to a manual job posting, or ``None``.
+    :return: Draft name, e.g. "Entwurf für Softwareentwickler (Acme GmbH)", or ``None``.
+    """
+    title: str | None = None
+    company: str | None = None
+
+    if job_id is not None:
+        norm = get_normalization_by_job_id(db, job_id=job_id)
+        if norm is not None:
+            data = norm.normalized_data or {}
+            title = data.get("canonical_job_title") or None
+            company = data.get("company_name") or None
+        if not title or not company:
+            job = db.get(Job, job_id)
+            if job is not None:
+                title = title or job.title or None
+                company = company or job.company or None
+    elif manual_job_posting_id is not None:
+        posting = db.get(ManualJobPosting, manual_job_posting_id)
+        if posting is not None:
+            title = posting.title or None
+            company = posting.company or None
+        norm = get_normalization_by_manual_job_id(db, manual_job_posting_id=manual_job_posting_id)
+        if norm is not None:
+            data = norm.normalized_data or {}
+            title = data.get("canonical_job_title") or title
+            company = data.get("company_name") or company
+
+    if not title:
+        return None
+    if company:
+        return f"Entwurf für {title} ({company})"
+    return f"Entwurf für {title}"
 
 
 def initiate_cover_letter_generation(
@@ -79,6 +132,9 @@ def initiate_cover_letter_generation(
         personal_motivation=personal_motivation,
         why_company=why_company,
         added_value=added_value,
+        document_name=_build_draft_name(
+            db, job_id=job_id, manual_job_posting_id=manual_job_posting_id
+        ),
     )
     db.commit()
 
@@ -156,6 +212,14 @@ def _run_generation_task(*, cover_letter_id: int) -> None:
                 job_normalization_id=normalization.id,
             )
 
+            # Populate signature from profile if available.
+            if profile is not None and profile.signature_image:
+                cover_letter.layout_settings = {
+                    **(cover_letter.layout_settings or {}),
+                    "signature_image": profile.signature_image,
+                }
+                db.add(cover_letter)
+
             # Create the initial snapshot immediately after generation.
             create_snapshot(
                 db,
@@ -183,6 +247,54 @@ def _run_generation_task(*, cover_letter_id: int) -> None:
         )
     finally:
         db.close()
+
+
+def save_user_content_revision(
+    db: Session,
+    *,
+    cover_letter_id: int,
+    user_id: int,
+    content_dict: dict,
+) -> CoverLetter:
+    """Persist a user-edited content revision as a USER_REVISION snapshot.
+
+    Validates that the cover letter is COMPLETED and that the submitted dict
+    is a valid ``CoverLetterContent``. Creates a new snapshot and updates
+    the cover letter content column.
+
+    :param db: Active database session.
+    :param cover_letter_id: Identifier of the cover letter.
+    :param user_id: Identifier of the authenticated user (ownership check).
+    :param content_dict: Full ``CoverLetterContent`` dict with edited values.
+    :return: Updated cover letter record.
+    :raises ValueError: If the cover letter is not found or not COMPLETED.
+    :raises pydantic.ValidationError: If content_dict is malformed.
+    """
+    cover_letter = get_cover_letter_by_id(
+        db, cover_letter_id=cover_letter_id, user_id=user_id
+    )
+    if cover_letter is None:
+        raise ValueError(f"Cover letter {cover_letter_id} not found.")
+    if cover_letter.generation_status != CoverLetterGenerationStatus.COMPLETED:
+        raise ValueError("Cover letter is not in COMPLETED status.")
+
+    # Validate the incoming dict; raises ValidationError if malformed.
+    CoverLetterContent(**content_dict)
+
+    next_version = (
+        len(list_snapshots_for_cover_letter(db, cover_letter_id=cover_letter_id)) + 1
+    )
+
+    set_cover_letter_content(db, cover_letter=cover_letter, content=content_dict)
+    create_snapshot(
+        db,
+        cover_letter_id=cover_letter_id,
+        content=content_dict,
+        revision_type=CoverLetterRevisionType.USER_REVISION,
+        version_number=next_version,
+    )
+    db.commit()
+    return cover_letter
 
 
 def _resolve_job_text(db: Session, cover_letter: CoverLetter) -> tuple[str, object | None]:

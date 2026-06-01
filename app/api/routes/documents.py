@@ -153,6 +153,7 @@ def render_documents_page(
     )
     profile = get_profile_for_user(db, user_id=current_user.id)
     profile_has_error = profile is not None and bool(profile.extraction_error)
+    signature_image = profile.signature_image if profile is not None else None
     redirect_to_profile = request.session.get("redirect_to_profile", False)
 
     saved_cover_letters = [
@@ -174,6 +175,7 @@ def render_documents_page(
             "document_types": [(t.value, DOCUMENT_TYPE_LABELS[t]) for t in DocumentType],
             "has_existing_cv": has_existing_cv,
             "profile_has_error": profile_has_error,
+            "signature_image": signature_image,
             "redirect_to_profile": redirect_to_profile,
             "saved_cover_letters": saved_cover_letters,
             "draft_cover_letters": draft_cover_letters,

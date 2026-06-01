@@ -70,6 +70,9 @@ class ProfileInformation(Base):
     publications: Mapped[list | None] = mapped_column(JSON)
     honors_awards: Mapped[list | None] = mapped_column(JSON)
 
+    # Signature image (base64 data URL, transparent PNG)
+    signature_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Extraction metadata
     extraction_error: Mapped[str | None] = mapped_column(Text)
     cv_reconstruction: Mapped[str | None] = mapped_column(Text)

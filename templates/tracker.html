@@ -29,6 +29,9 @@
               <p class="job-card__meta muted">
                 Status: <span class="status-badge tracker-status-pill {{ entry.status_css_class }}">{{ entry.status_label }}</span>
                 · Gespeichert am {{ entry.created_at.strftime("%d.%m.%Y") }}
+                {% if entry.job_id in jobs_with_cover_letters %}
+                  · <span class="status-badge">Anschreiben vorhanden</span>
+                {% endif %}
               </p>
             </div>
           </summary>

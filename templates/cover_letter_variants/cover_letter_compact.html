@@ -27,8 +27,8 @@
       <div class="cl-contact-col cl-contact-postal" data-field-group="address">
         {{ cl.icon('pin') }}
         <span class="cl-contact-lines">
-          {% if candidate_street %}<span class="cl-field" data-field="candidate_street">{{ candidate_street }}</span>{% endif %}
-          {% if candidate_city %}<span class="cl-field" data-field="candidate_city">{{ candidate_city }}</span>{% endif %}
+          {% if candidate_street %}<span class="cl-field" data-field="candidate_street" contenteditable="true">{{ candidate_street }}</span>{% endif %}
+          {% if candidate_city %}<span class="cl-field" data-field="candidate_city" contenteditable="true">{{ candidate_city }}</span>{% endif %}
         </span>
       </div>
       {% endif %}
@@ -37,8 +37,8 @@
       <div class="cl-contact-col cl-contact-comm">
         {{ cl.icon('bubble') }}
         <span class="cl-contact-lines">
-          {% if candidate_phone %}<span class="cl-field cl-sender-phone" data-field="candidate_phone">{{ candidate_phone }}</span>{% endif %}
-          {% if candidate_email %}<span class="cl-field cl-sender-email" data-field="candidate_email">{{ candidate_email }}</span>{% endif %}
+          {% if candidate_phone %}<span class="cl-field cl-sender-phone" data-field="candidate_phone" contenteditable="true">{{ candidate_phone }}</span>{% endif %}
+          {% if candidate_email %}<span class="cl-field cl-sender-email" data-field="candidate_email" contenteditable="true">{{ candidate_email }}</span>{% endif %}
         </span>
       </div>
       {% endif %}
@@ -51,7 +51,7 @@
 
   <div class="cl-footer">
     <div class="cl-footer-main">
-      {{ cl.signature(closing, candidate_first_name, candidate_last_name) }}
+      {{ cl.signature(closing, candidate_first_name, candidate_last_name, signature_image=signature_image|default(None)) }}
     </div>
     {{ cl.attachments(attachments) }}
   </div>

@@ -1,17 +1,23 @@
 """Service functions for job advertisement normalisation.
 
 Coordinate normalisation of raw job text into a structured
-``JobNormalizationSchema`` and persist the result. Phase 1 uses a mock
-implementation; phase 2 will replace ``_call_llm`` with an OpenAI
-``beta.chat.completions.parse()`` call against ``JobNormalizationSchema``.
+``JobNormalizationSchema`` via an OpenAI structured-output call and persist
+the result. Eval output is appended to ``evals/job_normalizations.jsonl``
+after each successful normalisation.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+from datetime import datetime, timezone
+from pathlib import Path
 
+import httpx
+from openai import OpenAI
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.crud.job_normalization import (
     create_job_normalization,
     get_normalization_by_job_id,
@@ -20,70 +26,126 @@ from app.crud.job_normalization import (
 from app.models.job import Job
 from app.models.job_normalization import JobNormalization
 from app.schemas.job_normalization import JobNormalizationSchema
+from prompts.job_normalization import VERSIONS
 
 logger = logging.getLogger(__name__)
+
+PROMPT_VERSION = "v1"
+_SYSTEM_PROMPT = VERSIONS[PROMPT_VERSION]
+
+_EVALS_PATH = Path(__file__).resolve().parents[2] / "evals" / "job_normalizations.jsonl"
+
+
+def _build_client() -> OpenAI:
+    """Create a configured OpenAI client using the default OpenAI endpoint.
+
+    :return: Configured OpenAI client instance.
+    """
+    return OpenAI(
+        api_key=settings.openai_api_key,
+        timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0),
+    )
+
+
+def _append_eval(
+    normalization: JobNormalizationSchema,
+    *,
+    job_id: int | None,
+    manual_job_id: int | None,
+    prompt_version: str,
+    model: str,
+) -> None:
+    """Append one normalisation result to the evals JSONL file.
+
+    :param normalization: The normalised job schema produced by the LLM.
+    :param job_id: FK to the API-sourced Job, or ``None``.
+    :param manual_job_id: FK to the ManualJobPosting, or ``None``.
+    :param prompt_version: Active prompt version key.
+    :param model: Model identifier used for the call.
+    """
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "prompt_version": prompt_version,
+        "model": model,
+        "job_id": job_id,
+        "manual_job_posting_id": manual_job_id,
+        "output": normalization.model_dump(),
+    }
+    try:
+        _EVALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _EVALS_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError:
+        logger.warning("Could not write to evals file %s.", _EVALS_PATH)
 
 
 def normalize_job(
     raw_text: str,
     existing_job: Job | None = None,
+    *,
+    job_id: int | None = None,
+    manual_job_id: int | None = None,
 ) -> JobNormalizationSchema:
     """Return a structured normalisation of the given job advertisement text.
 
-    Phase 1: returns a hardcoded mock ``JobNormalizationSchema``.
-    Phase 2: replace the body with an OpenAI structured-output call:
-        ``client.beta.chat.completions.parse(response_format=JobNormalizationSchema, ...)``
+    Uses OpenAI structured output (``beta.chat.completions.parse``) to
+    extract all ``JobNormalizationSchema`` fields from the raw ad text.
 
-    When ``existing_job`` is provided its structured fields (title, company,
-    location, employment_type) are used to pre-populate identity/company
-    fields so the LLM focuses on extracting what is missing.
+    When ``existing_job`` is provided it indicates the job came from the live
+    job-search API. Its ``company``, ``location``, and ``employment_type``
+    fields are forwarded to the LLM as optional hints so it can cross-check
+    against the ad text; the LLM always prefers the ad text for title and
+    variants.
 
     :param raw_text: Full text of the job advertisement.
-    :param existing_job: Optional API-sourced Job record for pre-population.
+    :param existing_job: Optional API-sourced Job record (live search only).
+    :param job_id: FK to the API-sourced Job, used for eval logging.
+    :param manual_job_id: FK to the ManualJobPosting, used for eval logging.
     :return: Normalised job schema instance.
+    :raises openai.OpenAIError: If the LLM request fails.
     """
-    # -- Phase 2 hook: replace everything below with the real LLM call ----------
-    company = existing_job.company if existing_job else "Musterunternehmen GmbH"
-    title = existing_job.title if existing_job else "Software-Entwicklerin / Software-Entwickler"
-    location = existing_job.location if existing_job else "Berlin, Deutschland"
+    client = _build_client()
 
-    return JobNormalizationSchema(
-        canonical_job_title=title,
-        job_title_variants=[title],
-        role_summary="Spannende Position in einem wachsenden Unternehmen mit modernen Technologien.",
-        company_name=company,
-        job_location=location,
-        employment_type=existing_job.employment_type if existing_job else "Vollzeit",
-        work_model="Hybrid",
-        seniority_level="Berufserfahren",
-        responsibilities=[
-            "Entwicklung und Wartung von Backend-Services",
-            "Code-Reviews und technische Dokumentation",
-            "Zusammenarbeit mit interdisziplinären Teams",
+    # Build the user message from the raw ad text, optionally adding hints.
+    user_parts = ["Job advertisement text:\n", raw_text]
+    if existing_job is not None:
+        hints: list[str] = []
+        if existing_job.company:
+            hints.append(f"company: {existing_job.company}")
+        if existing_job.location:
+            hints.append(f"location: {existing_job.location}")
+        if existing_job.employment_type:
+            hints.append(f"employment_type: {existing_job.employment_type}")
+        if hints:
+            user_parts.append(
+                "\n\nPre-populated hints from the job-search API "
+                "(cross-check against the ad text; prefer the ad text where it differs, "
+                "especially for company legal form; ignore for canonical_job_title and "
+                "job_title_variants):\n" + "\n".join(hints)
+            )
+
+    user_message = "".join(user_parts)
+
+    completion = client.beta.chat.completions.parse(
+        model=settings.openai_model,
+        max_tokens=4096,
+        messages=[
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
         ],
-        core_tasks=[
-            "Implementierung neuer Features",
-            "Bugfixing und Performance-Optimierung",
-        ],
-        must_have_competencies=[
-            "Python",
-            "SQL",
-            "REST-APIs",
-        ],
-        nice_to_have_competencies=[
-            "Docker",
-            "Kubernetes",
-            "Cloud-Erfahrung (AWS / GCP)",
-        ],
-        soft_skills=["Teamfähigkeit", "Eigenverantwortung", "Kommunikationsstärke"],
-        ats_priority_keywords=["Python", "FastAPI", "PostgreSQL", "Agile", "REST"],
-        action_verbs=["entwickeln", "implementieren", "optimieren", "koordinieren"],
-        education_requirements=["Abgeschlossenes Studium der Informatik oder vergleichbare Qualifikation"],
-        language_requirements=["Deutsch (fließend)", "Englisch (gut)"],
-        benefits_perks=["Flexible Arbeitszeiten", "Home-Office-Option", "Weiterbildungsbudget"],
-        posting_language="de",
-        confidence_scores={"canonical_job_title": 0.95, "company_name": 0.99},
+        response_format=JobNormalizationSchema,
     )
+    result: JobNormalizationSchema = completion.choices[0].message.parsed
+
+    _append_eval(
+        result,
+        job_id=job_id,
+        manual_job_id=manual_job_id,
+        prompt_version=PROMPT_VERSION,
+        model=settings.openai_model,
+    )
+
+    return result
 
 
 def get_or_create_normalization(
@@ -120,12 +182,17 @@ def get_or_create_normalization(
         if existing is not None:
             return existing
 
-    schema = normalize_job(raw_text, existing_job=existing_job)
+    schema = normalize_job(
+        raw_text,
+        existing_job=existing_job,
+        job_id=job_id,
+        manual_job_id=manual_job_posting_id,
+    )
 
     return create_job_normalization(
         db,
         normalized_data=schema.model_dump(),
-        llm_model="mock",
+        llm_model=settings.openai_model,
         job_id=job_id,
         manual_job_posting_id=manual_job_posting_id,
     )

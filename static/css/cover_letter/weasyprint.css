@@ -1,0 +1,56 @@
+/* =========================================================================
+   cover_letter/weasyprint.css   (loaded only by the server-side PDF route)
+
+   Playwright (Chromium headless) renders the cover letter element at its
+   natural CSS size. @page margin is set to 0 so the A4 content area equals
+   the full page. DIN 5008 margins (2cm top/right/bottom, 2.5cm left) come
+   from base.css via the .cover-letter padding variable, and the element
+   width is fixed at 21cm by base.css — no override needed here.
+
+   print.css keeps @page { margin: 0 } for browser-print (unchanged).
+   ========================================================================= */
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+.cover-letter {
+  margin: 0 auto;
+  box-shadow: none;
+  background: #fff;
+}
+
+/* Make accent / black / hairline rules render and embed into the PDF. */
+.cover-letter,
+.cover-letter * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Restore decorative borders (same as print.css @media print rules). */
+.cover-letter.variant-modern {
+  border-left: 16px solid var(--doc-accent);
+  padding-left: calc(2.5cm - 16px);
+}
+.cover-letter.variant-compact .cl-sender {
+  border-bottom: 2px solid #000;
+}
+
+/* Page-break hygiene for multi-page letters. */
+.cl-paragraph,
+.cl-introduction,
+.cl-conclusion,
+.cl-salutation { orphans: 2; widows: 2; }
+.cl-subject,
+.cl-salutation { break-after: avoid-page; }
+.cl-closing,
+.cl-signature-name,
+.cl-footer,
+.cl-attachments { break-inside: avoid; }

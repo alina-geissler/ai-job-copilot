@@ -33,7 +33,10 @@ from app.models.job import Job
 from app.models.user import User
 from app.schemas.cover_letter import CoverLetterContent, LayoutSettings
 from app.schemas.job_normalization import JobNormalizationSchema
-from app.services.cover_letter_service import initiate_cover_letter_generation
+from app.services.cover_letter_service import (
+    initiate_cover_letter_generation,
+    save_user_content_revision,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["cover-letter"])
@@ -447,6 +450,8 @@ def render_cover_letter_editor_page(
 
     layout = LayoutSettings(**(cover_letter.layout_settings or {}))
     job_title = _get_job_title(db, cover_letter)
+    profile = get_profile_for_user(db, user_id=current_user.id)
+    profile_signature_image = profile.signature_image if profile is not None else None
 
     # Default document names derived from normalization data.
     company_name = (normalization.company_name if normalization else None) or "Unbekanntes Unternehmen"
@@ -475,6 +480,15 @@ def render_cover_letter_editor_page(
             "default_document_name": default_document_name,
             "default_document_filename": default_document_filename,
             "template_labels": _TEMPLATE_LABELS,
+            "pdf_url": request.url_for("export_cover_letter_pdf", cover_letter_id=cover_letter_id),
+            "content_save_url": request.url_for("save_cover_letter_content_action", cover_letter_id=cover_letter_id),
+            "sig_upload_url": request.url_for("upload_signature_action", cover_letter_id=cover_letter_id),
+            "sig_remove_url": request.url_for("remove_signature_action", cover_letter_id=cover_letter_id),
+            "sig_insert_url": request.url_for("insert_signature_from_profile_action", cover_letter_id=cover_letter_id),
+            "signature_image": (cover_letter.layout_settings or {}).get("signature_image"),
+            "has_signature": bool((cover_letter.layout_settings or {}).get("signature_image")),
+            "profile_signature_image": profile_signature_image,
+            "profile_update_url": request.url_for("update_profile_fields_action"),
         },
     )
 
@@ -546,6 +560,7 @@ def render_cover_letter_preview(
         safe_theme, safe_font, safe_size, safe_spacing,
         safe_recipient_pos, safe_signature_space, safe_compact_attachments,
     )
+    signature_image = (cover_letter.layout_settings or {}).get("signature_image")
 
     template_file = f"cover_letter_variants/cover_letter_{safe_template}.html"
     html = templates.get_template(template_file).render(
@@ -555,8 +570,180 @@ def render_cover_letter_preview(
         size=safe_size,
         spacing=safe_spacing,
         doc_classes=doc_classes,
+        signature_image=signature_image,
     )
     return HTMLResponse(html)
+
+
+# ---------------------------------------------------------------------------
+# Server-side PDF export
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/cover-letter/{cover_letter_id}/pdf",
+    name="export_cover_letter_pdf",
+)
+def export_cover_letter_pdf(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    cover_letter_id: int,
+) -> Response:
+    """Render the cover letter to PDF using WeasyPrint and return a download.
+
+    Builds the same document context as the HTMX preview but renders a
+    standalone HTML document (cover_letter_weasyprint.html) with WeasyPrint-
+    specific CSS that uses @page for DIN 5008 margins.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param cover_letter_id: Identifier of the completed cover letter.
+    :return: PDF file download response.
+    """
+    cover_letter = get_cover_letter_by_id(
+        db, cover_letter_id=cover_letter_id, user_id=current_user.id
+    )
+    if cover_letter is None or cover_letter.content is None:
+        editor_url = str(request.url_for("render_application_tracker_page"))
+        return RedirectResponse(url=editor_url, status_code=303)
+
+    content = CoverLetterContent(**cover_letter.content)
+    layout = LayoutSettings(**(cover_letter.layout_settings or {}))
+    safe_template = cover_letter.template.value
+    signature_image = (cover_letter.layout_settings or {}).get("signature_image")
+
+    doc_classes = _build_doc_classes(
+        layout.theme_key, layout.font_key, layout.size_key, layout.spacing_key,
+        layout.recipient_pos, layout.signature_space, layout.compact_attachments_pos,
+    )
+
+    html_str = templates.get_template("cover_letter_weasyprint.html").render(
+        content=content,
+        template_name=safe_template,
+        doc_classes=doc_classes,
+        signature_image=signature_image,
+        base_url=str(request.base_url),
+        theme=layout.theme_key,
+        font=layout.font_key,
+        size=layout.size_key,
+        spacing=layout.spacing_key,
+        **content.model_dump(),
+    )
+
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch()
+        pg = browser.new_page()
+        pg.set_content(html_str, wait_until="networkidle")
+        pdf_bytes = pg.pdf(format="A4", print_background=True)
+        browser.close()
+
+    filename = _sanitise_filename(cover_letter.document_filename or "Anschreiben") + ".pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Save user content revision
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/cover-letter/{cover_letter_id}/content",
+    name="save_cover_letter_content_action",
+)
+async def save_cover_letter_content_action(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    cover_letter_id: int,
+) -> Response:
+    """Persist user-edited cover letter text as a USER_REVISION snapshot.
+
+    Collects editable field values from the form body, merges them over the
+    existing content (preserving private candidate_* fields and any un-edited
+    fields), validates the result, and creates a new snapshot.
+
+    :param request: Incoming HTTP request with form data.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param cover_letter_id: Identifier of the cover letter.
+    :return: JSON response with ok flag and new version number.
+    """
+    from fastapi.responses import JSONResponse
+    from pydantic import ValidationError
+
+    cover_letter = get_cover_letter_by_id(
+        db, cover_letter_id=cover_letter_id, user_id=current_user.id
+    )
+    if cover_letter is None or cover_letter.content is None:
+        return JSONResponse({"ok": False, "error": "Anschreiben nicht gefunden."}, status_code=404)
+
+    form = await request.form()
+
+    # Start from the stored content so private fields and untouched fields survive.
+    merged = dict(cover_letter.content)
+
+    # All scalar fields that may be submitted by the contenteditable hidden form.
+    _EDITABLE_SCALAR_FIELDS = (
+        "subject_line", "salutation", "introduction", "conclusion", "closing",
+        "candidate_first_name", "candidate_last_name",
+        "candidate_email", "candidate_phone",
+        "candidate_street", "candidate_city", "candidate_location",
+        "company_name", "contact_person", "company_street", "company_city",
+    )
+    for field in _EDITABLE_SCALAR_FIELDS:
+        if field in form:
+            merged[field] = str(form[field]).strip()
+
+    # Collect ordered main_body_N fields.
+    body_items: list[tuple[int, str]] = []
+    for key, val in form.multi_items():
+        if key.startswith("main_body_") and key[10:].isdigit():
+            body_items.append((int(key[10:]), str(val).strip()))
+    if body_items:
+        body_items.sort(key=lambda x: x[0])
+        merged["main_body"] = [text for _, text in body_items]
+
+    try:
+        cover_letter = save_user_content_revision(
+            db, cover_letter_id=cover_letter_id, user_id=current_user.id, content_dict=merged
+        )
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=422)
+    except ValidationError as exc:
+        return JSONResponse({"ok": False, "error": exc.json()}, status_code=422)
+
+    from app.crud.cover_letter_snapshot import list_snapshots_for_cover_letter
+    snapshots = list_snapshots_for_cover_letter(db, cover_letter_id=cover_letter_id)
+    version = snapshots[-1].version_number if snapshots else 1
+
+    # Compare candidate contact fields against the stored profile.
+    _PROFILE_FIELD_MAP = {
+        "candidate_first_name": "first_name",
+        "candidate_last_name": "last_name",
+        "candidate_email": "email",
+        "candidate_phone": "phone",
+        "candidate_street": "street",
+        "candidate_city": "city",
+        "candidate_location": "location",
+    }
+    profile = get_profile_for_user(db, user_id=current_user.id)
+    profile_changes: dict = {}
+    for content_field, profile_field in _PROFILE_FIELD_MAP.items():
+        new_val = merged.get(content_field) or ""
+        old_val = (getattr(profile, profile_field, None) or "") if profile else ""
+        if new_val and new_val != old_val:
+            profile_changes[content_field] = {
+                "profile_value": old_val,
+                "new_value": new_val,
+                "profile_field": profile_field,
+            }
+
+    return JSONResponse({"ok": True, "version": version, "profile_changes": profile_changes})
 
 
 # ---------------------------------------------------------------------------
@@ -639,6 +826,165 @@ def save_cover_letter_document_action(
     db.commit()
 
     query_string = build_feedback_query(message="Anschreiben gespeichert.", message_type="success")
+    return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Signature image upload / remove
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/cover-letter/{cover_letter_id}/signature-upload",
+    name="upload_signature_action",
+)
+async def upload_signature_action(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    cover_letter_id: int,
+) -> Response:
+    """Accept an image file upload and store it as a base64 data URL in layout_settings.
+
+    The image is validated (must be image/*, max 300 KB) and encoded as a
+    data URL. Stored without a DB migration by using the existing JSONB
+    layout_settings column.
+
+    :param request: Incoming HTTP request with multipart form data.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param cover_letter_id: Identifier of the cover letter.
+    :return: Redirect to the editor page.
+    """
+    import base64
+    from fastapi import UploadFile
+
+    cover_letter = get_cover_letter_by_id(
+        db, cover_letter_id=cover_letter_id, user_id=current_user.id
+    )
+    editor_url = str(
+        request.url_for("render_cover_letter_editor_page", cover_letter_id=cover_letter_id)
+    )
+    if cover_letter is None:
+        query_string = build_feedback_query(message="Anschreiben nicht gefunden.", message_type="error")
+        return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+    form = await request.form()
+    file: UploadFile | None = form.get("file")  # type: ignore[assignment]
+    if file is None or not hasattr(file, "read"):
+        query_string = build_feedback_query(message="Keine Datei empfangen.", message_type="error")
+        return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/"):
+        query_string = build_feedback_query(
+            message="Ungültiger Dateityp. Bitte PNG, JPEG oder GIF hochladen.",
+            message_type="error",
+        )
+        return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+    image_bytes = await file.read()
+    if len(image_bytes) > 300 * 1024:
+        query_string = build_feedback_query(
+            message="Datei zu groß. Maximal 300 KB erlaubt.",
+            message_type="error",
+        )
+        return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+    data_url = f"data:{content_type};base64,{base64.b64encode(image_bytes).decode()}"
+    cover_letter.layout_settings = {**(cover_letter.layout_settings or {}), "signature_image": data_url}
+    db.add(cover_letter)
+    db.commit()
+
+    query_string = build_feedback_query(message="Unterschrift hochgeladen.", message_type="success")
+    return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+
+@router.post(
+    "/cover-letter/{cover_letter_id}/signature-remove",
+    name="remove_signature_action",
+)
+def remove_signature_action(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    cover_letter_id: int,
+) -> Response:
+    """Remove the stored signature image from layout_settings.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param cover_letter_id: Identifier of the cover letter.
+    :return: Redirect to the editor page.
+    """
+    cover_letter = get_cover_letter_by_id(
+        db, cover_letter_id=cover_letter_id, user_id=current_user.id
+    )
+    editor_url = str(
+        request.url_for("render_cover_letter_editor_page", cover_letter_id=cover_letter_id)
+    )
+    if cover_letter is None:
+        query_string = build_feedback_query(message="Anschreiben nicht gefunden.", message_type="error")
+        return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+    settings_dict = dict(cover_letter.layout_settings or {})
+    settings_dict.pop("signature_image", None)
+    cover_letter.layout_settings = settings_dict
+    db.add(cover_letter)
+    db.commit()
+
+    query_string = build_feedback_query(message="Unterschrift entfernt.", message_type="success")
+    return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+
+@router.post(
+    "/cover-letter/{cover_letter_id}/signature-from-profile",
+    name="insert_signature_from_profile_action",
+)
+def insert_signature_from_profile_action(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    cover_letter_id: int,
+) -> Response:
+    """Copy the profile signature into this cover letter's layout_settings.
+
+    Reads ``profile_information.signature_image`` and writes it to
+    ``cover_letter.layout_settings["signature_image"]``. The profile copy is
+    not modified.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param cover_letter_id: Identifier of the cover letter.
+    :return: Redirect to the editor page.
+    """
+    cover_letter = get_cover_letter_by_id(
+        db, cover_letter_id=cover_letter_id, user_id=current_user.id
+    )
+    editor_url = str(
+        request.url_for("render_cover_letter_editor_page", cover_letter_id=cover_letter_id)
+    )
+    if cover_letter is None:
+        query_string = build_feedback_query(message="Anschreiben nicht gefunden.", message_type="error")
+        return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+    profile = get_profile_for_user(db, user_id=current_user.id)
+    if profile is None or not profile.signature_image:
+        query_string = build_feedback_query(
+            message="Keine Profilunterschrift vorhanden. Bitte zuerst eine Unterschrift hochladen.",
+            message_type="error",
+        )
+        return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+    cover_letter.layout_settings = {
+        **(cover_letter.layout_settings or {}),
+        "signature_image": profile.signature_image,
+    }
+    db.add(cover_letter)
+    db.commit()
+
+    query_string = build_feedback_query(message="Unterschrift eingefügt.", message_type="success")
     return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
 
 

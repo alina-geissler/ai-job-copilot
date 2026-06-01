@@ -16,10 +16,10 @@
 {#- ===== RECIPIENT ============================================= -#}
 {% if company_name or contact_person or company_street or company_city %}
 <section class="cl-recipient" data-field-group="recipient">
-  {% if company_name %}<p class="cl-field cl-company-name" data-field="company_name">{{ company_name }}</p>{% endif %}
-  {% if contact_person %}<p class="cl-field cl-contact-person" data-field="contact_person">{{ contact_person }}</p>{% endif %}
-  {% if company_street %}<p class="cl-field cl-company-street" data-field="company_street">{{ company_street }}</p>{% endif %}
-  {% if company_city %}<p class="cl-field cl-company-city" data-field="company_city">{{ company_city }}</p>{% endif %}
+  {% if company_name %}<p class="cl-field cl-company-name" data-field="company_name" contenteditable="true" spellcheck="true">{{ company_name }}</p>{% endif %}
+  {% if contact_person %}<p class="cl-field cl-contact-person" data-field="contact_person" contenteditable="true" spellcheck="true">{{ contact_person }}</p>{% endif %}
+  {% if company_street %}<p class="cl-field cl-company-street" data-field="company_street" contenteditable="true" spellcheck="true">{{ company_street }}</p>{% endif %}
+  {% if company_city %}<p class="cl-field cl-company-city" data-field="company_city" contenteditable="true" spellcheck="true">{{ company_city }}</p>{% endif %}
 </section>
 {% endif %}
 
@@ -27,7 +27,7 @@
 {% if candidate_location or date %}
 <section class="cl-date-line" data-field-group="date">
   <p class="cl-date">
-    {%- if candidate_location %}<span class="cl-field cl-date-location" data-field="candidate_location">{{ candidate_location }}</span>{% endif -%}
+    {%- if candidate_location %}<span class="cl-field cl-date-location" data-field="candidate_location" contenteditable="true">{{ candidate_location }}</span>{% endif -%}
     {%- if candidate_location and date %}, {% endif -%}
     {%- if date %}<span class="cl-field cl-date-value" data-field="date">{{ date }}</span>{% endif -%}
   </p>
@@ -37,31 +37,31 @@
 {#- ===== SUBJECT + REFERENCE =================================== -#}
 {% if subject_line or reference_number %}
 <section class="cl-subject" data-field-group="subject">
-  {% if subject_line %}<h1 class="cl-field cl-subject-line" data-field="subject_line">{{ subject_line }}</h1>{% endif %}
+  {% if subject_line %}<h1 class="cl-field cl-subject-line" data-field="subject_line" contenteditable="true" spellcheck="true">{{ subject_line }}</h1>{% endif %}
   {% if reference_number %}<p class="cl-field cl-reference" data-field="reference_number">{{ reference_number }}</p>{% endif %}
 </section>
 {% endif %}
 
 {#- ===== SALUTATION ============================================ -#}
 {% if salutation %}
-<p class="cl-field cl-salutation" data-field="salutation">{{ salutation }}</p>
+<p class="cl-field cl-salutation" data-field="salutation" contenteditable="true" spellcheck="true">{{ salutation }}</p>
 {% endif %}
 
 {#- ===== BODY: introduction + main_body[] + conclusion ========= -#}
 {% if introduction or main_body or conclusion %}
 <div class="cl-body" data-field-group="body">
   {% if introduction %}
-  <p class="cl-field cl-introduction" data-field="introduction">{{ introduction }}</p>
+  <p class="cl-field cl-introduction" data-field="introduction" contenteditable="true" spellcheck="true">{{ introduction }}</p>
   {% endif %}
   {% if main_body %}
   <div class="cl-field cl-main-body" data-field="main_body">
     {% for paragraph in main_body %}
-    <p class="cl-paragraph">{{ paragraph }}</p>
+    <p class="cl-paragraph" data-list-field="main_body" data-list-index="{{ loop.index0 }}" contenteditable="true" spellcheck="true">{{ paragraph }}</p>
     {% endfor %}
   </div>
   {% endif %}
   {% if conclusion %}
-  <p class="cl-field cl-conclusion" data-field="conclusion">{{ conclusion }}</p>
+  <p class="cl-field cl-conclusion" data-field="conclusion" contenteditable="true" spellcheck="true">{{ conclusion }}</p>
   {% endif %}
 </div>
 {% endif %}

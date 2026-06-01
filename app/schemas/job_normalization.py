@@ -38,6 +38,11 @@ class JobNormalizationSchema(BaseModel):
     occupational_category: str | None = None
     department_function: str | None = None
     seniority_level: str | None = None
+    # industry_group: one of "conservative_business", "dynamic_modern",
+    #   "technical_scientific", "social_health_education"
+    industry_group: str | None = None
+    # hierarchy_level: one of "entry_junior", "professional_senior", "executive_c_level"
+    hierarchy_level: str | None = None
     employment_type: str | None = None
     work_model: str | None = None
     job_location: str | None = None
@@ -84,4 +89,3 @@ class JobNormalizationSchema(BaseModel):
     raw_ats_phrases: list[str] = Field(default_factory=list)
 
     # -- Metadata -----------------------------------------------------------------
-    confidence_scores: dict[str, float] = Field(default_factory=dict)

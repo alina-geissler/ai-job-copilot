@@ -41,6 +41,42 @@
   </div>
 </section>
 
+{# ── 1b. Unterschrift hochladen ── #}
+<section class="section">
+  <div class="card">
+    <h2>Unterschrift</h2>
+    <p class="muted" style="margin-bottom:0.75rem;">
+      Dunkle Unterschrift auf weißem Papier, gut ausgeleuchtet, scharf und ohne Schatten hochladen.
+    </p>
+    {% if signature_image %}
+      <div style="margin-bottom:0.75rem;">
+        <img src="{{ signature_image }}"
+             alt="Gespeicherte Unterschrift"
+             style="max-height:80px;opacity:0.9;border:1px solid var(--border-color, #e0e0e0);padding:0.4rem;background:#fff;display:block;">
+      </div>
+      <form method="post"
+            action="{{ request.url_for('upload_profile_signature_action') }}"
+            enctype="multipart/form-data">
+        <label class="btn btn-secondary" style="display:inline-block;cursor:pointer;">
+          Unterschrift ersetzen
+          <input type="file" name="file" accept="image/png,image/jpeg"
+                 style="display:none" onchange="this.closest('form').submit()">
+        </label>
+      </form>
+    {% else %}
+      <form method="post"
+            action="{{ request.url_for('upload_profile_signature_action') }}"
+            enctype="multipart/form-data">
+        <label class="btn btn-primary" style="display:inline-block;cursor:pointer;">
+          Unterschrift hochladen
+          <input type="file" name="file" accept="image/png,image/jpeg"
+                 style="display:none" onchange="this.closest('form').submit()">
+        </label>
+      </form>
+    {% endif %}
+  </div>
+</section>
+
 <section class="section">
   <div class="card">
     <h2>Hochgeladene Dokumente</h2>

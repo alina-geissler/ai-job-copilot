@@ -178,9 +178,22 @@
 
 /* 4g. Closing + signature name (in the variant footer) */
 .cover-letter .cl-closing { margin-top: var(--doc-line); }             /* after conclusion */
+.cl-signature-img {
+  display: block;
+  max-height: 60px;
+  max-width: 200px;
+  margin-top: var(--doc-line);
+  margin-bottom: 0;
+}
 .cl-signature-name {
   margin-top: calc(var(--doc-line) * 4);                 /* >=3 blank lines    */
   font-size: var(--doc-fs-body);
+}
+/* When a signature image is present, mirror the top margin below the image
+   so it sits centred between the closing phrase and the printed name.
+   Use .cover-letter prefix to outweigh .signature-space-compact specificity. */
+.cover-letter .cl-signature-img + .cl-signature-name {
+  margin-top: var(--doc-line);
 }
 
 /* 4h. Attachments */

@@ -81,7 +81,7 @@
   </section>
 
   {# Persönliche Daten #}
-  {% if profile.first_name or profile.last_name or profile.email or profile.street or profile.city or profile.location or profile.phone %}
+  {% if profile.first_name or profile.last_name or profile.email or profile.street or profile.city or profile.location or profile.phone or profile.signature_image %}
   <section class="section">
     <div class="card">
       <h2>Persönliche Daten</h2>
@@ -96,6 +96,12 @@
         {% if profile.street %}<dt>Straße</dt><dd>{{ profile.street }}</dd>{% endif %}
         {% if profile.city %}<dt>Ort</dt><dd>{{ profile.city }}</dd>{% endif %}
         {% if profile.location %}<dt>Standort</dt><dd>{{ profile.location }}</dd>{% endif %}
+        <dt>Unterschrift</dt>
+        {% if has_signature %}
+          <dd>Gespeichert &middot; <a href="{{ request.url_for('render_documents_page') }}">Einsehen / Erneut hochladen</a></dd>
+        {% else %}
+          <dd class="muted">Noch keine Unterschrift &middot; <a href="{{ request.url_for('render_documents_page') }}">Jetzt hochladen</a></dd>
+        {% endif %}
       </dl>
     </div>
   </section>
