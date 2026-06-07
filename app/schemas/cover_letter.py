@@ -44,7 +44,11 @@ class CoverLetterContent(BaseModel):
     # -- Letter body --------------------------------------------------------------
     salutation: str = ""
     introduction: str = ""
-    main_body: list[str] = Field(default_factory=list)
+    main_body_qualifications: str = ""
+    main_body_fit: str = ""
+    # Deprecated: present on letters generated before the Phase 2 pipeline.
+    # Kept for backward compatibility so old records remain renderable.
+    main_body: list[str] | None = None
     conclusion: str = ""
     closing: str = ""
 

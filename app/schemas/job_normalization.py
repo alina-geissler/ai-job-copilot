@@ -88,4 +88,8 @@ class JobNormalizationSchema(BaseModel):
     posting_language: str | None = None
     raw_ats_phrases: list[str] = Field(default_factory=list)
 
+    # contact_person_gender: extracted by the normalisation LLM from honorifics;
+    # "male" | "female" | "unknown". Used in the gender cascade for salutation.
+    contact_person_gender: str | None = None
+
     # -- Metadata -----------------------------------------------------------------

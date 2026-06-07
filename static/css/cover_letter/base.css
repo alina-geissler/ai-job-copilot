@@ -208,3 +208,10 @@
    ------------------------------------------------------------------------- */
 .cover-letter [hidden] { display: none; }
 .cl-icon { pointer-events: none; }
+
+/* -------------------------------------------------------------------------
+   6. Phase 2 body split: qualifications + fit paragraphs run together
+   ------------------------------------------------------------------------- */
+.cl-main-body-qualifications {
+  margin-bottom: 0;
+}

@@ -399,9 +399,11 @@
           {% set subject_line         = content.subject_line %}
           {% set reference_number     = content.reference_number %}
           {% set salutation           = content.salutation %}
-          {% set introduction         = content.introduction %}
-          {% set main_body            = content.main_body %}
-          {% set conclusion           = content.conclusion %}
+          {% set introduction                = content.introduction %}
+          {% set main_body_qualifications    = content.main_body_qualifications %}
+          {% set main_body_fit               = content.main_body_fit %}
+          {% set main_body                   = content.main_body %}
+          {% set conclusion                  = content.conclusion %}
           {% set closing              = content.closing %}
           {% set attachments          = content.attachments %}
           {% if current_tpl == 'classic' %}
@@ -436,6 +438,8 @@
   <input type="hidden" name="subject_line" value="">
   <input type="hidden" name="salutation" value="">
   <input type="hidden" name="introduction" value="">
+  <input type="hidden" name="main_body_qualifications" value="">
+  <input type="hidden" name="main_body_fit" value="">
   <input type="hidden" name="conclusion" value="">
   <input type="hidden" name="closing" value="">
   {# Sender contact fields — pre-populated so unchanged values survive the merge #}

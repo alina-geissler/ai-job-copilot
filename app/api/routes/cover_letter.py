@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.core.enums import CoverLetterGenerationStatus, CoverLetterTemplate, CoverLetterTone
+from app.core.enums import CoverLetterGenerationStatus, CoverLetterTemplate, CoverLetterToneKey
 from app.crud.application_tracker_entry import get_tracker_entry_by_id_for_user
 from app.crud.cover_letter import (
     delete_cover_letter,
@@ -66,10 +66,48 @@ _TEMPLATE_LABELS: dict[CoverLetterTemplate, str] = {
     CoverLetterTemplate.COMPACT: "Kompakt (besonders gut geeignet für ausführliche, längere Texte)",
 }
 
-_TONE_LABELS: dict[CoverLetterTone, str] = {
-    CoverLetterTone.FORMAL: "Formell",
-    CoverLetterTone.NEUTRAL: "Neutral",
-    CoverLetterTone.CASUAL: "Locker",
+_TONE_KEY_LABELS: dict[str, str] = {
+    CoverLetterToneKey.FORMELL:  "Formell",
+    CoverLetterToneKey.LOCKER:   "Locker",
+    CoverLetterToneKey.SACHLICH: "Sachlich",
+    CoverLetterToneKey.WARM:     "Warm",
+}
+
+# Tooltip text shown on the "?" info icon for each tone option.
+# Uses "Empfohlen für …" (not "Empfohlen basierend auf …").
+_TONE_KEY_TOOLTIPS: dict[str, str] = {
+    CoverLetterToneKey.FORMELL:  "Empfohlen für konservative Branchen / klassisches Geschäftsumfeld → sachlich, respektvoll, zurückhaltend-selbstbewusst",
+    CoverLetterToneKey.LOCKER:   "Empfohlen für dynamische & moderne Branchen → aktiv, authentisch, nahbar",
+    CoverLetterToneKey.SACHLICH: "Empfohlen für technisch/wissenschaftliche Branchen → präzise, faktenorientiert, ruhig-souverän",
+    CoverLetterToneKey.WARM:     "Empfohlen für Sozial-/Gesundheits-/Bildungswesen → wertschätzend, empathisch, professionell-verbindlich",
+}
+
+_INDUSTRY_GROUP_LABELS: dict[str, str] = {
+    "conservative_business":   "Konservatives Business",
+    "dynamic_modern":          "Dynamisch & Modern",
+    "technical_scientific":    "Technisch / Wissenschaftlich",
+    "social_health_education": "Sozial / Gesundheit / Bildung",
+}
+
+# Guidelines shown in the info tooltip for each industry group.
+_INDUSTRY_GROUP_TOOLTIPS: dict[str, str] = {
+    "conservative_business":   "Banking, Versicherung, Recht, öffentlicher Dienst, traditionelle Konzerne",
+    "dynamic_modern":          "Startups, Marketing, Medien, E-Commerce, Beratung, SaaS",
+    "technical_scientific":    "Ingenieurwesen, IT, Software, Data, Forschung, Fertigung",
+    "social_health_education": "Gesundheitswesen, Sozialarbeit, Bildung, NGO, Non-Profit",
+}
+
+_HIERARCHY_LEVEL_LABELS: dict[str, str] = {
+    "entry_junior":       "Berufseinsteiger / Junior",
+    "professional_senior": "Fachkraft / Senior",
+    "executive_c_level":  "Führungskraft / C-Level",
+}
+
+# Guidelines shown in the info tooltip for each hierarchy level.
+_HIERARCHY_LEVEL_TOOLTIPS: dict[str, str] = {
+    "entry_junior":       "Trainee, Azubi, Junior, Quereinsteiger – bis ca. 2 Jahre Erfahrung",
+    "professional_senior": "Mid-Level, Senior, Spezialist, Teamleitung – ca. 3–10 Jahre Erfahrung",
+    "executive_c_level":  "Direktor, VP, C-Suite, Geschäftsführer, Abteilungsleitung",
 }
 
 
@@ -228,6 +266,8 @@ def render_cover_letter_setup_page(
     :param tracker_entry_id: Optional tracker entry identifier.
     :return: Rendered setup page.
     """
+    from prompts.cover_letter_generation import INDUSTRY_GROUP_TO_TONE, LANGUAGE_LABELS
+
     if tracker_entry_id is not None and job_id is None:
         entry = get_tracker_entry_by_id_for_user(
             db, entry_id=tracker_entry_id, user_id=current_user.id
@@ -237,6 +277,24 @@ def render_cover_letter_setup_page(
 
     job_context = _resolve_job_context(db, job_id=job_id, manual_job_id=manual_job_id)
     prefill: dict[str, Any] = request.session.pop(_SETUP_PARAMS_SESSION_KEY, {})
+
+    # Best-effort normalization lookup to pre-fill mandatory generation fields.
+    norm_data: dict[str, Any] = {}
+    if job_id is not None:
+        norm_rec = get_normalization_by_job_id(db, job_id=job_id)
+        if norm_rec is not None:
+            norm_data = norm_rec.normalized_data or {}
+    elif manual_job_id is not None:
+        from app.crud.job_normalization import get_normalization_by_manual_job_id
+        norm_rec = get_normalization_by_manual_job_id(db, manual_job_posting_id=manual_job_id)
+        if norm_rec is not None:
+            norm_data = norm_rec.normalized_data or {}
+
+    recommended_industry_group = norm_data.get("industry_group") or "conservative_business"
+    recommended_hierarchy_level = norm_data.get("hierarchy_level") or "professional_senior"
+    recommended_tone = INDUSTRY_GROUP_TO_TONE[recommended_industry_group]
+    posting_language = norm_data.get("posting_language") or "de"
+    recommended_output_language = posting_language if posting_language in LANGUAGE_LABELS else "de"
 
     return templates.TemplateResponse(
         request=request,
@@ -250,8 +308,20 @@ def render_cover_letter_setup_page(
             "job_context": job_context,
             "templates": list(CoverLetterTemplate),
             "template_labels": _TEMPLATE_LABELS,
-            "tones": list(CoverLetterTone),
-            "tone_labels": _TONE_LABELS,
+            "tone_keys": list(CoverLetterToneKey),
+            "tone_key_labels": _TONE_KEY_LABELS,
+            "tone_key_tooltips": _TONE_KEY_TOOLTIPS,
+            "industry_groups": list(_INDUSTRY_GROUP_LABELS.keys()),
+            "industry_group_labels": _INDUSTRY_GROUP_LABELS,
+            "industry_group_tooltips": _INDUSTRY_GROUP_TOOLTIPS,
+            "hierarchy_levels": list(_HIERARCHY_LEVEL_LABELS.keys()),
+            "hierarchy_level_labels": _HIERARCHY_LEVEL_LABELS,
+            "hierarchy_level_tooltips": _HIERARCHY_LEVEL_TOOLTIPS,
+            "language_labels": LANGUAGE_LABELS,
+            "recommended_tone": recommended_tone,
+            "recommended_industry_group": recommended_industry_group,
+            "recommended_hierarchy_level": recommended_hierarchy_level,
+            "recommended_output_language": recommended_output_language,
             "prefill": prefill,
         },
     )
@@ -265,12 +335,18 @@ async def submit_cover_letter_setup_action(
     background_tasks: BackgroundTasks,
     template: Annotated[str, Form()],
     tone: Annotated[str, Form()],
+    industry_group: Annotated[str, Form()],
+    hierarchy_level: Annotated[str, Form()],
+    output_language: Annotated[str, Form()],
     job_id: Annotated[int | None, Form()] = None,
     manual_job_id: Annotated[int | None, Form()] = None,
     must_haves: Annotated[str, Form()] = "",
+    no_gos: Annotated[str, Form()] = "",
     personal_motivation: Annotated[str, Form()] = "",
     why_company: Annotated[str, Form()] = "",
     added_value: Annotated[str, Form()] = "",
+    earliest_start_date: Annotated[str, Form()] = "",
+    salary_expectation: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
     """Validate setup form, check profile, and start cover letter generation.
 
@@ -282,21 +358,36 @@ async def submit_cover_letter_setup_action(
     :param db: Active database session.
     :param background_tasks: FastAPI background task queue.
     :param template: Selected template enum value string.
-    :param tone: Selected tone enum value string.
+    :param tone: Selected tone key string (one of the ``CoverLetterToneKey`` values).
+    :param industry_group: Selected industry group key.
+    :param hierarchy_level: Selected hierarchy level key.
+    :param output_language: Selected output language code (e.g. "de", "en").
     :param job_id: Optional API-sourced job identifier (hidden field).
     :param manual_job_id: Optional manual job posting identifier (hidden field).
-    :param must_haves: Optional must-haves / no-gos text.
+    :param must_haves: Optional must-haves text.
+    :param no_gos: Optional no-gos text.
     :param personal_motivation: Optional personal motivation text.
     :param why_company: Optional why-this-company text.
     :param added_value: Optional added-value text.
+    :param earliest_start_date: Optional earliest start date.
+    :param salary_expectation: Optional salary expectation.
     :return: Redirect to generating page or profile page.
     """
+    from prompts.cover_letter_generation import INDUSTRY_RULES, HIERARCHY_RULES, LANGUAGE_LABELS
+
     try:
         tpl = CoverLetterTemplate(template)
-        tn = CoverLetterTone(tone)
     except ValueError:
+        tpl = None
+
+    tone_valid = tone in {k.value for k in CoverLetterToneKey}
+    industry_group_valid = industry_group in INDUSTRY_RULES
+    hierarchy_level_valid = hierarchy_level in HIERARCHY_RULES
+    output_language_valid = output_language in LANGUAGE_LABELS
+
+    if tpl is None or not tone_valid or not industry_group_valid or not hierarchy_level_valid or not output_language_valid:
         query_string = build_feedback_query(
-            message="Bitte wähle ein Template und einen Ton aus.",
+            message="Bitte fülle alle Pflichtfelder aus.",
             message_type="error",
         )
         setup_url = str(request.url_for("render_cover_letter_setup_page"))
@@ -312,28 +403,43 @@ async def submit_cover_letter_setup_action(
         request.session[_SETUP_PARAMS_SESSION_KEY] = {
             "template": template,
             "tone": tone,
+            "industry_group": industry_group,
+            "hierarchy_level": hierarchy_level,
+            "output_language": output_language,
             "job_id": job_id,
             "manual_job_id": manual_job_id,
             "must_haves": must_haves,
+            "no_gos": no_gos,
             "personal_motivation": personal_motivation,
             "why_company": why_company,
             "added_value": added_value,
+            "earliest_start_date": earliest_start_date,
+            "salary_expectation": salary_expectation,
         }
         profile_url = str(request.url_for("render_profile_page"))
         return RedirectResponse(url=f"{profile_url}?needs_profile=1", status_code=303)
+
+    # Map output_language code to human-readable label expected by the prompt.
+    output_language_label = LANGUAGE_LABELS.get(output_language, "Deutsch")
 
     cover_letter = initiate_cover_letter_generation(
         db,
         background_tasks=background_tasks,
         user_id=current_user.id,
         template=tpl,
-        tone=tn,
+        tone=tone,
+        industry_group=industry_group,
+        hierarchy_level=hierarchy_level,
+        output_language=output_language_label,
         job_id=job_id,
         manual_job_posting_id=manual_job_id,
         must_haves=must_haves.strip() or None,
+        no_gos=no_gos.strip() or None,
         personal_motivation=personal_motivation.strip() or None,
         why_company=why_company.strip() or None,
         added_value=added_value.strip() or None,
+        earliest_start_date=earliest_start_date.strip() or None,
+        salary_expectation=salary_expectation.strip() or None,
     )
 
     generating_url = str(
@@ -475,7 +581,7 @@ def render_cover_letter_editor_page(
             "normalization": normalization,
             "job_title": job_title,
             "template_label": _TEMPLATE_LABELS.get(cover_letter.template, cover_letter.template),
-            "tone_label": _TONE_LABELS.get(cover_letter.tone, cover_letter.tone),
+            "tone_label": _TONE_KEY_LABELS.get(cover_letter.tone, cover_letter.tone),
             "layout": layout,
             "default_document_name": default_document_name,
             "default_document_filename": default_document_filename,
@@ -689,7 +795,9 @@ async def save_cover_letter_content_action(
 
     # All scalar fields that may be submitted by the contenteditable hidden form.
     _EDITABLE_SCALAR_FIELDS = (
-        "subject_line", "salutation", "introduction", "conclusion", "closing",
+        "subject_line", "salutation", "introduction",
+        "main_body_qualifications", "main_body_fit",
+        "conclusion", "closing",
         "candidate_first_name", "candidate_last_name",
         "candidate_email", "candidate_phone",
         "candidate_street", "candidate_city", "candidate_location",
@@ -699,7 +807,7 @@ async def save_cover_letter_content_action(
         if field in form:
             merged[field] = str(form[field]).strip()
 
-    # Collect ordered main_body_N fields.
+    # Backward-compat: collect ordered main_body_N fields for old letters.
     body_items: list[tuple[int, str]] = []
     for key, val in form.multi_items():
         if key.startswith("main_body_") and key[10:].isdigit():

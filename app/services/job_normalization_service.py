@@ -30,10 +30,20 @@ from prompts.job_normalization import VERSIONS
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 _SYSTEM_PROMPT = VERSIONS[PROMPT_VERSION]
 
 _EVALS_PATH = Path(__file__).resolve().parents[2] / "evals" / "job_normalizations.jsonl"
+
+# Responses API text.format descriptor for structured normalisation output.
+# strict=False: Pydantic's auto-generated schema uses anyOf for optional fields,
+# which is incompatible with strict mode.
+_NORM_TEXT_FORMAT: dict = {
+    "type": "json_schema",
+    "name": "job_normalization",
+    "strict": False,
+    "schema": JobNormalizationSchema.model_json_schema(),
+}
 
 
 def _build_client() -> OpenAI:
@@ -43,6 +53,7 @@ def _build_client() -> OpenAI:
     """
     return OpenAI(
         api_key=settings.openai_api_key,
+        max_retries=3,
         timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0),
     )
 
@@ -126,16 +137,19 @@ def normalize_job(
 
     user_message = "".join(user_parts)
 
-    completion = client.beta.chat.completions.parse(
+    response = client.responses.create(
         model=settings.openai_model,
-        max_tokens=4096,
-        messages=[
+        input=[
             {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": user_message},
+            {"role": "user",   "content": user_message},
         ],
-        response_format=JobNormalizationSchema,
+        text={"format": _NORM_TEXT_FORMAT},
+        reasoning={"effort": "medium"},
+        max_output_tokens=16_000,
     )
-    result: JobNormalizationSchema = completion.choices[0].message.parsed
+    result: JobNormalizationSchema = JobNormalizationSchema.model_validate(
+        json.loads(response.output_text)
+    )
 
     _append_eval(
         result,

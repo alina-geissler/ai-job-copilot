@@ -1,24 +1,26 @@
 """Service functions for cover letter generation and lifecycle management.
 
 Coordinate cover letter creation, the background generation task, and
-supporting database writes. Phase 1 uses a mock generation function;
-phase 2 will replace ``_mock_generate`` with a real OpenAI
-``beta.chat.completions.parse()`` call.
+supporting database writes. The real LLM generation uses a three-call pipeline:
+Call A (Analysis) → Call B (Writing) → Call C (Verification, conditional).
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date
 
+import httpx
 from fastapi import BackgroundTasks
+from openai import OpenAI
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.enums import (
     CoverLetterGenerationStatus,
     CoverLetterRevisionType,
     CoverLetterTemplate,
-    CoverLetterTone,
 )
 from app.crud.cover_letter import (
     create_cover_letter,
@@ -39,8 +41,34 @@ from app.models.profile_information import ProfileInformation
 from app.schemas.cover_letter import CoverLetterContent
 from app.schemas.job_normalization import JobNormalizationSchema
 from app.services.job_normalization_service import get_or_create_normalization
+from prompts.cover_letter_generation import (
+    ANALYSIS_SETTINGS,
+    ANALYSIS_SCHEMA,
+    LENGTH_BUDGET,
+    VERIFICATION_SETTINGS,
+    VERIFICATION_SCHEMA,
+    WRITING_SETTINGS,
+    WRITING_SCHEMA,
+    build_analysis_messages,
+    build_verification_messages,
+    build_writing_messages,
+    filter_job_for_llm,
+    resolve_contact_gender,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _build_client() -> OpenAI:
+    """Create a configured OpenAI client using the default OpenAI endpoint.
+
+    :return: Configured OpenAI client instance.
+    """
+    return OpenAI(
+        api_key=settings.openai_api_key,
+        max_retries=3,
+        timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0),
+    )
 
 
 def _build_draft_name(
@@ -98,13 +126,20 @@ def initiate_cover_letter_generation(
     background_tasks: BackgroundTasks,
     user_id: int,
     template: CoverLetterTemplate,
-    tone: CoverLetterTone,
+    tone: str,
+    industry_group: str,
+    hierarchy_level: str,
+    output_language: str,
     job_id: int | None = None,
     manual_job_posting_id: int | None = None,
     must_haves: str | None = None,
+    no_gos: str | None = None,
     personal_motivation: str | None = None,
     why_company: str | None = None,
     added_value: str | None = None,
+    earliest_start_date: str | None = None,
+    salary_expectation: str | None = None,
+    company_context: str | None = None,
 ) -> CoverLetter:
     """Create a PENDING cover letter record and enqueue the generation task.
 
@@ -112,13 +147,20 @@ def initiate_cover_letter_generation(
     :param background_tasks: FastAPI background task queue.
     :param user_id: Identifier of the owning user.
     :param template: Selected visual template.
-    :param tone: Selected tone.
+    :param tone: Selected tone key (one of the ``CoverLetterToneKey`` values).
+    :param industry_group: Mandatory industry group selected on setup form.
+    :param hierarchy_level: Mandatory hierarchy level selected on setup form.
+    :param output_language: Mandatory output language selected on setup form.
     :param job_id: FK to an API-sourced job, or ``None``.
     :param manual_job_posting_id: FK to a manual job posting, or ``None``.
-    :param must_haves: Optional must-haves / no-gos text.
+    :param must_haves: Optional must-haves text.
+    :param no_gos: Optional no-gos text.
     :param personal_motivation: Optional personal motivation text.
     :param why_company: Optional why-this-company text.
     :param added_value: Optional added-value text.
+    :param earliest_start_date: Optional earliest start date.
+    :param salary_expectation: Optional salary expectation.
+    :param company_context: Optional company background (reserved for future use).
     :return: Newly created CoverLetter record with PENDING status.
     """
     cover_letter = create_cover_letter(
@@ -126,12 +168,19 @@ def initiate_cover_letter_generation(
         user_id=user_id,
         template=template,
         tone=tone,
+        industry_group=industry_group,
+        hierarchy_level=hierarchy_level,
+        output_language=output_language,
         job_id=job_id,
         manual_job_posting_id=manual_job_posting_id,
         must_haves=must_haves,
+        no_gos=no_gos,
         personal_motivation=personal_motivation,
         why_company=why_company,
         added_value=added_value,
+        earliest_start_date=earliest_start_date,
+        salary_expectation=salary_expectation,
+        company_context=company_context,
         document_name=_build_draft_name(
             db, job_id=job_id, manual_job_posting_id=manual_job_posting_id
         ),
@@ -151,8 +200,8 @@ def _run_generation_task(*, cover_letter_id: int) -> None:
     2. Resolve job text from either the Job or ManualJobPosting record.
     3. Get or create the JobNormalization for this job.
     4. Load the user's ProfileInformation.
-    5. Generate cover letter content (mock in phase 1); LLM does not receive
-       private contact fields (phone, email, street, city).
+    5. Generate cover letter content via the three-call LLM pipeline.
+       The LLM does not receive private contact fields.
     6. Populate private fields from profile after generation.
     7. Persist content, set status = COMPLETED, create INITIAL snapshot.
     On any exception: set status = FAILED and store the error message.
@@ -184,13 +233,12 @@ def _run_generation_task(*, cover_letter_id: int) -> None:
             db.commit()
 
             profile = get_profile_for_user(db, user_id=cover_letter.user_id)
-
             norm_schema = JobNormalizationSchema(**normalization.normalized_data)
 
-            # Phase 2 hook: replace _mock_generate with real LLM call.
-            # The LLM must NOT receive private contact fields.
-            content = _mock_generate(
-                profile=profile, normalization=norm_schema, tone=cover_letter.tone
+            content = _llm_generate(
+                cover_letter=cover_letter,
+                norm_schema=norm_schema,
+                profile=profile,
             )
 
             # Populate private contact fields from profile (never from LLM).
@@ -247,6 +295,344 @@ def _run_generation_task(*, cover_letter_id: int) -> None:
         )
     finally:
         db.close()
+
+
+def _llm_generate(
+    *,
+    cover_letter: CoverLetter,
+    norm_schema: JobNormalizationSchema,
+    profile: ProfileInformation | None,
+) -> CoverLetterContent:
+    """Run the three-call LLM pipeline and return structured cover letter content.
+
+    The LLM never receives private candidate contact fields (phone, email, street,
+    city). The caller populates those after this function returns.
+
+    :param cover_letter: CoverLetter record carrying all user-selected options.
+    :param norm_schema: Normalised job schema from the normalisation step.
+    :param profile: User's profile information, or ``None`` if unavailable.
+    :return: Populated CoverLetterContent with LLM-generated body fields.
+    :raises ValueError: If mandatory generation fields are missing on the record.
+    """
+    for field in ("tone", "industry_group", "hierarchy_level", "output_language"):
+        if not getattr(cover_letter, field):
+            raise ValueError(
+                f"Cover letter {cover_letter.id} is missing mandatory field '{field}'. "
+                "This is a data integrity error — the setup form should have enforced it."
+            )
+
+    tone_key: str = cover_letter.tone
+    industry_group: str = cover_letter.industry_group  # type: ignore[assignment]
+    hierarchy_level: str = cover_letter.hierarchy_level  # type: ignore[assignment]
+    output_language: str = cover_letter.output_language  # type: ignore[assignment]
+
+    job_dict = filter_job_for_llm(norm_schema)
+    contact_person_gender = resolve_contact_gender(
+        job_dict, norm_schema.contact_person_gender
+    )
+
+    additional_details: dict = {
+        k: v for k, v in {
+            "must_haves":         cover_letter.must_haves,
+            "no_gos":             cover_letter.no_gos,
+            "personal_motivation": cover_letter.personal_motivation,
+            "company_reason":     cover_letter.why_company,
+            "added_value":        cover_letter.added_value,
+            "earliest_start_date": cover_letter.earliest_start_date,
+            "salary_expectation": cover_letter.salary_expectation,
+        }.items() if v
+    }
+
+    company_context: str = cover_letter.company_context or ""
+    profile_dict = _build_profile_dict(profile)
+
+    client = _build_client()
+
+    # ── Call A: Analysis ────────────────────────────────────────────────────
+    analysis_messages = build_analysis_messages(
+        job_dict, profile_dict, additional_details, company_context
+    )
+    fit_plan = _call_with_json_retry(
+        client,
+        call_name="Analysis",
+        messages=analysis_messages,
+        settings=ANALYSIS_SETTINGS,
+        schema=ANALYSIS_SCHEMA,
+    )
+
+    # ── Call B: Writing (with length-check regeneration) ────────────────────
+    letter = _call_writing(
+        client=client,
+        fit_plan=fit_plan,
+        job_dict=job_dict,
+        profile_dict=profile_dict,
+        additional_details=additional_details,
+        company_context=company_context,
+        industry_group=industry_group,
+        hierarchy_level=hierarchy_level,
+        tone_key=tone_key,
+        output_language=output_language,
+        contact_person_gender=contact_person_gender,
+    )
+
+    # ── Call C: Verification (conditional) ──────────────────────────────────
+    must_avoid: list[str] = fit_plan.get("must_avoid") or []
+    if must_avoid:
+        letter = _verify_and_maybe_regenerate(
+            client=client,
+            letter=letter,
+            must_avoid=must_avoid,
+            fit_plan=fit_plan,
+            job_dict=job_dict,
+            profile_dict=profile_dict,
+            additional_details=additional_details,
+            company_context=company_context,
+            industry_group=industry_group,
+            hierarchy_level=hierarchy_level,
+            tone_key=tone_key,
+            output_language=output_language,
+            contact_person_gender=contact_person_gender,
+        )
+
+    company = norm_schema.company_name or "das Unternehmen"
+    reference_number = norm_schema.reference_number
+
+    return CoverLetterContent(
+        company_name=norm_schema.company_name,
+        contact_person=norm_schema.contact_person,
+        company_street=norm_schema.company_street,
+        company_city=norm_schema.company_city,
+        date=date.today().strftime("%d.%m.%Y"),
+        subject_line=letter.get("subject_line", ""),
+        reference_number=reference_number,
+        salutation=letter.get("salutation", ""),
+        introduction=letter.get("introduction", ""),
+        main_body_qualifications=letter.get("main_body_qualifications", ""),
+        main_body_fit=letter.get("main_body_fit", ""),
+        conclusion=letter.get("conclusion", ""),
+        closing="Mit freundlichen Grüßen",
+        attachments=["Lebenslauf"],
+    )
+
+
+def _call_writing(
+    *,
+    client: OpenAI,
+    fit_plan: dict,
+    job_dict: dict,
+    profile_dict: dict,
+    additional_details: dict,
+    company_context: str,
+    industry_group: str,
+    hierarchy_level: str,
+    tone_key: str,
+    output_language: str,
+    contact_person_gender: str,
+) -> dict:
+    """Execute Call B (Writing) with a single length-check regeneration pass.
+
+    If the total character count of the four prose fields exceeds
+    ``LENGTH_BUDGET["total_chars_hard_max"]``, appends a compression instruction
+    and retries once.
+
+    :return: Letter fields dict from the LLM.
+    """
+    messages = build_writing_messages(
+        fit_plan, job_dict, profile_dict, additional_details, company_context,
+        industry_group=industry_group,
+        hierarchy_level=hierarchy_level,
+        tone_key=tone_key,
+        output_language=output_language,
+        contact_person_gender=contact_person_gender,
+    )
+    letter = _call_with_json_retry(
+        client, call_name="Writing", messages=messages,
+        settings=WRITING_SETTINGS, schema=WRITING_SCHEMA,
+    )
+
+    prose_fields = ("introduction", "main_body_qualifications", "main_body_fit", "conclusion")
+    total_chars = sum(len(letter.get(f, "")) for f in prose_fields)
+    if total_chars > LENGTH_BUDGET["total_chars_hard_max"]:
+        logger.info(
+            "Writing Call B: letter too long (%d chars > %d). Regenerating with compression.",
+            total_chars, LENGTH_BUDGET["total_chars_hard_max"],
+        )
+        compression_note = (
+            "\n\nWICHTIG: Der vorherige Versuch war zu lang. "
+            "Kürze jeden Abschnitt konsequent."
+        )
+        messages[-1]["content"] += compression_note
+        letter = _call_with_json_retry(
+            client, call_name="Writing (compressed)", messages=messages,
+            settings=WRITING_SETTINGS, schema=WRITING_SCHEMA,
+        )
+
+    return letter
+
+
+def _verify_and_maybe_regenerate(
+    *,
+    client: OpenAI,
+    letter: dict,
+    must_avoid: list[str],
+    fit_plan: dict,
+    job_dict: dict,
+    profile_dict: dict,
+    additional_details: dict,
+    company_context: str,
+    industry_group: str,
+    hierarchy_level: str,
+    tone_key: str,
+    output_language: str,
+    contact_person_gender: str,
+) -> dict:
+    """Run Call C (Verification) and regenerate Call B once if violations found.
+
+    After one regeneration pass, returns the letter regardless of remaining
+    violations — those are logged for human review rather than looped indefinitely.
+
+    :return: Final letter fields dict (possibly regenerated).
+    """
+    verification_messages = build_verification_messages(letter, must_avoid)
+    report = _call_with_json_retry(
+        client, call_name="Verification", messages=verification_messages,
+        settings=VERIFICATION_SETTINGS, schema=VERIFICATION_SCHEMA,
+    )
+
+    violations = [c for c in report.get("checks", []) if c.get("violated")]
+    if not violations:
+        return letter
+
+    logger.warning(
+        "Cover letter verification found %d violation(s): %s",
+        len(violations),
+        [v.get("no_go") for v in violations],
+    )
+
+    evidence_block = (
+        "\n\nACHTUNG – vorheriger Versuch hat gegen folgende No-Go-Regeln verstoßen:\n"
+        + json.dumps(violations, ensure_ascii=False)
+        + "\nDiese Themen dürfen weder wörtlich noch sinngemäß erwähnt werden."
+    )
+    messages = build_writing_messages(
+        fit_plan, job_dict, profile_dict, additional_details, company_context,
+        industry_group=industry_group,
+        hierarchy_level=hierarchy_level,
+        tone_key=tone_key,
+        output_language=output_language,
+        contact_person_gender=contact_person_gender,
+    )
+    messages[-1]["content"] += evidence_block
+
+    regenerated = _call_with_json_retry(
+        client, call_name="Writing (violation fix)", messages=messages,
+        settings=WRITING_SETTINGS, schema=WRITING_SCHEMA,
+    )
+
+    # Check once more; log remaining violations but do not loop.
+    re_verification = build_verification_messages(regenerated, must_avoid)
+    re_report = _call_with_json_retry(
+        client, call_name="Verification (re-check)", messages=re_verification,
+        settings=VERIFICATION_SETTINGS, schema=VERIFICATION_SCHEMA,
+    )
+    remaining = [c for c in re_report.get("checks", []) if c.get("violated")]
+    if remaining:
+        logger.error(
+            "Cover letter still has %d violation(s) after regeneration — "
+            "flagged for human review: %s",
+            len(remaining),
+            [v.get("no_go") for v in remaining],
+        )
+
+    return regenerated
+
+
+def _call_with_json_retry(
+    client: OpenAI,
+    *,
+    call_name: str,
+    messages: list[dict],
+    settings: dict,
+    schema: dict,
+) -> dict:
+    """Execute one structured-output call and retry once on JSON parse failure.
+
+    Uses the Responses API (``client.responses.create``) with ``text.format``
+    for structured output.  The settings dicts use Responses-API parameters
+    (``max_output_tokens``, ``reasoning_effort``, ``verbosity``).
+
+    :param client: Configured OpenAI client.
+    :param call_name: Label used in log messages.
+    :param messages: Message list for the call.
+    :param settings: Model and parameter kwargs (model, reasoning_effort, etc.).
+    :param schema: JSON schema dict passed as ``text={"format": schema}``.
+    :return: Parsed JSON dict from the LLM response.
+    :raises ValueError: If the response cannot be parsed after one retry.
+    """
+    # Unwrap chat-completions response_format shape → Responses API text.format shape
+    if "json_schema" in schema:
+        text_format = {"type": "json_schema", **schema["json_schema"]}
+    else:
+        text_format = schema
+
+    for attempt in range(2):
+        response = client.responses.create(
+            **settings,
+            input=messages,
+            text={"format": text_format},
+        )
+        raw = response.output_text
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError) as exc:
+            if attempt == 0:
+                logger.warning(
+                    "%s call returned unparseable JSON (attempt 1), retrying: %s",
+                    call_name, exc,
+                )
+                continue
+            raise ValueError(
+                f"{call_name} call returned unparseable JSON after retry. "
+                f"Raw response: {raw!r}"
+            ) from exc
+    # unreachable, but satisfies type checker
+    raise ValueError(f"{call_name}: unexpected exit from retry loop")
+
+
+def _build_profile_dict(profile: ProfileInformation | None) -> dict:
+    """Build a compact, LLM-safe dict from the user's profile.
+
+    Excludes all private contact fields (name, phone, email, street, city,
+    location, signature_image). Only content useful for generating the letter
+    body is included.
+
+    :param profile: User's ProfileInformation record, or ``None``.
+    :return: Dict suitable for passing to the prompt builder functions.
+    """
+    if profile is None:
+        return {}
+    return {
+        k: v for k, v in {
+            "target_role":           profile.target_role,
+            "seniority_level":       profile.seniority_level,
+            "leadership_experience": profile.leadership_experience,
+            "salary_expectation":    profile.salary_expectation,
+            "work_model":            profile.work_model,
+            "availability":          profile.availability,
+            "employment_types":      profile.employment_types,
+            "work_experience":       profile.work_experience,
+            "education":             profile.education,
+            "certifications":        profile.certifications,
+            "projects":              profile.projects,
+            "courses":               profile.courses,
+            "volunteering":          profile.volunteering,
+            "hard_skills":           profile.hard_skills,
+            "soft_skills":           profile.soft_skills,
+            "languages":             profile.languages,
+            "publications":          profile.publications,
+            "honors_awards":         profile.honors_awards,
+        }.items() if v
+    }
 
 
 def save_user_content_revision(
@@ -320,65 +706,3 @@ def _resolve_job_text(db: Session, cover_letter: CoverLetter) -> tuple[str, obje
         return posting.raw_text, None
 
     raise ValueError("Cover letter has neither job_id nor manual_job_posting_id.")
-
-
-def _mock_generate(
-    profile: ProfileInformation | None,
-    normalization: JobNormalizationSchema,
-    tone: CoverLetterTone,
-) -> CoverLetterContent:
-    """Return a CoverLetterContent with German placeholder text.
-
-    Private contact fields (candidate_first_name, candidate_last_name,
-    candidate_street, candidate_city, candidate_location, candidate_phone,
-    candidate_email) are intentionally left empty here. The caller populates
-    them from the user's profile after this function returns.
-
-    Phase 2: replace this function body with an OpenAI structured-output call:
-        ``client.beta.chat.completions.parse(response_format=CoverLetterContent, ...)``
-    The LLM prompt must NEVER include the candidate's private contact fields.
-
-    :param profile: User's profile information, or ``None`` if unavailable.
-    :param normalization: Normalised job advertisement schema.
-    :param tone: Tone selected by the user.
-    :return: Populated CoverLetterContent with placeholder text (no private fields).
-    """
-    company = normalization.company_name or "das Unternehmen"
-    job_title = normalization.canonical_job_title or "die ausgeschriebene Stelle"
-    contact = normalization.contact_person
-
-    salutation = (
-        f"Sehr geehrte/r {contact}," if contact else "Sehr geehrte Damen und Herren,"
-    )
-    if tone == CoverLetterTone.CASUAL:
-        salutation = f"Hallo {contact}," if contact else "Hallo,"
-
-    return CoverLetterContent(
-        company_name=normalization.company_name,
-        contact_person=normalization.contact_person,
-        company_street=normalization.company_street,
-        company_city=normalization.company_city,
-        date=date.today().strftime("%d.%m.%Y"),
-        subject_line=(
-            f"Bewerbung als {job_title}"
-            + (f" – Ref.-Nr. {normalization.reference_number}" if normalization.reference_number else "")
-        ),
-        reference_number=normalization.reference_number,
-        salutation=salutation,
-        introduction=(
-            f"mit großem Interesse habe ich Ihre Stellenausschreibung als {job_title} bei {company} gelesen "
-            f"und bewerbe mich hiermit auf diese Position."
-        ),
-        main_body=[
-            "[Platzhalter: Hauptteil Absatz 1 – Berufserfahrung und Kernkompetenzen, "
-            "die zur Stelle passen. Wird durch KI befüllt.]",
-            "[Platzhalter: Hauptteil Absatz 2 – Motivation und konkreter Mehrwert für das Unternehmen. "
-            "Wird durch KI befüllt.]",
-        ],
-        conclusion=(
-            f"Ich freue mich auf die Möglichkeit, mich in einem persönlichen Gespräch bei {company} vorzustellen "
-            f"und stehe ab sofort für Rückfragen zur Verfügung."
-        ),
-        closing="Mit freundlichen Grüßen",
-        attachments=["Lebenslauf"],
-    )

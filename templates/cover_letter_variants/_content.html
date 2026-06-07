@@ -47,19 +47,32 @@
 <p class="cl-field cl-salutation" data-field="salutation" contenteditable="true" spellcheck="true">{{ salutation }}</p>
 {% endif %}
 
-{#- ===== BODY: introduction + main_body[] + conclusion ========= -#}
-{% if introduction or main_body or conclusion %}
+{#- ===== BODY: introduction + body paragraphs + conclusion ======= -#}
+{% if introduction or main_body_qualifications or main_body_fit or main_body or conclusion %}
 <div class="cl-body" data-field-group="body">
   {% if introduction %}
   <p class="cl-field cl-introduction" data-field="introduction" contenteditable="true" spellcheck="true">{{ introduction }}</p>
   {% endif %}
-  {% if main_body %}
+
+  {#- Phase 2 letters: two separate paragraphs, no gap between them -#}
+  {% if main_body_qualifications or main_body_fit %}
+  <div class="cl-body-split">
+    {% if main_body_qualifications %}
+    <p class="cl-field cl-main-body-qualifications" data-field="main_body_qualifications" contenteditable="true" spellcheck="true">{{ main_body_qualifications }}</p>
+    {% endif %}
+    {% if main_body_fit %}
+    <p class="cl-field cl-main-body-fit" data-field="main_body_fit" contenteditable="true" spellcheck="true">{{ main_body_fit }}</p>
+    {% endif %}
+  </div>
+  {#- Backward-compat: Phase 1 letters with legacy main_body list -#}
+  {% elif main_body %}
   <div class="cl-field cl-main-body" data-field="main_body">
     {% for paragraph in main_body %}
     <p class="cl-paragraph" data-list-field="main_body" data-list-index="{{ loop.index0 }}" contenteditable="true" spellcheck="true">{{ paragraph }}</p>
     {% endfor %}
   </div>
   {% endif %}
+
   {% if conclusion %}
   <p class="cl-field cl-conclusion" data-field="conclusion" contenteditable="true" spellcheck="true">{{ conclusion }}</p>
   {% endif %}

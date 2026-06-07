@@ -89,12 +89,18 @@ class CoverLetterTemplate(StrEnum):
     COMPACT = "compact"
 
 
-class CoverLetterTone(StrEnum):
-    """Represent the tone selected for a generated cover letter."""
+class CoverLetterToneKey(StrEnum):
+    """Represent the user-selected tone style for a generated cover letter.
 
-    FORMAL = "formal"
-    NEUTRAL = "neutral"
-    CASUAL = "casual"
+    Maps 1:1 to the four ``TONE_STYLES`` keys in ``prompts.cover_letter_generation``.
+    The pre-selection recommendation is derived from ``INDUSTRY_GROUP_TO_TONE``
+    but the user may override it before submitting the setup form.
+    """
+
+    FORMELL  = "formell"
+    LOCKER   = "locker"
+    SACHLICH = "sachlich"
+    WARM     = "warm"
 
 
 class CoverLetterGenerationStatus(StrEnum):

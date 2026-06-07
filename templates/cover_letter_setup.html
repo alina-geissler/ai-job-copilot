@@ -80,7 +80,9 @@
                       reference_number=none,
                       salutation='Sehr geehrte Frau Schmidt,',
                       introduction='mit großem Interesse habe ich Ihre Stellenanzeige gelesen und bewerbe mich hiermit auf diese Position.',
-                      main_body=['Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.', 'Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.'],
+                      main_body_qualifications='Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.',
+                      main_body_fit='Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.',
+                      main_body=none,
                       conclusion='Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.',
                       closing='Mit freundlichen Grüßen',
                       attachments=['Lebenslauf'],
@@ -104,7 +106,9 @@
                       reference_number=none,
                       salutation='Sehr geehrte Frau Schmidt,',
                       introduction='mit großem Interesse habe ich Ihre Stellenanzeige gelesen und bewerbe mich hiermit auf diese Position.',
-                      main_body=['Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.', 'Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.'],
+                      main_body_qualifications='Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.',
+                      main_body_fit='Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.',
+                      main_body=none,
                       conclusion='Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.',
                       closing='Mit freundlichen Grüßen',
                       attachments=['Lebenslauf'],
@@ -128,7 +132,9 @@
                       reference_number=none,
                       salutation='Sehr geehrte Frau Schmidt,',
                       introduction='mit großem Interesse habe ich Ihre Stellenanzeige gelesen und bewerbe mich hiermit auf diese Position.',
-                      main_body=['Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.', 'Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.'],
+                      main_body_qualifications='Meine langjährige Erfahrung passt hervorragend zu Ihren Anforderungen.',
+                      main_body_fit='Ich freue mich darauf, mein Wissen in Ihrem Team einzubringen.',
+                      main_body=none,
                       conclusion='Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.',
                       closing='Mit freundlichen Grüßen',
                       attachments=['Lebenslauf'],
@@ -149,24 +155,122 @@
     </div>
   </section>
 
-  {# ── Tone selection ── #}
+  {# ── Mandatory generation fields ── #}
   <section class="section">
     <div class="card stack">
-      <h2>2. Ton wählen <span class="required-marker">*</span></h2>
-      <div class="tone-options">
-        {% for tn in tones %}
-          <label class="choice">
+      <h2>2. Pflichtfelder <span class="required-marker">*</span></h2>
+      <p class="info-box muted" style="font-size:0.9rem;padding:0.6rem 0.8rem;background:#f0f4f8;border-left:3px solid #33567d;border-radius:4px;">
+        Diese Angaben entscheiden maßgeblich über Stil und Fokus im generierten Anschreiben.
+      </p>
+
+      {# ── Tonalität ── #}
+      <fieldset class="form-group" style="border:none;padding:0;margin:0">
+        <legend style="font-weight:600;margin-bottom:0.5rem">Tonalität</legend>
+        <div class="tone-options" style="display:flex;flex-wrap:wrap;gap:0.5rem">
+          {% for tk in tone_keys %}
+          {% set is_recommended = (tk.value == recommended_tone) %}
+          <label class="choice" style="position:relative">
             <input
               type="radio"
               name="tone"
-              value="{{ tn.value }}"
+              value="{{ tk.value }}"
               required
-              {% if prefill.get('tone') == tn.value %}checked{% endif %}
+              {% if prefill.get('tone', recommended_tone) == tk.value %}checked{% endif %}
+              data-tone-key="{{ tk.value }}"
             >
-            {{ tone_labels[tn] }}
+            {{ tone_key_labels[tk] }}
+            <span
+              class="info-icon"
+              title="{{ tone_key_tooltips[tk] }}"
+              style="display:inline-block;margin-left:0.3em;cursor:help;color:#33567d;font-size:0.8rem;border:1px solid #33567d;border-radius:50%;width:1.1em;height:1.1em;line-height:1.1em;text-align:center;font-weight:700;"
+            >?</span>
           </label>
+          {% endfor %}
+        </div>
+        {# Explanatory note shown only below the recommended tone option #}
+        {% for tk in tone_keys %}
+        {% if tk.value == recommended_tone %}
+        <p
+          id="tone-recommendation-note"
+          class="muted"
+          data-recommended-tone="{{ recommended_tone }}"
+          style="font-size:0.82rem;margin-top:0.4rem;color:#356054"
+        >
+          Empfohlen basierend auf Branchengruppe und Stellenprofil → {{ tone_key_tooltips[tk].split('→')[1].strip() if '→' in tone_key_tooltips[tk] else tone_key_tooltips[tk] }}
+        </p>
+        {% endif %}
         {% endfor %}
-      </div>
+        <p class="muted" style="font-size:0.82rem;margin-top:0.3rem;font-style:italic">
+          Hinweis: Der gewählte Ton beeinflusst auch Formalitätsgrad und Satzbau des Anschreibens.
+        </p>
+      </fieldset>
+
+      {# ── Ausgabesprache ── #}
+      <fieldset class="form-group" style="border:none;padding:0;margin:0">
+        <legend style="font-weight:600;margin-bottom:0.5rem">Ausgabesprache</legend>
+        <div style="display:flex;gap:0.5rem">
+          {% for lang_code, lang_label in language_labels.items() %}
+          <label class="choice">
+            <input
+              type="radio"
+              name="output_language"
+              value="{{ lang_code }}"
+              required
+              {% if prefill.get('output_language', recommended_output_language) == lang_code %}checked{% endif %}
+            >
+            {{ lang_label }}
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      {# ── Branchengruppe ── #}
+      <fieldset class="form-group" style="border:none;padding:0;margin:0">
+        <legend style="font-weight:600;margin-bottom:0.5rem">Branchengruppe</legend>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+          {% for ig in industry_groups %}
+          <label class="choice">
+            <input
+              type="radio"
+              name="industry_group"
+              value="{{ ig }}"
+              required
+              {% if prefill.get('industry_group', recommended_industry_group) == ig %}checked{% endif %}
+            >
+            {{ industry_group_labels[ig] }}
+            <span
+              class="info-icon"
+              title="{{ industry_group_tooltips[ig] }}"
+              style="display:inline-block;margin-left:0.3em;cursor:help;color:#33567d;font-size:0.8rem;border:1px solid #33567d;border-radius:50%;width:1.1em;height:1.1em;line-height:1.1em;text-align:center;font-weight:700;"
+            >?</span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      {# ── Hierarchie-Ebene ── #}
+      <fieldset class="form-group" style="border:none;padding:0;margin:0">
+        <legend style="font-weight:600;margin-bottom:0.5rem">Hierarchie-Ebene</legend>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+          {% for hl in hierarchy_levels %}
+          <label class="choice">
+            <input
+              type="radio"
+              name="hierarchy_level"
+              value="{{ hl }}"
+              required
+              {% if prefill.get('hierarchy_level', recommended_hierarchy_level) == hl %}checked{% endif %}
+            >
+            {{ hierarchy_level_labels[hl] }}
+            <span
+              class="info-icon"
+              title="{{ hierarchy_level_tooltips[hl] }}"
+              style="display:inline-block;margin-left:0.3em;cursor:help;color:#33567d;font-size:0.8rem;border:1px solid #33567d;border-radius:50%;width:1.1em;height:1.1em;line-height:1.1em;text-align:center;font-weight:700;"
+            >?</span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
     </div>
   </section>
 
@@ -174,18 +278,28 @@
   <section class="section">
     <div class="card stack">
       <div class="personalisation-hint">
-        <h2>Persönliche Details <span class="muted">(optional)</span></h2>
+        <h2>Optionale Personalisierung <span class="muted">(optional)</span></h2>
         <p class="muted">Mach dein Anschreiben noch persönlicher mit ein paar zusätzlichen Angaben.</p>
       </div>
 
       <div class="form-group">
-        <label for="must_haves">Must-haves &amp; No-gos</label>
+        <label for="must_haves">Must-haves</label>
         <textarea
           id="must_haves"
           name="must_haves"
           rows="3"
-          placeholder="Was muss unbedingt erwähnt werden – oder was soll auf keinen Fall vorkommen?"
+          placeholder="Was muss im Anschreiben unbedingt erwähnt werden?"
         >{{ prefill.get('must_haves', '') }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="no_gos">No-Gos</label>
+        <textarea
+          id="no_gos"
+          name="no_gos"
+          rows="3"
+          placeholder="Was soll auf keinen Fall vorkommen oder erwähnt werden?"
+        >{{ prefill.get('no_gos', '') }}</textarea>
       </div>
 
       <div class="form-group">
@@ -217,6 +331,29 @@
           placeholder="Welche konkreten Stärken, Erfahrungen oder Erfolge hebst du hervor?"
         >{{ prefill.get('added_value', '') }}</textarea>
       </div>
+
+      <div style="display:flex;gap:1rem;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label for="earliest_start_date">Frühestmöglicher Eintrittstermin</label>
+          <input
+            type="text"
+            id="earliest_start_date"
+            name="earliest_start_date"
+            placeholder="z. B. sofort, 01.09.2026"
+            value="{{ prefill.get('earliest_start_date', '') }}"
+          >
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label for="salary_expectation">Gehaltsvorstellung</label>
+          <input
+            type="text"
+            id="salary_expectation"
+            name="salary_expectation"
+            placeholder="z. B. 65.000 € brutto p. a."
+            value="{{ prefill.get('salary_expectation', '') }}"
+          >
+        </div>
+      </div>
     </div>
   </section>
 
@@ -230,7 +367,7 @@
       >
         Anschreiben jetzt generieren
       </button>
-      <p class="muted" id="generate-hint">Bitte wähle eine Vorlage und einen Ton aus.</p>
+      <p class="muted" id="generate-hint">Bitte wähle eine Vorlage, Tonalität, Ausgabesprache, Branchengruppe und Hierarchie-Ebene aus.</p>
     </div>
   </section>
 </form>
@@ -242,9 +379,12 @@
     var hint = document.getElementById('generate-hint');
 
     function checkReady() {
-      var tpl = form.querySelector('input[name="template"]:checked');
-      var tone = form.querySelector('input[name="tone"]:checked');
-      var ready = tpl && tone;
+      var tpl      = form.querySelector('input[name="template"]:checked');
+      var tone     = form.querySelector('input[name="tone"]:checked');
+      var lang     = form.querySelector('input[name="output_language"]:checked');
+      var industry = form.querySelector('input[name="industry_group"]:checked');
+      var hier     = form.querySelector('input[name="hierarchy_level"]:checked');
+      var ready = tpl && tone && lang && industry && hier;
       btn.disabled = !ready;
       hint.style.display = ready ? 'none' : '';
     }

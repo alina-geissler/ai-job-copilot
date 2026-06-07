@@ -14,7 +14,7 @@ from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import CoverLetterGenerationStatus, CoverLetterTemplate, CoverLetterTone
+from app.core.enums import CoverLetterGenerationStatus, CoverLetterTemplate, CoverLetterToneKey
 from app.db.base import Base
 
 if TYPE_CHECKING:
@@ -51,13 +51,20 @@ class CoverLetter(Base):
     template: Mapped[CoverLetterTemplate] = mapped_column(
         Enum(CoverLetterTemplate, name="coverlettertemplate"), nullable=False
     )
-    tone: Mapped[CoverLetterTone] = mapped_column(
-        Enum(CoverLetterTone, name="coverlettertone"), nullable=False
-    )
+    # Stored as TEXT after migration from the old coverlettertone enum type.
+    # Valid values: "formell" | "locker" | "sachlich" | "warm" (CoverLetterToneKey).
+    tone: Mapped[str] = mapped_column(String, nullable=False)
     must_haves: Mapped[str | None] = mapped_column(Text, nullable=True)
+    no_gos: Mapped[str | None] = mapped_column(Text, nullable=True)
     personal_motivation: Mapped[str | None] = mapped_column(Text, nullable=True)
     why_company: Mapped[str | None] = mapped_column(Text, nullable=True)
     added_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    earliest_start_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+    salary_expectation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    industry_group: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hierarchy_level: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_language: Mapped[str | None] = mapped_column(Text, nullable=True)
+    company_context: Mapped[str | None] = mapped_column(Text, nullable=True)
     content: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     generation_status: Mapped[CoverLetterGenerationStatus] = mapped_column(
         Enum(CoverLetterGenerationStatus, name="coverlettergenerationstatus"),

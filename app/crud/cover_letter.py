@@ -11,7 +11,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.enums import CoverLetterGenerationStatus, CoverLetterTemplate, CoverLetterTone
+from app.core.enums import CoverLetterGenerationStatus, CoverLetterTemplate
 from app.models.cover_letter import CoverLetter
 
 
@@ -20,13 +20,20 @@ def create_cover_letter(
     *,
     user_id: int,
     template: CoverLetterTemplate,
-    tone: CoverLetterTone,
+    tone: str,
     job_id: int | None = None,
     manual_job_posting_id: int | None = None,
     must_haves: str | None = None,
+    no_gos: str | None = None,
     personal_motivation: str | None = None,
     why_company: str | None = None,
     added_value: str | None = None,
+    earliest_start_date: str | None = None,
+    salary_expectation: str | None = None,
+    industry_group: str | None = None,
+    hierarchy_level: str | None = None,
+    output_language: str | None = None,
+    company_context: str | None = None,
     document_name: str | None = None,
 ) -> CoverLetter:
     """Create and flush a new cover letter record with PENDING status.
@@ -34,13 +41,20 @@ def create_cover_letter(
     :param db: Active database session.
     :param user_id: Identifier of the owning user.
     :param template: Selected visual template.
-    :param tone: Selected tone.
+    :param tone: Selected tone key string (one of the ``CoverLetterToneKey`` values).
     :param job_id: FK to an API-sourced job, or ``None``.
     :param manual_job_posting_id: FK to a manual job posting, or ``None``.
-    :param must_haves: Optional must-haves / no-gos text.
+    :param must_haves: Optional must-haves text.
+    :param no_gos: Optional no-gos text.
     :param personal_motivation: Optional personal motivation text.
     :param why_company: Optional why-this-company text.
     :param added_value: Optional added-value text.
+    :param earliest_start_date: Optional earliest start date.
+    :param salary_expectation: Optional salary expectation.
+    :param industry_group: Mandatory industry group selection from setup form.
+    :param hierarchy_level: Mandatory hierarchy level selection from setup form.
+    :param output_language: Mandatory output language selection from setup form.
+    :param company_context: Optional company background context (reserved for future use).
     :param document_name: Human-readable draft title, e.g. "Entwurf für …".
     :return: Newly created CoverLetter record.
     """
@@ -51,9 +65,16 @@ def create_cover_letter(
         job_id=job_id,
         manual_job_posting_id=manual_job_posting_id,
         must_haves=must_haves or None,
+        no_gos=no_gos or None,
         personal_motivation=personal_motivation or None,
         why_company=why_company or None,
         added_value=added_value or None,
+        earliest_start_date=earliest_start_date or None,
+        salary_expectation=salary_expectation or None,
+        industry_group=industry_group or None,
+        hierarchy_level=hierarchy_level or None,
+        output_language=output_language or None,
+        company_context=company_context or None,
         document_name=document_name or None,
         generation_status=CoverLetterGenerationStatus.PENDING,
     )
