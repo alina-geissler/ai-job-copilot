@@ -89,7 +89,10 @@
           <li class="document-card">
             <div class="document-card__header">
               <strong>{{ doc.document_name }}</strong>
-              <span class="document-status-pill {{ doc.processing_status_css_class }}">{{ doc.processing_status_label }}</span>
+              <span class="document-status-pill {{ doc.processing_status_css_class }}"
+                    {% if doc.processing_status.value in ('pending', 'processing') %}data-doc-pending{% endif %}>
+                {{ doc.processing_status_label }}
+              </span>
             </div>
 
             <form method="post"
@@ -222,7 +225,9 @@
 </section>
 
 <script>
-  var hasPending = !!document.querySelector('.status--pending, .status--processing');
+  // Reload only when a CV document is pending/processing — NOT for cover letter drafts,
+  // which share the visual 'status--pending' class but don't need polling.
+  var hasPending = !!document.querySelector('[data-doc-pending]');
   var shouldRedirect = {{ 'true' if redirect_to_profile else 'false' }};
   if (hasPending && !shouldRedirect) {
     setTimeout(function () { location.reload(); }, 4000);

@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}
-  {{ default_document_name }} | AI Job Copilot
-{% endblock %}
+{% block title %}{{ default_document_name }} | AI Job Copilot{% endblock %}
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/base.css') }}?v=2">
@@ -89,6 +87,119 @@
     /* Action buttons in sidebar */
     .sidebar-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
 
+    /* ── Edit mode toggle ──────────────────────────────────────────────────── */
+    /* Hide design controls in edit mode */
+    [data-mode="edit"] .design-controls-section { display: none; }
+    /* Hide content-edit toggle in edit mode */
+    [data-mode="edit"] .content-edit-toggle-section { display: none; }
+    /* Show edit-mode sidebar only in edit mode */
+    .edit-mode-section { display: none; }
+    [data-mode="edit"] .edit-mode-section { display: block; }
+    /* Sticky edit banner (inside preview pane area) */
+    .edit-mode-banner {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: #fef3cd;
+      border-bottom: 2px solid #e6a817;
+      padding: 0.55rem 1.25rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    [data-mode="edit"] .edit-mode-banner { display: flex; }
+    /* Visual feedback: fields are editable in edit mode */
+    [data-mode="edit"] #preview-pane [data-field] {
+      outline: 1px dashed rgba(51,86,125,0.35);
+      border-radius: 2px;
+      cursor: text;
+      min-height: 1em;
+    }
+    [data-mode="edit"] #preview-pane [data-field]:focus {
+      outline: 2px solid #33567d;
+      background: rgba(51,86,125,0.04);
+    }
+
+    /* ── Empty-field warnings (screen only) ────────────────────────────────── */
+    .cl-field-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.45rem;
+      padding: 0.45rem 0.65rem;
+      background: #fff5f5;
+      border-left: 3px solid #c0392b;
+      border-radius: 0 3px 3px 0;
+      margin: 0.35rem 0;
+    }
+    .cl-warning-text { flex: 1; color: #c0392b; font-size: 0.82rem; }
+    .cl-warning-dismiss {
+      background: none; border: none; cursor: pointer;
+      color: #c0392b; font-weight: 700; font-size: 0.9rem;
+      padding: 0 0.2rem; line-height: 1;
+    }
+    .cl-warning-edit {
+      background: none; border: none; cursor: pointer;
+      color: #33567d; text-decoration: underline; font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    /* A4 page-end indicator — screen only, never printed or exported */
+    .editor-preview-bg .cover-letter { position: relative; }
+    .editor-preview-bg .cover-letter::after {
+      content: '— Seitenende —';
+      position: absolute;
+      left: 0; right: 0;
+      top: 29.7cm;
+      border-top: 2px dashed rgba(231, 76, 60, 0.65);
+      color: rgba(231, 76, 60, 0.75);
+      font-size: 0.62rem;
+      text-align: center;
+      padding-top: 3px;
+      pointer-events: none;
+      font-family: sans-serif;
+      letter-spacing: 0.04em;
+    }
+
+    /* In edit mode, make ALL data-field elements visible (base.css hides empty ones),
+       hide warning boxes, remove CSS uppercase so textContent reads correctly,
+       and show red placeholder text via data-field-empty attribute. */
+    [data-mode="edit"] [data-field] { display: revert; }
+    [data-mode="edit"] .cl-field-warning { display: none !important; }
+    /* Fix: prevent text-transform:uppercase from being read by textContent when syncing */
+    [data-mode="edit"] .cl-name { text-transform: none; letter-spacing: normal; }
+    [data-mode="edit"] [data-field][data-field-empty="true"]::before {
+      content: attr(data-placeholder);
+      color: #c0392b;
+      font-style: italic;
+      font-weight: normal;
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    /* "Anlagen zufügen" button — hidden by default; shown via CSS sibling selector
+       only in edit mode when the attachments field is empty (data-field-empty set). */
+    .cl-attachments-add {
+      display: none;
+      font-size: 0.72em;
+      color: rgba(51, 86, 125, 0.75);
+      cursor: pointer;
+      border: 1px dashed rgba(51, 86, 125, 0.45);
+      border-radius: 3px;
+      padding: 0.2em 0.6em;
+      background: rgba(51, 86, 125, 0.04);
+      margin-top: 0.3em;
+      font-family: inherit;
+    }
+    .cl-attachments-add:hover { color: rgba(51, 86, 125, 1); border-color: rgba(51, 86, 125, 0.7); }
+    /* Show button in edit mode when field directly precedes it and is empty */
+    [data-mode="edit"] [data-field="attachments"][data-field-empty="true"] ~ .cl-attachments-add {
+      display: inline-block;
+    }
+    /* When the attachments field is empty in edit mode, hide it — only the
+       "Anlagen zufügen" button is shown (no "Anlagen" label either, handled by JS). */
+    [data-mode="edit"] [data-field="attachments"][data-field-empty="true"] { display: none; }
+
     @media print {
       .editor-sidebar,
       .site-header,
@@ -109,7 +220,7 @@
 {%- set delete_url  = request.url_for('delete_cover_letter_action', cover_letter_id=cover_letter.id) -%}
 {%- set current_tpl = cover_letter.template.value -%}
 
-<div class="editor-layout">
+<div class="editor-layout" data-mode="preview">
 
   {# ── Sidebar ── #}
   <aside class="editor-sidebar no-print">
@@ -119,6 +230,9 @@
       action="{{ save_url }}"
       hx-boost="false"
     >
+
+      {# ── DESIGN CONTROLS (hidden in edit mode) ── #}
+      <div class="design-controls-section">
 
       {# Template cards #}
       <div class="sidebar-section">
@@ -245,6 +359,7 @@
       <div class="sidebar-section">
         <h3>Unterschriftsbereich</h3>
         <select
+          id="sig-space-select"
           name="signature_space"
           class="sidebar-input"
           hx-get="{{ preview_url }}"
@@ -254,6 +369,7 @@
         >
           <option value="standard" {% if layout.signature_space == 'standard' %}selected{% endif %}>Standard (Empfohlen)</option>
           <option value="compact"  {% if layout.signature_space == 'compact' %}selected{% endif %}>Kompakt</option>
+          <option value="none"     {% if layout.signature_space == 'none' %}selected{% endif %}>Keine Unterschrift (nicht empfohlen!)</option>
         </select>
       </div>
 
@@ -300,12 +416,14 @@
 
         <div class="sidebar-actions">
           <button type="submit" class="btn btn-primary">Speichern</button>
-          <a href="{{ pdf_url }}" class="btn btn-secondary" style="text-align:center">Als PDF exportieren</a>
+          <a id="pdf-export-link" href="{{ pdf_url }}" class="btn btn-secondary" data-bypass-guard="1" style="text-align:center">Als PDF exportieren</a>
           <button type="submit" form="delete-form" class="btn btn-danger" style="width:100%">Löschen</button>
         </div>
       </div>
 
-      {# ── Unterschrift ── #}
+      </div>{# end .design-controls-section #}
+
+      {# ── Unterschrift — always visible ── #}
       {# Forms live outside #editor-form (see below) — referenced by id via the form="" attribute #}
       <div class="sidebar-section">
         <h3>Unterschrift</h3>
@@ -315,7 +433,7 @@
                  alt="Profilunterschrift"
                  style="max-width:100%;max-height:60px;opacity:0.9;border:1px solid #e0e0e0;padding:0.3rem;background:#fff;display:block;">
           </div>
-          <button form="sig-insert-form" type="submit"
+          <button id="sig-insert-btn" form="sig-insert-form" type="submit"
                   class="btn btn-primary" style="width:100%;font-size:0.82rem;margin-bottom:0.4rem">
             In Anschreiben einfügen
           </button>
@@ -346,37 +464,63 @@
         {% endif %}
       </div>
 
-      {# ── Inhalt speichern ── #}
-      <div class="sidebar-section">
+      {# ── CONTENT EDIT TOGGLE (hidden in edit mode) ── #}
+      <div class="sidebar-section content-edit-toggle-section">
         <h3>Inhalt bearbeiten</h3>
         <p style="font-size:0.8rem;color:#666;margin-bottom:0.5rem;">
-          Text direkt in der Vorschau bearbeiten, dann hier speichern.
+          Felder wie Anschreiben-Text, Datum und Anlagen direkt editieren.
         </p>
         <button
-          id="save-content-btn"
+          id="edit-mode-toggle-btn"
           type="button"
           class="btn btn-secondary"
           style="width:100%"
-          hx-post="{{ content_save_url }}"
-          hx-include="#content-save-form"
-          hx-target="#content-save-status"
-          hx-swap="innerHTML"
-        >Inhalt speichern</button>
-        <span id="content-save-status" style="font-size:0.82rem;display:block;margin-top:0.35rem;"></span>
+        >✏ Inhalt bearbeiten</button>
+      </div>
+
+      {# ── EDIT MODE SIDEBAR (shown only in edit mode) ── #}
+      <div class="sidebar-section edit-mode-section">
+        <h3 style="color:#856404;">✏ Bearbeitungsmodus aktiv</h3>
+        <p style="font-size:0.8rem;color:#666;margin-bottom:0.75rem;">
+          Klicke auf ein Feld im Dokument, um es zu bearbeiten. Speichere oder breche ab, um zum Vorschaumodus zurückzukehren.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:0.4rem;">
+          <button id="edit-save-btn" type="button" class="btn btn-primary" style="width:100%">Änderungen übernehmen</button>
+          <button id="edit-cancel-btn" type="button" class="btn btn-secondary" style="width:100%">Abbrechen</button>
+          <span id="edit-save-status" style="font-size:0.82rem;display:block;margin-top:0.2rem;"></span>
+        </div>
       </div>
 
     </form>
   </aside>
 
+  {# ── PDF export overlay ── #}
+  <div id="pdf-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;padding:1.5rem 2rem;border-radius:8px;text-align:center;min-width:220px;">
+      <p style="font-size:1rem;font-weight:600;margin-bottom:0.35rem;">PDF wird erstellt…</p>
+      <p style="font-size:0.82rem;color:#666;margin:0;">Bitte warten</p>
+    </div>
+  </div>
+
   {# ── Preview pane ── #}
   <div class="editor-preview-bg">
+
+    {# Sticky banner visible only in edit mode #}
+    <div class="edit-mode-banner" aria-live="polite">
+      <span style="font-size:0.88rem;font-weight:600;color:#856404;">✏ Bearbeitungsmodus</span>
+      <div style="display:flex;gap:0.4rem;">
+        <button id="edit-banner-save-btn" type="button" class="btn btn-primary" style="font-size:0.82rem;padding:0.25rem 0.75rem;">Änderungen übernehmen</button>
+        <button id="edit-banner-cancel-btn" type="button" class="btn btn-secondary" style="font-size:0.82rem;padding:0.25rem 0.75rem;">Abbrechen</button>
+      </div>
+    </div>
+
     <div id="preview-pane">
       {% if content %}
         {%- set doc_classes = '' -%}
         {# Build doc_classes from current layout settings #}
         {%- set doc_classes = layout.theme_key ~ ' ' ~ layout.font_key ~ ' ' ~ layout.size_key ~ ' ' ~ layout.spacing_key -%}
         {%- if layout.recipient_pos == 'high' -%}{%- set doc_classes = doc_classes ~ ' recipient-pos-high' -%}{%- endif -%}
-        {%- if layout.signature_space == 'compact' -%}{%- set doc_classes = doc_classes ~ ' signature-space-compact' -%}{%- endif -%}
+        {%- if layout.signature_space == 'compact' -%}{%- set doc_classes = doc_classes ~ ' signature-space-compact' -%}{%- elif layout.signature_space == 'none' -%}{%- set doc_classes = doc_classes ~ ' signature-space-none' -%}{%- endif -%}
         {%- if layout.compact_attachments_pos == 'higher' -%}{%- set doc_classes = doc_classes ~ ' compact-attachments-higher' -%}
         {%- elif layout.compact_attachments_pos == 'very-high' -%}{%- set doc_classes = doc_classes ~ ' compact-attachments-very-high' -%}{%- endif -%}
         {%- set theme   = layout.theme_key -%}
@@ -384,6 +528,7 @@
         {%- set size    = layout.size_key -%}
         {%- set spacing = layout.spacing_key -%}
         {% with %}
+          {% set show_field_warnings = true %}
           {% set candidate_first_name = content.candidate_first_name %}
           {% set candidate_last_name  = content.candidate_last_name %}
           {% set candidate_street     = content.candidate_street %}
@@ -405,6 +550,7 @@
           {% set main_body                   = content.main_body %}
           {% set conclusion                  = content.conclusion %}
           {% set closing              = content.closing %}
+          {% set signature_name       = content.signature_name %}
           {% set attachments          = content.attachments %}
           {% if current_tpl == 'classic' %}
             {% include "cover_letter_variants/cover_letter_classic.html" %}
@@ -425,6 +571,9 @@
 {# Delete form lives outside #editor-form to avoid the nested-form HTML violation #}
 <form id="delete-form" method="post" action="{{ delete_url }}" onsubmit="return confirm('Anschreiben wirklich löschen?')"></form>
 
+{# Copy form for "Als Kopie speichern" #}
+<form id="copy-form" method="post" action="{{ copy_url }}"></form>
+
 {# Signature forms also live outside #editor-form for the same reason #}
 <form id="sig-insert-form" method="post" action="{{ sig_insert_url }}"></form>
 <form id="sig-upload-form" method="post" action="{{ request.url_for('upload_profile_signature_action') }}" enctype="multipart/form-data">
@@ -432,30 +581,37 @@
 </form>
 <form id="sig-remove-form" method="post" action="{{ sig_remove_url }}"></form>
 
-{# Hidden form that mirrors contenteditable fields for HTMX content-save submission #}
+{# Hidden form that mirrors all editable fields for HTMX content-save submission #}
 <form id="content-save-form" style="display:none">
   {# Body fields #}
-  <input type="hidden" name="subject_line" value="">
-  <input type="hidden" name="salutation" value="">
-  <input type="hidden" name="introduction" value="">
+  <input type="hidden" name="subject_line"            value="">
+  <input type="hidden" name="salutation"              value="">
+  <input type="hidden" name="introduction"            value="">
   <input type="hidden" name="main_body_qualifications" value="">
-  <input type="hidden" name="main_body_fit" value="">
-  <input type="hidden" name="conclusion" value="">
-  <input type="hidden" name="closing" value="">
+  <input type="hidden" name="main_body_fit"           value="">
+  <input type="hidden" name="conclusion"              value="">
+  <input type="hidden" name="closing"                 value="">
+  {# Date / reference #}
+  <input type="hidden" name="date"             value="{{ content.date             or '' if content else '' }}">
+  <input type="hidden" name="reference_number" value="{{ content.reference_number or '' if content else '' }}">
+  {# Attachments — plain string field, synced like all other fields by _syncHiddenInputs #}
+  <input type="hidden" name="attachments" value="{{ content.attachments or '' if content else '– Lebenslauf' }}">
   {# Sender contact fields — pre-populated so unchanged values survive the merge #}
   <input type="hidden" name="candidate_first_name" value="{{ content.candidate_first_name or '' if content else '' }}">
   <input type="hidden" name="candidate_last_name"  value="{{ content.candidate_last_name  or '' if content else '' }}">
-  <input type="hidden" name="candidate_email"       value="{{ content.candidate_email      or '' if content else '' }}">
-  <input type="hidden" name="candidate_phone"       value="{{ content.candidate_phone      or '' if content else '' }}">
-  <input type="hidden" name="candidate_street"      value="{{ content.candidate_street     or '' if content else '' }}">
-  <input type="hidden" name="candidate_city"        value="{{ content.candidate_city       or '' if content else '' }}">
-  <input type="hidden" name="candidate_location"    value="{{ content.candidate_location   or '' if content else '' }}">
+  <input type="hidden" name="candidate_email"      value="{{ content.candidate_email      or '' if content else '' }}">
+  <input type="hidden" name="candidate_phone"      value="{{ content.candidate_phone      or '' if content else '' }}">
+  <input type="hidden" name="candidate_street"     value="{{ content.candidate_street     or '' if content else '' }}">
+  <input type="hidden" name="candidate_city"       value="{{ content.candidate_city       or '' if content else '' }}">
+  <input type="hidden" name="candidate_location"   value="{{ content.candidate_location   or '' if content else '' }}">
   {# Recipient fields #}
   <input type="hidden" name="company_name"    value="{{ content.company_name    or '' if content else '' }}">
   <input type="hidden" name="contact_person"  value="{{ content.contact_person  or '' if content else '' }}">
   <input type="hidden" name="company_street"  value="{{ content.company_street  or '' if content else '' }}">
   <input type="hidden" name="company_city"    value="{{ content.company_city    or '' if content else '' }}">
-  {# main_body_N inputs are created dynamically by JS #}
+  {# Signature name — independent from header name #}
+  <input type="hidden" name="signature_name"  value="{{ content.signature_name  or '' if content else '' }}">
+  {# main_body_N inputs are created dynamically by JS (legacy Phase 1 letters only) #}
 </form>
 
 {# Profile-sync dialog — shown when saved content differs from stored profile #}
@@ -466,6 +622,30 @@
   <div style="display:flex;gap:0.5rem;justify-content:flex-end">
     <button id="profile-sync-dismiss" type="button" class="btn btn-secondary" style="font-size:0.85rem">Nein, danke</button>
     <button id="profile-sync-confirm" type="button" class="btn btn-primary"   style="font-size:0.85rem">Ja, übernehmen</button>
+  </div>
+</dialog>
+
+{# Navigation guard — unsaved draft has changes #}
+<dialog id="nav-guard-modal" style="padding:1.5rem;border:1px solid #d0d0d6;border-radius:8px;max-width:460px;width:90%">
+  <h3 style="margin-top:0;font-size:1rem">Ungespeicherte Änderungen</h3>
+  <p style="font-size:0.9rem;color:#444;margin-bottom:1.2rem">Dein Entwurf hat ungespeicherte Änderungen. Was soll passieren?</p>
+  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:flex-end">
+    <button id="nav-guard-cancel-btn"   type="button" class="btn btn-secondary" style="font-size:0.82rem">Abbrechen</button>
+    <button id="nav-guard-discard-btn"  type="button" class="btn btn-secondary" style="font-size:0.82rem">Verwerfen</button>
+    <button id="nav-guard-draft-btn"    type="button" class="btn btn-secondary" style="font-size:0.82rem">Als Entwurf speichern</button>
+    <button id="nav-guard-doc-save-btn" type="button" class="btn btn-primary"   style="font-size:0.82rem">Dokument speichern</button>
+  </div>
+</dialog>
+
+{# Save options — already-saved document has unsaved changes #}
+<dialog id="save-options-modal" style="padding:1.5rem;border:1px solid #d0d0d6;border-radius:8px;max-width:460px;width:90%">
+  <h3 style="margin-top:0;font-size:1rem">Änderungen speichern?</h3>
+  <p style="font-size:0.9rem;color:#444;margin-bottom:1.2rem">Das Dokument wurde bereits gespeichert. Was soll mit den Änderungen passieren?</p>
+  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:flex-end">
+    <button id="save-opts-cancel-btn"    type="button" class="btn btn-secondary" style="font-size:0.82rem">Abbrechen</button>
+    <button id="save-opts-discard-btn"   type="button" class="btn btn-secondary" style="font-size:0.82rem">Verwerfen</button>
+    <button id="save-opts-copy-btn"      type="button" class="btn btn-secondary" style="font-size:0.82rem">Als Kopie speichern</button>
+    <button id="save-opts-overwrite-btn" type="button" class="btn btn-primary"   style="font-size:0.82rem">Übernehmen</button>
   </div>
 </dialog>
 
@@ -485,122 +665,563 @@
     syncCompactVisibility();
   }());
 
-  // ── Contenteditable ↔ hidden-form sync ───────────────────────────────────
+  // ── Signature-space: disable insert button when "none" is selected ─────────
   (function () {
-    // Collect current contenteditable state into a plain object.
-    function _captureContent() {
-      var state = {};
-      document.querySelectorAll('[contenteditable][data-field]').forEach(function (el) {
-        state[el.dataset.field] = el.innerText;
+    var sel = document.getElementById('sig-space-select');
+    var btn = document.getElementById('sig-insert-btn');
+    if (!sel || !btn) return;
+    function syncInsertBtn() {
+      var disabled = sel.value === 'none';
+      btn.disabled = disabled;
+      btn.title = disabled
+        ? 'Bitte den Unterschriftsbereich auf Standard oder Kompakt setzen, um eine Unterschrift einzufügen.'
+        : '';
+    }
+    sel.addEventListener('change', syncInsertBtn);
+    syncInsertBtn();
+  }());
+
+  // ── Edit mode + hidden-form sync ─────────────────────────────────────────
+  (function () {
+    var layout = document.querySelector('.editor-layout');
+    var contentSaveUrl = '{{ content_save_url }}';
+
+    // ── Snapshot for cancel ────────────────────────────────────────────────
+    var _originalContent = {};
+
+    function _captureOriginalContent() {
+      _originalContent = {};
+      document.querySelectorAll('#preview-pane [data-field]').forEach(function (el) {
+        _originalContent[el.dataset.field] = el.textContent;
       });
-      var bodyItems = [];
       document.querySelectorAll('[data-list-field="main_body"]').forEach(function (el) {
-        bodyItems.push({ idx: parseInt(el.dataset.listIndex, 10), text: el.innerText });
+        _originalContent['_mb_' + el.dataset.listIndex] = el.textContent;
       });
-      if (bodyItems.length) {
-        bodyItems.sort(function (a, b) { return a.idx - b.idx; });
-        state._main_body = bodyItems;
+    }
+
+    // ── Empty-state tracker for placeholder display in edit mode ──────────
+    function _updateFieldEmptyState(el) {
+      var isEmpty = el.innerHTML.replace(/<br\s*\/?>/gi, '').trim() === '';
+      if (isEmpty) { el.dataset.fieldEmpty = 'true'; } else { delete el.dataset.fieldEmpty; }
+      // For attachments: show "Anlagen" label only when the field has content.
+      if (el.dataset.field === 'attachments') {
+        var _sec = el.closest('.cl-attachments');
+        if (_sec) {
+          var _lbl = _sec.querySelector('.cl-attachments-label');
+          if (_lbl) _lbl.style.display = isEmpty ? 'none' : '';
+        }
       }
-      return state;
     }
 
-    // Re-apply captured state to contenteditable elements after HTMX swap.
-    function _restoreContent(state) {
-      Object.keys(state).forEach(function (field) {
-        if (field === '_main_body') return;
-        var el = document.querySelector('[contenteditable][data-field="' + field + '"]');
-        if (el) el.innerText = state[field];
+    // ── Enter / exit edit mode ─────────────────────────────────────────────
+    function enterEditMode() {
+      _captureOriginalContent();
+      layout.dataset.mode = 'edit';
+      document.querySelectorAll('#preview-pane [data-field]').forEach(function (el) {
+        el.contentEditable = 'true';
+        el.spellcheck = true;
+        _updateFieldEmptyState(el);
+        el.addEventListener('input', function () { _updateFieldEmptyState(this); });
       });
-      var items = state._main_body || [];
-      items.forEach(function (item) {
-        var el = document.querySelector('[data-list-field="main_body"][data-list-index="' + item.idx + '"]');
-        if (el) el.innerText = item.text;
+      document.querySelectorAll('#preview-pane [data-list-field="main_body"]').forEach(function (el) {
+        el.contentEditable = 'true';
+      });
+      // Attachments section may be hidden in preview mode; always show it in edit mode
+      // so the empty field and "Anlagen zufügen" button are accessible.
+      var _attachSection = document.querySelector('#preview-pane .cl-attachments');
+      if (_attachSection) _attachSection.style.display = '';
+      // Enter key in the attachments field inserts a new line pre-filled with "– "
+      // so each attachment item stays consistently formatted.
+      var _attachField = document.querySelector('#preview-pane [data-field="attachments"]');
+      if (_attachField && !_attachField._enterHandlerAttached) {
+        _attachField._enterHandlerAttached = true;
+        _attachField.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          var sel = window.getSelection();
+          if (!sel || !sel.rangeCount) return;
+          var range = sel.getRangeAt(0);
+          range.deleteContents();
+          var node = document.createTextNode('\n– ');
+          range.insertNode(node);
+          range.setStartAfter(node);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          _updateFieldEmptyState(this);
+          _syncHiddenInputs();
+          if (window._editorSetContentDirty) window._editorSetContentDirty(true);
+        });
+      }
+    }
+
+    function exitEditMode(save) {
+      if (!save) {
+        // Restore original field text
+        Object.keys(_originalContent).forEach(function (key) {
+          if (key.startsWith('_mb_')) {
+            var idx = key.replace('_mb_', '');
+            var el = document.querySelector('[data-list-field="main_body"][data-list-index="' + idx + '"]');
+            if (el) el.innerText = _originalContent[key];
+          } else {
+            var el = document.querySelector('#preview-pane [data-field="' + key + '"]');
+            if (el) el.innerText = _originalContent[key];
+          }
+        });
+      }
+      document.querySelectorAll('#preview-pane [data-field]').forEach(function (el) {
+        el.contentEditable = 'false';
+        delete el.dataset.fieldEmpty;
+      });
+      document.querySelectorAll('#preview-pane [data-list-field="main_body"]').forEach(function (el) {
+        el.contentEditable = 'false';
+      });
+      layout.dataset.mode = 'preview';
+    }
+
+    // Global entry point for warning "Bearbeiten" buttons in _content.html
+    window._enterEditModeAndFocus = function (fieldName) {
+      enterEditMode();
+      setTimeout(function () {
+        var el = document.querySelector('#preview-pane [data-field="' + fieldName + '"]');
+        if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }, 50);
+    };
+
+    // ── Save edit mode content (apply in-memory only, no DB write) ────────────
+    function saveEditMode() {
+      _syncHiddenInputs();
+      exitEditMode(true);
+      _cleanupPreview();
+      _updateWarningVisibility();
+      // Mark content as dirty so sidebar "Speichern" flushes it to DB first
+      if (window._editorSetContentDirty) window._editorSetContentDirty(true);
+    }
+
+    // ── Client-side preview cleanup after exiting edit mode (Issue 5) ─────────
+    function _cleanupPreview() {
+      // Normalize <br>-only fields to truly empty so CSS :empty hides them
+      document.querySelectorAll('#preview-pane .cl-field').forEach(function (el) {
+        if (el.innerHTML.replace(/<br\s*\/?>/gi, '').trim() === '') {
+          el.innerHTML = '';
+        }
       });
     }
 
-    // Keep hidden form inputs in sync with contenteditable values.
+    // ── Warning visibility after edit ─────────────────────────────────────
+    var _WARNING_TEXTS = {
+      candidate_first_name:      '⚠ Kein Vorname – bitte im Profil ergänzen.',
+      candidate_last_name:       '⚠ Kein Nachname – bitte im Profil ergänzen.',
+      candidate_street:          '⚠ Keine Straße – bitte im Profil ergänzen.',
+      candidate_city:            '⚠ Kein Wohnort – bitte im Profil ergänzen.',
+      candidate_phone:           '⚠ Keine Telefonnummer – bitte im Profil ergänzen.',
+      candidate_email:           '⚠ Keine E-Mail – bitte im Profil ergänzen.',
+      candidate_location:        '⚠ Kein Standort – bitte im Profil ergänzen.',
+      company_name:              '⚠ Kein Firmenname – bitte manuell ergänzen.',
+      contact_person:            '⚠ Kein Ansprechpartner – bitte manuell ergänzen.',
+      company_street:            '⚠ Keine Unternehmensstraße – bitte manuell ergänzen.',
+      company_city:              '⚠ Kein Unternehmensort – bitte manuell ergänzen.',
+      date:                      '⚠ Kein Datum – bitte manuell ergänzen.',
+      subject_line:              '⚠ Kein Betreff generiert – bitte manuell ergänzen.',
+      reference_number:          '⚠ Keine Referenznummer – ergänzen, falls in der Stellenanzeige angegeben.',
+      salutation:                '⚠ Keine Anrede generiert – bitte manuell ergänzen.',
+      introduction:              '⚠ Keine Einleitung generiert – bitte manuell ergänzen.',
+      main_body_qualifications:  '⚠ Kein Qualifikationsteil generiert – bitte manuell ergänzen.',
+      main_body_fit:             '⚠ Kein Motivationsteil generiert – bitte manuell ergänzen.',
+      conclusion:                '⚠ Kein Schlussteil generiert – bitte manuell ergänzen.',
+      closing:                   '⚠ Keine Schlussformel – bitte manuell ergänzen.',
+      signature_name:            '⚠ Kein Name unter der Unterschrift – bitte im Bearbeitungsmodus ergänzen.',
+      attachments:               '⚠ Keine Anlagen angegeben – bitte im Bearbeitungsmodus ergänzen.'
+    };
+
+    // Walk up from fieldEl to the nearest block-level ancestor so we can safely
+    // insert a <div> after it (inserting a block div inside an inline/p element
+    // causes the browser to auto-close the parent, breaking layout).
+    function _blockAnchor(el) {
+      var inlineDisplays = { inline: 1, 'inline-block': 1, 'inline-flex': 1, 'inline-grid': 1 };
+      var cur = el;
+      while (cur.parentElement && inlineDisplays[window.getComputedStyle(cur).display]) {
+        cur = cur.parentElement;
+      }
+      return cur;
+    }
+
+    // Inject a warning element if one doesn't already exist for the given field.
+    // anchorEl: the field element (warning placed after its block ancestor, or appended if appendInside=true).
+    function _ensureWarning(fieldName, anchorEl, appendInside) {
+      if (document.querySelector('#preview-pane [data-warning-for="' + fieldName + '"]')) return;
+      if (!anchorEl) return;
+      var text = _WARNING_TEXTS[fieldName] || '⚠ Dieses Feld ist leer – bitte im Bearbeitungsmodus ergänzen.';
+      var warning = document.createElement('div');
+      warning.className = 'cl-field-warning';
+      warning.dataset.warningFor = fieldName;
+      warning.innerHTML =
+        '<span class="cl-warning-text">' + text + '</span>' +
+        '<button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen"' +
+          ' onclick="this.closest(\'.cl-field-warning\').style.display=\'none\'">×</button>' +
+        '<button class="cl-warning-edit" type="button"' +
+          ' onclick="if(window._enterEditModeAndFocus)window._enterEditModeAndFocus(\'' + fieldName + '\')">Bearbeiten</button>';
+      if (appendInside) {
+        anchorEl.appendChild(warning);
+      } else {
+        _blockAnchor(anchorEl).insertAdjacentElement('afterend', warning);
+      }
+    }
+
+    function _updateWarningVisibility() {
+      // Show/hide existing warning elements based on current field content.
+      document.querySelectorAll('#preview-pane [data-warning-for]').forEach(function (warning) {
+        var field = warning.dataset.warningFor;
+        var fieldEl = document.querySelector('#preview-pane [data-field="' + field + '"]');
+        var hasContent = fieldEl && fieldEl.innerHTML.replace(/<br\s*\/?>/gi, '').trim() !== '';
+        warning.style.display = hasContent ? 'none' : '';
+      });
+      // Create warning elements for empty fields that have none yet.
+      document.querySelectorAll('#preview-pane [data-field]').forEach(function (fieldEl) {
+        var fieldName = fieldEl.dataset.field;
+        if (!Object.prototype.hasOwnProperty.call(_WARNING_TEXTS, fieldName)) return;
+        var hasContent = fieldEl.innerHTML.replace(/<br\s*\/?>/gi, '').trim() !== '';
+        if (fieldName === 'attachments') {
+          // Manage section visibility: hide entire section (including "Anlagen" label) in
+          // preview mode when field is empty, so it truly disappears from the document.
+          // Insert warning AFTER the section so it remains visible even when section is hidden.
+          var attachSection = fieldEl.closest('.cl-attachments');
+          if (attachSection && layout.dataset.mode !== 'edit') {
+            attachSection.style.display = hasContent ? '' : 'none';
+            // Reset label visibility when transitioning back to preview with content.
+            var _lbl = attachSection.querySelector('.cl-attachments-label');
+            if (_lbl) _lbl.style.display = hasContent ? '' : 'none';
+          }
+          if (!hasContent) _ensureWarning(fieldName, attachSection || fieldEl, false);
+        } else {
+          if (!hasContent) _ensureWarning(fieldName, fieldEl, false);
+        }
+      });
+    }
+
+    // ── Wire buttons ──────────────────────────────────────────────────────
+    var toggleBtn = document.getElementById('edit-mode-toggle-btn');
+    if (toggleBtn) toggleBtn.addEventListener('click', enterEditMode);
+
+    ['edit-save-btn', 'edit-banner-save-btn'].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', saveEditMode);
+    });
+    ['edit-cancel-btn', 'edit-banner-cancel-btn'].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', function () {
+        exitEditMode(false);
+        _cleanupPreview();
+        _updateWarningVisibility();
+      });
+    });
+
+    // Pre-fills the attachments field with "– Lebenslauf", shows "Anlagen" label,
+    // and positions the cursor at the end so the user can type or press Enter to add more.
+    window._addAttachments = function () {
+      var field = document.querySelector('#preview-pane [data-field="attachments"]');
+      if (!field) return;
+      field.innerText = '– Lebenslauf';
+      _updateFieldEmptyState(field);
+      _syncHiddenInputs();
+      if (window._editorSetContentDirty) window._editorSetContentDirty(true);
+      var range = document.createRange();
+      range.selectNodeContents(field);
+      range.collapse(false);
+      var sel = window.getSelection();
+      if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+      field.focus();
+    };
+
+    // ── Hidden-form sync ──────────────────────────────────────────────────
     function _syncHiddenInputs() {
       var form = document.getElementById('content-save-form');
       if (!form) return;
-      document.querySelectorAll('[contenteditable][data-field]').forEach(function (el) {
+      document.querySelectorAll('#preview-pane [data-field]').forEach(function (el) {
         var inp = form.querySelector('[name="' + el.dataset.field + '"]');
-        if (inp) inp.value = el.innerText.trim();
+        if (inp) inp.value = el.textContent.trim();
       });
       document.querySelectorAll('[data-list-field="main_body"]').forEach(function (el) {
         var name = 'main_body_' + el.dataset.listIndex;
         var inp = form.querySelector('[name="' + name + '"]');
         if (!inp) {
           inp = document.createElement('input');
-          inp.type = 'hidden';
-          inp.name = name;
+          inp.type = 'hidden'; inp.name = name;
           form.appendChild(inp);
         }
-        inp.value = el.innerText.trim();
+        inp.value = el.textContent.trim();
       });
     }
 
-    var _savedState = {};
+    window._syncHiddenInputs = _syncHiddenInputs;
 
-    // Save state before HTMX design-control swap replaces preview pane.
-    document.addEventListener('htmx:beforeRequest', function () {
-      _savedState = _captureContent();
-    });
-    // Restore state after HTMX swap and re-sync hidden inputs.
-    document.addEventListener('htmx:afterSettle', function () {
-      _restoreContent(_savedState);
-      _syncHiddenInputs();
-    });
-
-    // Keep hidden inputs live as user types.
+    // Sync on user input in edit mode; also flag content as dirty
     var preview = document.getElementById('preview-pane');
     if (preview) {
-      preview.addEventListener('input', _syncHiddenInputs);
+      preview.addEventListener('input', function () {
+        if (layout.dataset.mode === 'edit') {
+          _syncHiddenInputs();
+          if (window._editorSetContentDirty) window._editorSetContentDirty(true);
+        }
+      });
     }
 
-    // Initial sync in case the page already has content.
-    _syncHiddenInputs();
+    // ── Capture/restore around HTMX design-control swaps (preview mode only) ──
+    var _savedState = {};
+    document.addEventListener('htmx:beforeRequest', function () {
+      if (layout.dataset.mode === 'edit') return;
+      _savedState = {};
+      document.querySelectorAll('#preview-pane [data-field]').forEach(function (el) {
+        _savedState[el.dataset.field] = el.textContent;
+      });
+    });
+    document.addEventListener('htmx:afterSettle', function () {
+      if (layout.dataset.mode === 'edit') return;
+      Object.keys(_savedState).forEach(function (field) {
+        var el = document.querySelector('#preview-pane [data-field="' + field + '"]');
+        if (el) el.innerText = _savedState[field];
+      });
+      _syncHiddenInputs();
+      _updateWarningVisibility();
+    });
 
-    // Show save-status feedback and profile-sync dialog on content-save response.
-    var _saveBtn = document.getElementById('save-content-btn');
-    if (_saveBtn) {
-      _saveBtn.addEventListener('htmx:afterRequest', function (e) {
-        var status = document.getElementById('content-save-status');
-        var resp = null;
-        try { resp = JSON.parse(e.detail.xhr.responseText); } catch (_) {}
-        if (status) {
-          if (resp && resp.ok) {
-            status.textContent = 'Gespeichert (Version ' + resp.version + ')';
-            status.style.color = '#356054';
-          } else {
-            status.textContent = 'Fehler beim Speichern.';
-            status.style.color = '#b00';
-          }
+    // Initial state setup: sync form, normalize empty fields, show/hide warnings.
+    _syncHiddenInputs();
+    _cleanupPreview();
+    _updateWarningVisibility();
+
+    // ── PDF export overlay ────────────────────────────────────────────────
+    (function () {
+      var pdfLink = document.getElementById('pdf-export-link');
+      var overlay = document.getElementById('pdf-overlay');
+      if (!pdfLink || !overlay) return;
+
+      pdfLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        var url = new URL(pdfLink.href, window.location.href);
+        // Append current (unsaved) layout state so PDF reflects the editor.
+        var layoutForm = document.getElementById('editor-form');
+        if (layoutForm) {
+          new FormData(layoutForm).forEach(function (v, k) { url.searchParams.set(k, v); });
         }
-        if (!resp || !resp.ok) return;
-        var changes = resp.profile_changes || {};
-        if (Object.keys(changes).length === 0) return;
-        var _LABELS = {
-          first_name: 'Vorname', last_name: 'Nachname', email: 'E-Mail',
-          phone: 'Telefon', street: 'Straße', city: 'Stadt', location: 'Standort'
-        };
-        var list = document.getElementById('profile-sync-list');
-        var dialog = document.getElementById('profile-sync-dialog');
-        if (!list || !dialog) return;
-        list.innerHTML = Object.values(changes).map(function (c) {
-          var label = _LABELS[c.profile_field] || c.profile_field;
-          return '<li><strong>' + label + '</strong>: &ldquo;' + c.profile_value + '&rdquo; &rarr; &ldquo;' + c.new_value + '&rdquo;</li>';
-        }).join('');
-        dialog.showModal();
-        document.getElementById('profile-sync-confirm').onclick = function () {
-          var body = {};
-          Object.values(changes).forEach(function (c) { body[c.profile_field] = c.new_value; });
-          fetch('{{ profile_update_url }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          }).finally(function () { dialog.close(); });
-        };
-        document.getElementById('profile-sync-dismiss').onclick = function () { dialog.close(); };
+        overlay.style.display = 'flex';
+        // Flush current content to DB first so the PDF renders what the preview shows,
+        // even when the user has unsaved edits.
+        _syncHiddenInputs();
+        var contentForm = document.getElementById('content-save-form');
+        function _triggerDownload() {
+          var iframe = document.createElement('iframe');
+          iframe.style.cssText = 'display:none;width:1px;height:1px;';
+          iframe.src = url.toString();
+          document.body.appendChild(iframe);
+          setTimeout(function () {
+            overlay.style.display = 'none';
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          }, 7000);
+        }
+        if (contentForm) {
+          fetch(contentSaveUrl, { method: 'POST', body: new FormData(contentForm) })
+            .then(_triggerDownload)
+            .catch(_triggerDownload);
+        } else {
+          _triggerDownload();
+        }
+      });
+    }());
+
+    // ── Profile-sync dialog ────────────────────────────────────────────────
+    window._showProfileSyncDialog = function _showProfileSyncDialog(changes, onDone) {
+      var _LABELS = {
+        first_name: 'Vorname', last_name: 'Nachname', email: 'E-Mail',
+        phone: 'Telefon', street: 'Straße', city: 'Stadt', location: 'Standort'
+      };
+      var list = document.getElementById('profile-sync-list');
+      var dialog = document.getElementById('profile-sync-dialog');
+      if (!list || !dialog) return;
+      list.innerHTML = Object.values(changes).map(function (c) {
+        var label = _LABELS[c.profile_field] || c.profile_field;
+        return '<li><strong>' + label + '</strong>: &ldquo;' + c.profile_value +
+          '&rdquo; &rarr; &ldquo;' + c.new_value + '&rdquo;</li>';
+      }).join('');
+      dialog.showModal();
+      document.getElementById('profile-sync-confirm').onclick = function () {
+        var body = {};
+        Object.values(changes).forEach(function (c) { body[c.profile_field] = c.new_value; });
+        fetch('{{ profile_update_url }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).finally(function () { dialog.close(); if (onDone) onDone(); });
+      };
+      document.getElementById('profile-sync-dismiss').onclick = function () {
+        dialog.close();
+        if (onDone) onDone();
+      };
+    }
+  }());
+
+  // ── Phase 5: Dirty tracking + navigation guards ───────────────────────────
+  (function () {
+    var layoutDirty = false;
+    var contentDirty = false;
+    var _isSaved = {{ 'true' if is_saved else 'false' }};
+    var _pendingNavUrl = null;
+    var contentSaveUrl = '{{ content_save_url }}';
+
+    // Expose dirty setter for the edit-mode apply handler
+    window._editorSetContentDirty = function (v) { contentDirty = v; };
+
+    // Track layout changes (any design control in #editor-form)
+    var editorForm = document.getElementById('editor-form');
+    if (editorForm) {
+      editorForm.addEventListener('change', function () { layoutDirty = true; });
+    }
+
+    var navModal  = document.getElementById('nav-guard-modal');
+    var saveModal = document.getElementById('save-options-modal');
+
+    // Navigation guard — fires on any <a> link click that would leave the page
+    document.addEventListener('click', function (e) {
+      var link = e.target.closest('a[href]');
+      if (!link || link.dataset.bypassGuard) return;
+      var href = link.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+      if (!(layoutDirty || contentDirty)) return;
+      e.preventDefault();
+      _pendingNavUrl = link.href || href;
+      if (_isSaved) {
+        if (saveModal) saveModal.showModal();
+      } else {
+        if (navModal) navModal.showModal();
+      }
+    });
+
+    // Helper: save content then layout, then optionally navigate
+    function _saveContentThenLayout(dest) {
+      var contentForm = document.getElementById('content-save-form');
+      var layoutForm = document.getElementById('editor-form');
+      var saveContent = contentDirty && contentForm
+        ? fetch(contentSaveUrl, { method: 'POST', body: new FormData(contentForm) })
+            .then(function (r) { return r.json(); })
+            .then(function (resp) {
+              contentDirty = false;
+              if (resp.profile_changes && Object.keys(resp.profile_changes).length > 0 &&
+                  window._showProfileSyncDialog) {
+                window._showProfileSyncDialog(resp.profile_changes);
+              }
+            })
+        : Promise.resolve();
+      return saveContent.then(function () {
+        if (!layoutForm) return;
+        return fetch(layoutForm.action, { method: 'POST', body: new FormData(layoutForm) });
+      }).finally(function () {
+        window.location.href = dest || window.location.pathname;
+      });
+    }
+
+    // nav-guard-modal handlers (unsaved draft — 4 options)
+    var navCancelBtn = document.getElementById('nav-guard-cancel-btn');
+    if (navCancelBtn) navCancelBtn.addEventListener('click', function () {
+      if (navModal) navModal.close();
+      _pendingNavUrl = null;
+    });
+
+    var navDiscardBtn = document.getElementById('nav-guard-discard-btn');
+    if (navDiscardBtn) navDiscardBtn.addEventListener('click', function () {
+      if (navModal) navModal.close();
+      var dest = _pendingNavUrl; _pendingNavUrl = null;
+      if (dest) window.location.href = dest;
+    });
+
+    // "Als Entwurf speichern" — saves content only (is_saved stays false), then navigates
+    var navDraftBtn = document.getElementById('nav-guard-draft-btn');
+    if (navDraftBtn) navDraftBtn.addEventListener('click', function () {
+      if (navModal) navModal.close();
+      var dest = _pendingNavUrl; _pendingNavUrl = null;
+      var contentForm = document.getElementById('content-save-form');
+      var save = contentDirty && contentForm
+        ? fetch(contentSaveUrl, { method: 'POST', body: new FormData(contentForm) })
+            .then(function (r) { return r.json(); })
+            .then(function (resp) {
+              contentDirty = false;
+              if (resp.profile_changes && Object.keys(resp.profile_changes).length > 0 &&
+                  window._showProfileSyncDialog) {
+                window._showProfileSyncDialog(resp.profile_changes);
+              }
+            })
+        : Promise.resolve();
+      save.finally(function () { if (dest) window.location.href = dest; });
+    });
+
+    // "Dokument speichern" — saves content + layout (sets is_saved=true), then navigates
+    var navDocSaveBtn = document.getElementById('nav-guard-doc-save-btn');
+    if (navDocSaveBtn) navDocSaveBtn.addEventListener('click', function () {
+      if (navModal) navModal.close();
+      var dest = _pendingNavUrl; _pendingNavUrl = null;
+      _saveContentThenLayout(dest);
+    });
+
+    // save-options-modal handlers (saved doc — nav guard or save button)
+    var optsCancelBtn = document.getElementById('save-opts-cancel-btn');
+    if (optsCancelBtn) optsCancelBtn.addEventListener('click', function () {
+      if (saveModal) saveModal.close();
+      _pendingNavUrl = null;
+    });
+    var optsDiscardBtn = document.getElementById('save-opts-discard-btn');
+    if (optsDiscardBtn) optsDiscardBtn.addEventListener('click', function () {
+      if (saveModal) saveModal.close();
+      var dest = _pendingNavUrl; _pendingNavUrl = null;
+      if (dest) window.location.href = dest;
+    });
+    var optsCopyBtn = document.getElementById('save-opts-copy-btn');
+    if (optsCopyBtn) optsCopyBtn.addEventListener('click', function () {
+      if (saveModal) saveModal.close();
+      _pendingNavUrl = null;
+      var copyForm = document.getElementById('copy-form');
+      if (copyForm) copyForm.submit();
+    });
+    var optsOverwriteBtn = document.getElementById('save-opts-overwrite-btn');
+    if (optsOverwriteBtn) optsOverwriteBtn.addEventListener('click', function () {
+      if (saveModal) saveModal.close();
+      var dest = _pendingNavUrl; _pendingNavUrl = null;
+      _saveContentThenLayout(dest);
+    });
+
+    // Intercept #editor-form submit:
+    // — for already-saved docs: show save-options-modal
+    // — for drafts with dirty content: flush content to DB first, then submit layout
+    if (editorForm) {
+      editorForm.addEventListener('submit', function (e) {
+        if (this.dataset.bypassSaveModal) {
+          delete this.dataset.bypassSaveModal;
+          return;
+        }
+        if (_isSaved) {
+          e.preventDefault();
+          _pendingNavUrl = null;
+          if (saveModal) saveModal.showModal();
+          return;
+        }
+        if (contentDirty) {
+          e.preventDefault();
+          var form = this;
+          var contentForm = document.getElementById('content-save-form');
+          fetch(contentSaveUrl, { method: 'POST', body: new FormData(contentForm) })
+            .then(function (r) { return r.json(); })
+            .then(function (resp) {
+              contentDirty = false;
+              var hasProfileChanges = resp.profile_changes && Object.keys(resp.profile_changes).length > 0;
+              if (hasProfileChanges && window._showProfileSyncDialog) {
+                window._showProfileSyncDialog(resp.profile_changes, function () {
+                  form.dataset.bypassSaveModal = '1';
+                  form.submit();
+                });
+              } else {
+                form.dataset.bypassSaveModal = '1';
+                form.submit();
+              }
+            });
+        }
       });
     }
   }());

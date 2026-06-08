@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Stellenangebot wird vorbereitet… | AI Job Copilot{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1>Stellenangebot wird vorbereitet</h1>
+</header>
+
+<section class="section">
+  <div class="card stack">
+    <div
+      id="prep-spinner"
+      hx-get="{{ status_url }}{% if job_id %}?job_id={{ job_id }}{% elif manual_job_id %}?manual_job_id={{ manual_job_id }}{% elif tracker_entry_id %}?tracker_entry_id={{ tracker_entry_id }}{% endif %}"
+      hx-trigger="every 2s"
+      hx-swap="outerHTML"
+    >
+      <div class="document-card__processing">
+        <span class="document-spinner" aria-hidden="true"></span>
+        Das Stellenangebot wird für die Anschreibenerstellung vorbereitet…
+      </div>
+      <p class="muted">Die Seite leitet automatisch weiter, sobald die Vorbereitung abgeschlossen ist.</p>
+    </div>
+    {# Elapsed counter is outside #prep-spinner so HTMX swaps don't reset it #}
+    <p class="muted" id="prep-elapsed-row">
+      Bitte warte kurz – dauert normalerweise unter einer Minute. (<span id="prep-elapsed">0s</span>)
+    </p>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var elapsed = 0;
+    setInterval(function () {
+      elapsed++;
+      var el = document.getElementById('prep-elapsed');
+      if (el) el.textContent = elapsed + 's';
+      if (elapsed === 90 && !document.getElementById('slow-warning')) {
+        var msg = document.createElement('p');
+        msg.id = 'slow-warning';
+        msg.className = 'muted';
+        msg.style.color = '#856404';
+        msg.innerHTML = '⚠ Das dauert ungewöhnlich lange – die KI-API ist möglicherweise ausgelastet. '
+          + 'Du kannst <a href="{{ retry_url }}">erneut versuchen</a> oder warten.';
+        var row = document.getElementById('prep-elapsed-row');
+        if (row) row.insertAdjacentElement('afterend', msg);
+      }
+    }, 1000);
+  }());
+</script>
+{% endblock %}

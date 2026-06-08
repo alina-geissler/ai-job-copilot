@@ -275,6 +275,51 @@ def set_cover_letter_content(
     return cover_letter
 
 
+def clone_cover_letter(
+    db: Session,
+    *,
+    source: CoverLetter,
+    user_id: int,
+) -> CoverLetter:
+    """Create a saved copy of an existing cover letter.
+
+    The display name and export filename are inherited verbatim from the source.
+    The copy is marked ``is_saved=True`` immediately so it lands on the Documents page.
+
+    :param db: Active database session.
+    :param source: Cover letter to clone.
+    :param user_id: Owner of the new copy.
+    :return: Newly created cover letter record (flushed, not committed).
+    """
+    new_cl = CoverLetter(
+        user_id=user_id,
+        template=source.template,
+        tone=source.tone,
+        job_id=source.job_id,
+        manual_job_posting_id=source.manual_job_posting_id,
+        content=dict(source.content) if source.content else None,
+        layout_settings=dict(source.layout_settings) if source.layout_settings else None,
+        is_saved=True,
+        document_name=source.document_name,
+        document_filename=source.document_filename,
+        generation_status=source.generation_status,
+        must_haves=source.must_haves,
+        no_gos=source.no_gos,
+        personal_motivation=source.personal_motivation,
+        why_company=source.why_company,
+        added_value=source.added_value,
+        earliest_start_date=source.earliest_start_date,
+        salary_expectation=source.salary_expectation,
+        industry_group=source.industry_group,
+        hierarchy_level=source.hierarchy_level,
+        output_language=source.output_language,
+        company_context=source.company_context,
+    )
+    db.add(new_cl)
+    db.flush()
+    return new_cl
+
+
 def delete_cover_letter(db: Session, *, cover_letter: CoverLetter) -> None:
     """Delete a cover letter record from the database.
 

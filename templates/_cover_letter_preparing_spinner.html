@@ -1,0 +1,12 @@
+<div
+  id="prep-spinner"
+  hx-get="{{ status_url }}{% if job_id %}?job_id={{ job_id }}{% elif manual_job_id %}?manual_job_id={{ manual_job_id }}{% elif tracker_entry_id %}?tracker_entry_id={{ tracker_entry_id }}{% endif %}"
+  hx-trigger="every 2s"
+  hx-swap="outerHTML"
+>
+  <div class="document-card__processing">
+    <span class="document-spinner" aria-hidden="true"></span>
+    Das Stellenangebot wird für die Anschreibenerstellung vorbereitet…
+  </div>
+  <p class="muted">Die Seite leitet automatisch weiter, sobald die Vorbereitung abgeschlossen ist.</p>
+</div>

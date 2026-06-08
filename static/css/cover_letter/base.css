@@ -100,8 +100,18 @@
 /* Recipient address — move up (reduce gap between sender header and address) */
 .cover-letter.recipient-pos-high .cl-recipient { margin-top: calc(var(--doc-line) * 2); }
 
-/* Closing-to-signature gap — compact reduces space to 2 blank lines */
-.cover-letter.signature-space-compact .cl-signature-name { margin-top: calc(var(--doc-line) * 2); }
+/* Closing-to-signature gap — standard = 4 lines (room to sign by hand) */
+.cover-letter.signature-space-standard .cl-signature-name,
+.cover-letter:not([class*="signature-space"]) .cl-signature-name {
+  margin-top: calc(var(--doc-line) * 4);
+}
+/* Compact = 1.5 lines — visibly tighter, for digital/inserted signatures */
+.cover-letter.signature-space-compact .cl-signature-name { margin-top: calc(var(--doc-line) * 1.5); }
+.cover-letter.signature-space-compact .cl-signature-img { max-height: 40px; }
+
+/* "Keine Unterschrift" — minimal gap; signature image hidden */
+.cover-letter.signature-space-none .cl-signature-name { margin-top: calc(var(--doc-line) * 0.5); }
+.cover-letter.signature-space-none .cl-signature-img  { display: none; }
 
 /* -------------------------------------------------------------------------
    3. PAGE GEOMETRY (screen preview; print.css hands margins to @page)
@@ -135,7 +145,7 @@
 
 /* Name is a design object: first name over last name, stacked. */
 .cl-sender-name { display: flex; flex-direction: column; line-height: 1.05; }
-.cl-name { font-size: var(--doc-fs-name); font-weight: 700; }
+.cl-name { font-size: var(--doc-fs-name); font-weight: 700; text-transform: uppercase; }
 
 .cl-sender-contact { display: flex; flex-direction: column; gap: 2pt;
                      font-size: var(--doc-fs-sub); }
@@ -199,9 +209,8 @@
 /* 4h. Attachments */
 .cl-attachments { margin-top: calc(var(--doc-line) * 2); }
 .cl-attachments-label { font-size: var(--doc-fs-sub); font-weight: 700; }
-.cl-attachments-list { margin-top: calc(var(--doc-line) * 0.4); }
-.cl-attachments-list li { font-size: var(--doc-fs-body); }
-.cl-attachments-list li > .cl-bullet { margin-right: 0.4em; }
+/* pre-line preserves the newlines between items stored in the plain-text field. */
+.cl-attachments-content { font-size: var(--doc-fs-body); margin-top: calc(var(--doc-line) * 0.4); white-space: pre-line; }
 
 /* -------------------------------------------------------------------------
    5. ATS / accessibility safety net
@@ -210,8 +219,19 @@
 .cl-icon { pointer-events: none; }
 
 /* -------------------------------------------------------------------------
-   6. Phase 2 body split: qualifications + fit paragraphs run together
+   6. Empty-field suppression
+   Fields that carry no content should not create visual gaps.
+   `:empty` matches elements with no child nodes (whitespace is trimmed by
+   Jinja2 whitespace-control, so this is safe for all template-rendered fields).
+   Does NOT affect elements with text or children (icons, etc.).
    ------------------------------------------------------------------------- */
+.cl-field:empty { display: none; }
+
+/* -------------------------------------------------------------------------
+   7. Phase 2 body split: qualifications + fit paragraphs run together
+   ------------------------------------------------------------------------- */
+/* Same blank-line gap before the split block as before the legacy main_body */
+.cl-body-split { margin-top: var(--doc-line); }
 .cl-main-body-qualifications {
   margin-bottom: 0;
 }

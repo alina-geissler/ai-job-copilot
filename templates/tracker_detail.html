@@ -27,12 +27,12 @@
 
     {% if cover_letters %}
       <a
-        href="{{ request.url_for('render_cover_letter_setup_page') }}?tracker_entry_id={{ tracker_entry.id }}"
+        href="{{ request.url_for('prepare_cover_letter_action') }}?tracker_entry_id={{ tracker_entry.id }}"
         class="btn btn-secondary"
       >Neues Anschreiben generieren</a>
     {% else %}
       <a
-        href="{{ request.url_for('render_cover_letter_setup_page') }}?tracker_entry_id={{ tracker_entry.id }}"
+        href="{{ request.url_for('prepare_cover_letter_action') }}?tracker_entry_id={{ tracker_entry.id }}"
         class="btn btn-secondary"
       >Anschreiben generieren</a>
     {% endif %}

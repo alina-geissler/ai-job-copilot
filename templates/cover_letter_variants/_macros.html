@@ -23,32 +23,57 @@
 {%- endmacro -%}
 
 {#- Letterhead name, first over last (design object). -#}
-{%- macro name_block(first, last) -%}
+{%- macro name_block(first, last, show_warnings=false) -%}
   <div class="cl-field cl-sender-name" data-field-group="name">
-    {% if first %}<span class="cl-name cl-name-first" data-field="candidate_first_name" contenteditable="true">{{ first }}</span>{% endif %}
-    {% if last %}<span class="cl-name cl-name-last" data-field="candidate_last_name" contenteditable="true">{{ last }}</span>{% endif %}
+    <span class="cl-name cl-name-first" data-field="candidate_first_name" data-placeholder="Vorname">{{ first or '' }}</span>
+    {% if not first and show_warnings %}
+    <div class="cl-field-warning" data-warning-for="candidate_first_name">
+      <span class="cl-warning-text">⚠ Kein Vorname – bitte im Profil ergänzen.</span>
+      <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    </div>
+    {% endif %}
+    <span class="cl-name cl-name-last" data-field="candidate_last_name" data-placeholder="Nachname">{{ last or '' }}</span>
+    {% if not last and show_warnings %}
+    <div class="cl-field-warning" data-warning-for="candidate_last_name">
+      <span class="cl-warning-text">⚠ Kein Nachname – bitte im Profil ergänzen.</span>
+      <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    </div>
+    {% endif %}
   </div>
 {%- endmacro -%}
 
-{#- Closing line + typed signature name (first + last on one line).
-    The signature is a derived echo of the name fields, not its own backend
-    field, so it is marked data-derived rather than data-field. -#}
-{%- macro signature(closing, first, last, signature_image=None) -%}
-  {% if closing %}<p class="cl-field cl-closing" data-field="closing" contenteditable="true" spellcheck="true">{{ closing }}</p>{% endif %}
+{#- Closing line + typed signature name (independent field, editable separately
+    from the header name). -#}
+{%- macro signature(closing, first, last, signature_name='', signature_image=None, show_warnings=false) -%}
+  <p class="cl-field cl-closing" data-field="closing" data-placeholder="Schlussformel">{{ closing or '' }}</p>
+  {% if not closing and show_warnings %}
+  <div class="cl-field-warning" data-warning-for="closing">
+    <span class="cl-warning-text">⚠ Keine Schlussformel – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('closing')">Bearbeiten</button>
+  </div>
+  {% endif %}
   {% if signature_image %}<img class="cl-signature-img" src="{{ signature_image }}" alt="Unterschrift">{% endif %}
-  {% if first or last %}<div class="cl-signature-name" data-derived="name">{{ first }}{% if first and last %} {% endif %}{{ last }}</div>{% endif %}
+  <div class="cl-signature-name cl-field" data-field="signature_name" data-placeholder="Vollständiger Name">{{ signature_name or '' }}</div>
 {%- endmacro -%}
 
-{#- Attachments section (list). -#}
-{%- macro attachments(items) -%}
-  {% if items %}
-  <section class="cl-attachments" data-field="attachments" data-field-group="attachments">
+{#- Attachments section (plain text field, same pattern as all other fields).
+    items: the attachments string (may be empty).
+    In PDF (show_warnings=false): section only rendered if items has content.
+    In editor (show_warnings=true): section always rendered so the field is
+    reachable in edit mode; JS (_updateWarningVisibility) manages section
+    visibility and injects the warning after the section when the field is
+    empty. The "Anlagen zufügen" button is shown by CSS only in edit mode
+    when the field is empty (sibling selector on data-field-empty). -#}
+{%- macro attachments(items, show_warnings=false) -%}
+  {%- set has_content = items and items.strip() -%}
+  {% if has_content or show_warnings %}
+  <section class="cl-attachments" data-field-group="attachments">
     <p class="cl-attachments-label">Anlagen</p>
-    <ul class="cl-attachments-list">
-      {% for item in items %}
-      <li><span class="cl-bullet" aria-hidden="true">&ndash;</span>{{ item }}</li>
-      {% endfor %}
-    </ul>
+    <p class="cl-field cl-attachments-content" data-field="attachments" data-placeholder="z.B. Lebenslauf">{{ items or '' }}</p>
+    {% if show_warnings %}
+    <button class="cl-attachments-add" type="button" onclick="if(window._addAttachments)window._addAttachments()">+ Anlagen zufügen</button>
+    {% endif %}
   </section>
   {% endif %}
 {%- endmacro -%}

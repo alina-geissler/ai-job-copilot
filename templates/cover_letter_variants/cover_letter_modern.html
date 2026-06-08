@@ -13,30 +13,55 @@
 {%- set font    = font    | default('font-arial') -%}
 {%- set size    = size    | default('size-medium') -%}
 {%- set spacing = spacing | default('spacing-normal') -%}
+{%- set _show_warnings = show_field_warnings | default(false) -%}
 
 <article class="cover-letter variant-modern {{ theme }} {{ font }} {{ size }} {{ spacing }}{% if doc_classes %} {{ doc_classes }}{% endif %}">
 
   <header class="cl-sender" data-field-group="sender">
-    {{ cl.name_block(candidate_first_name, candidate_last_name) }}
+    {{ cl.name_block(candidate_first_name, candidate_last_name, show_warnings=_show_warnings) }}
 
-    {% if candidate_street or candidate_city or candidate_email or candidate_phone %}
+    {% if candidate_street or candidate_city or candidate_email or candidate_phone or _show_warnings %}
     <div class="cl-sender-contact" data-field-group="sender_contact">
-      {% if candidate_street or candidate_city %}
+      {%- if candidate_street or candidate_city or _show_warnings -%}
       <p class="cl-sender-address" data-field-group="address">{{ cl.icon('pin') }}<span>
-        {%- if candidate_street %}<span class="cl-field" data-field="candidate_street" contenteditable="true">{{ candidate_street }}</span>{% endif -%}
+        <span class="cl-field" data-field="candidate_street" data-placeholder="Straße Nr.">{{ candidate_street or '' }}</span>
         {%- if candidate_street and candidate_city %}, {% endif -%}
-        {%- if candidate_city %}<span class="cl-field" data-field="candidate_city" contenteditable="true">{{ candidate_city }}</span>{% endif -%}
+        <span class="cl-field" data-field="candidate_city" data-placeholder="Ort">{{ candidate_city or '' }}</span>
       </span></p>
+      {% if not candidate_street and _show_warnings %}
+      <div class="cl-field-warning" data-warning-for="candidate_street">
+        <span class="cl-warning-text">⚠ Keine Straße – bitte im Profil ergänzen.</span>
+        <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+      </div>
       {% endif %}
-      {% if candidate_email %}<p class="cl-field cl-sender-email">{{ cl.icon('mail') }}<span data-field="candidate_email" contenteditable="true">{{ candidate_email }}</span></p>{% endif %}
-      {% if candidate_phone %}<p class="cl-field cl-sender-phone">{{ cl.icon('phone') }}<span data-field="candidate_phone" contenteditable="true">{{ candidate_phone }}</span></p>{% endif %}
+      {% if not candidate_city and _show_warnings %}
+      <div class="cl-field-warning" data-warning-for="candidate_city">
+        <span class="cl-warning-text">⚠ Kein Wohnort – bitte im Profil ergänzen.</span>
+        <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+      </div>
+      {% endif %}
+      {%- endif -%}
+      <p class="cl-field cl-sender-email">{{ cl.icon('mail') }}<span data-field="candidate_email" data-placeholder="E-Mail-Adresse">{{ candidate_email or '' }}</span></p>
+      {% if not candidate_email and _show_warnings %}
+      <div class="cl-field-warning" data-warning-for="candidate_email">
+        <span class="cl-warning-text">⚠ Keine E-Mail – bitte im Profil ergänzen.</span>
+        <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+      </div>
+      {% endif %}
+      <p class="cl-field cl-sender-phone">{{ cl.icon('phone') }}<span data-field="candidate_phone" data-placeholder="Telefonnummer">{{ candidate_phone or '' }}</span></p>
+      {% if not candidate_phone and _show_warnings %}
+      <div class="cl-field-warning" data-warning-for="candidate_phone">
+        <span class="cl-warning-text">⚠ Keine Telefonnummer – bitte im Profil ergänzen.</span>
+        <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
   </header>
 
   {% include "cover_letter_variants/_content.html" %}
 
-  {{ cl.signature(closing, candidate_first_name, candidate_last_name, signature_image=signature_image|default(None)) }}
-  {{ cl.attachments(attachments) }}
+  {{ cl.signature(closing, candidate_first_name, candidate_last_name, signature_name=signature_name|default(''), signature_image=signature_image|default(None), show_warnings=_show_warnings) }}
+  {{ cl.attachments(attachments, show_warnings=_show_warnings) }}
 
 </article>

@@ -86,7 +86,7 @@ def _build_draft_name(
     :param db: Active database session.
     :param job_id: FK to an API-sourced job, or ``None``.
     :param manual_job_posting_id: FK to a manual job posting, or ``None``.
-    :return: Draft name, e.g. "Entwurf für Softwareentwickler (Acme GmbH)", or ``None``.
+    :return: Document name, e.g. "Anschreiben für Softwareentwickler (Acme GmbH)", or ``None``.
     """
     title: str | None = None
     company: str | None = None
@@ -116,8 +116,8 @@ def _build_draft_name(
     if not title:
         return None
     if company:
-        return f"Entwurf für {title} ({company})"
-    return f"Entwurf für {title}"
+        return f"Anschreiben für {title} ({company})"
+    return f"Anschreiben für {title}"
 
 
 def initiate_cover_letter_generation(

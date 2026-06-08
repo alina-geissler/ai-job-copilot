@@ -11,7 +11,7 @@ import logging
 import re
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.core.enums import CoverLetterGenerationStatus, CoverLetterTemplate, CoverLetterToneKey
 from app.crud.application_tracker_entry import get_tracker_entry_by_id_for_user
 from app.crud.cover_letter import (
+    clone_cover_letter,
     delete_cover_letter,
     get_cover_letter_by_id,
     save_cover_letter_document,
@@ -44,6 +45,10 @@ templates = Jinja2Templates(directory="templates")
 
 _SETUP_PARAMS_SESSION_KEY = "cover_letter_setup_params"
 
+# In-memory normalization error tracking (single-process dev server only).
+# Key: "job_{id}" or "manual_{id}"; value: error message string.
+_NORM_ERRORS: dict[str, str] = {}
+
 # ---------------------------------------------------------------------------
 # Allowed preset values (validated before persisting layout_settings)
 # ---------------------------------------------------------------------------
@@ -53,7 +58,7 @@ _ALLOWED_FONTS = {"font-arial", "font-verdana", "font-georgia", "font-times-new-
 _ALLOWED_SIZES = {"size-small", "size-medium", "size-large"}
 _ALLOWED_SPACINGS = {"spacing-normal", "spacing-large"}
 _ALLOWED_RECIPIENT_POS = {"standard", "high"}
-_ALLOWED_SIGNATURE_SPACE = {"standard", "compact"}
+_ALLOWED_SIGNATURE_SPACE = {"standard", "compact", "none"}
 _ALLOWED_COMPACT_ATTACHMENTS_POS = {"standard", "higher", "very-high"}
 
 # ---------------------------------------------------------------------------
@@ -236,6 +241,274 @@ def _save_manual_job_to_tracker(
     if existing is None:
         entry = ApplicationTrackerEntry(user_id=user_id, job_id=job.id)
         db.add(entry)
+
+
+# ---------------------------------------------------------------------------
+# Job normalization intermediate step
+# ---------------------------------------------------------------------------
+
+def _norm_task_key(job_id: int | None, manual_job_id: int | None) -> str:
+    """Build a stable string key for tracking per-job normalization state.
+
+    :param job_id: API-sourced job identifier, or ``None``.
+    :param manual_job_id: Manual job posting identifier, or ``None``.
+    :return: String key used in ``_NORM_ERRORS``.
+    """
+    if job_id is not None:
+        return f"job_{job_id}"
+    return f"manual_{manual_job_id}"
+
+
+def _run_normalization_task(
+    *, job_id: int | None, manual_job_id: int | None
+) -> None:
+    """Background task: normalise a job ad and persist the result.
+
+    Opens its own database session, resolves the raw job text, calls the
+    normalisation service, and commits the result. Errors are stored in
+    ``_NORM_ERRORS`` so the polling endpoint can surface them.
+
+    :param job_id: API-sourced job identifier, or ``None``.
+    :param manual_job_id: Manual job posting identifier, or ``None``.
+    """
+    from app.db.session import SessionLocal
+    from app.models.job import Job
+    from app.models.manual_job_posting import ManualJobPosting
+    from app.services.job_normalization_service import get_or_create_normalization
+
+    key = _norm_task_key(job_id, manual_job_id)
+    db = SessionLocal()
+    try:
+        existing_job = None
+        if job_id is not None:
+            job = db.get(Job, job_id)
+            if job is None:
+                _NORM_ERRORS[key] = "Job nicht gefunden."
+                return
+            raw_text: str = job.description or job.title or ""
+            existing_job = job
+        elif manual_job_id is not None:
+            posting = db.get(ManualJobPosting, manual_job_id)
+            if posting is None:
+                _NORM_ERRORS[key] = "Stellenangebot nicht gefunden."
+                return
+            raw_text = posting.raw_text
+        else:
+            _NORM_ERRORS[key] = "Kein Job angegeben."
+            return
+
+        if not raw_text:
+            _NORM_ERRORS[key] = "Kein Anzeigentext gefunden."
+            return
+
+        get_or_create_normalization(
+            db,
+            job_id=job_id,
+            manual_job_posting_id=manual_job_id,
+            raw_text=raw_text,
+            existing_job=existing_job,
+        )
+        db.commit()
+        _NORM_ERRORS.pop(key, None)
+    except Exception as exc:
+        logger.exception("Normalization task failed for key=%s: %s", key, exc)
+        _NORM_ERRORS[key] = str(exc)[:200]
+    finally:
+        db.close()
+
+
+@router.get("/cover-letter/prepare", name="prepare_cover_letter_action")
+def prepare_cover_letter_action(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks,
+    job_id: Annotated[int | None, Query()] = None,
+    manual_job_id: Annotated[int | None, Query()] = None,
+    tracker_entry_id: Annotated[int | None, Query()] = None,
+) -> Response:
+    """Check normalization state and redirect to setup or the preparing page.
+
+    If the job is already normalised, redirects directly to the setup page.
+    Otherwise enqueues a background normalisation task and redirects to the
+    spinner waiting page.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param background_tasks: FastAPI background task queue.
+    :param job_id: Optional API-sourced job identifier.
+    :param manual_job_id: Optional manual job posting identifier.
+    :param tracker_entry_id: Optional tracker entry identifier (resolves to job_id).
+    :return: Redirect response.
+    """
+    from app.crud.job_normalization import get_normalization_by_manual_job_id
+
+    if tracker_entry_id is not None and job_id is None:
+        entry = get_tracker_entry_by_id_for_user(
+            db, entry_id=tracker_entry_id, user_id=current_user.id
+        )
+        if entry is not None:
+            job_id = entry.job_id
+
+    existing_norm = None
+    if job_id is not None:
+        existing_norm = get_normalization_by_job_id(db, job_id=job_id)
+    elif manual_job_id is not None:
+        existing_norm = get_normalization_by_manual_job_id(
+            db, manual_job_posting_id=manual_job_id
+        )
+
+    setup_url = str(request.url_for("render_cover_letter_setup_page"))
+    if job_id:
+        job_params = f"?job_id={job_id}"
+    elif manual_job_id:
+        job_params = f"?manual_job_id={manual_job_id}"
+    elif tracker_entry_id:
+        job_params = f"?tracker_entry_id={tracker_entry_id}"
+    else:
+        job_params = ""
+
+    if existing_norm is not None:
+        return RedirectResponse(url=f"{setup_url}{job_params}", status_code=303)
+
+    _NORM_ERRORS.pop(_norm_task_key(job_id, manual_job_id), None)
+    background_tasks.add_task(
+        _run_normalization_task,
+        job_id=job_id,
+        manual_job_id=manual_job_id,
+    )
+
+    preparing_url = str(request.url_for("render_cover_letter_preparing_page"))
+    return RedirectResponse(url=f"{preparing_url}{job_params}", status_code=303)
+
+
+@router.get(
+    "/cover-letter/preparing",
+    response_class=HTMLResponse,
+    name="render_cover_letter_preparing_page",
+)
+def render_cover_letter_preparing_page(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    job_id: Annotated[int | None, Query()] = None,
+    manual_job_id: Annotated[int | None, Query()] = None,
+    tracker_entry_id: Annotated[int | None, Query()] = None,
+) -> Response:
+    """Render the normalization waiting page with HTMX polling.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param job_id: Optional API-sourced job identifier.
+    :param manual_job_id: Optional manual job posting identifier.
+    :param tracker_entry_id: Optional tracker entry identifier.
+    :return: Rendered waiting page.
+    """
+    return templates.TemplateResponse(
+        request=request,
+        name="cover_letter_preparing.html",
+        context={
+            **get_base_template_context(request),
+            "current_user": current_user,
+            "job_id": job_id,
+            "manual_job_id": manual_job_id,
+            "tracker_entry_id": tracker_entry_id,
+            "status_url": request.url_for("prepare_cover_letter_status"),
+            "retry_url": (
+                str(request.url_for("prepare_cover_letter_action"))
+                + (
+                    f"?job_id={job_id}" if job_id
+                    else f"?manual_job_id={manual_job_id}" if manual_job_id
+                    else f"?tracker_entry_id={tracker_entry_id}" if tracker_entry_id
+                    else ""
+                )
+            ),
+        },
+    )
+
+
+@router.get("/cover-letter/prepare/status", name="prepare_cover_letter_status")
+def prepare_cover_letter_status(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    job_id: Annotated[int | None, Query()] = None,
+    manual_job_id: Annotated[int | None, Query()] = None,
+    tracker_entry_id: Annotated[int | None, Query()] = None,
+) -> Response:
+    """HTMX polling endpoint: check normalisation progress and redirect when done.
+
+    Returns the spinner partial while the background task is still running.
+    When normalization completes, sets the ``HX-Redirect`` header to send the
+    browser to the setup page.  On error, returns an error message partial.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param job_id: Optional API-sourced job identifier.
+    :param manual_job_id: Optional manual job posting identifier.
+    :param tracker_entry_id: Optional tracker entry identifier.
+    :return: Spinner partial or redirect response.
+    """
+    from app.crud.job_normalization import get_normalization_by_manual_job_id
+
+    if tracker_entry_id is not None and job_id is None:
+        entry = get_tracker_entry_by_id_for_user(
+            db, entry_id=tracker_entry_id, user_id=current_user.id
+        )
+        if entry is not None:
+            job_id = entry.job_id
+
+    key = _norm_task_key(job_id, manual_job_id)
+
+    if key in _NORM_ERRORS:
+        error_msg = _NORM_ERRORS[key]
+        retry_url = str(request.url_for("prepare_cover_letter_action"))
+        if job_id:
+            retry_url += f"?job_id={job_id}"
+        elif manual_job_id:
+            retry_url += f"?manual_job_id={manual_job_id}"
+        elif tracker_entry_id:
+            retry_url += f"?tracker_entry_id={tracker_entry_id}"
+        return HTMLResponse(content=f"""
+          <div class="stack" style="gap:0.75rem;">
+            <p class="alert alert-danger">Fehler bei der Vorbereitung: {error_msg}</p>
+            <a href="{retry_url}" class="btn btn-secondary" style="align-self:flex-start;">Erneut versuchen</a>
+          </div>
+        """)
+
+    existing_norm = None
+    if job_id is not None:
+        existing_norm = get_normalization_by_job_id(db, job_id=job_id)
+    elif manual_job_id is not None:
+        existing_norm = get_normalization_by_manual_job_id(
+            db, manual_job_posting_id=manual_job_id
+        )
+
+    if existing_norm is not None:
+        setup_url = str(request.url_for("render_cover_letter_setup_page"))
+        if job_id:
+            job_params = f"?job_id={job_id}"
+        elif manual_job_id:
+            job_params = f"?manual_job_id={manual_job_id}"
+        elif tracker_entry_id:
+            job_params = f"?tracker_entry_id={tracker_entry_id}"
+        else:
+            job_params = ""
+        response = HTMLResponse(content="")
+        response.headers["HX-Redirect"] = f"{setup_url}{job_params}"
+        return response
+
+    return templates.TemplateResponse(
+        request=request,
+        name="_cover_letter_preparing_spinner.html",
+        context={
+            "job_id": job_id,
+            "manual_job_id": manual_job_id,
+            "tracker_entry_id": tracker_entry_id,
+            "status_url": request.url_for("prepare_cover_letter_status"),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -546,6 +819,10 @@ def render_cover_letter_editor_page(
     content: CoverLetterContent | None = None
     if cover_letter.content:
         content = CoverLetterContent(**cover_letter.content)
+    if content and not content.signature_name:
+        content.signature_name = " ".join(
+            p for p in [content.candidate_first_name, content.candidate_last_name] if p
+        ).strip()
 
     normalization: JobNormalizationSchema | None = None
     if cover_letter.job_normalization_id is not None:
@@ -566,7 +843,11 @@ def render_cover_letter_editor_page(
         parts = [content.candidate_first_name, content.candidate_last_name]
         candidate_name = " ".join(p for p in parts if p).strip() or "Bewerbung"
 
-    default_document_name = cover_letter.document_name or f"Anschreiben {company_name}"
+    # Strip any legacy "Entwurf für " prefix stored by older code.
+    _stored_name = cover_letter.document_name or ""
+    if _stored_name.startswith("Entwurf für "):
+        _stored_name = _stored_name[len("Entwurf für "):]
+    default_document_name = _stored_name.strip() or f"Anschreiben für {company_name}"
     raw_filename = f"Anschreiben_{candidate_name}_{company_name}"
     default_document_filename = cover_letter.document_filename or _sanitise_filename(raw_filename)
 
@@ -586,7 +867,9 @@ def render_cover_letter_editor_page(
             "default_document_name": default_document_name,
             "default_document_filename": default_document_filename,
             "template_labels": _TEMPLATE_LABELS,
+            "is_saved": cover_letter.is_saved,
             "pdf_url": request.url_for("export_cover_letter_pdf", cover_letter_id=cover_letter_id),
+            "copy_url": request.url_for("copy_cover_letter_action", cover_letter_id=cover_letter_id),
             "content_save_url": request.url_for("save_cover_letter_content_action", cover_letter_id=cover_letter_id),
             "sig_upload_url": request.url_for("upload_signature_action", cover_letter_id=cover_letter_id),
             "sig_remove_url": request.url_for("remove_signature_action", cover_letter_id=cover_letter_id),
@@ -662,6 +945,10 @@ def render_cover_letter_preview(
     )
 
     content = CoverLetterContent(**cover_letter.content)
+    if not content.signature_name:
+        content.signature_name = " ".join(
+            p for p in [content.candidate_first_name, content.candidate_last_name] if p
+        ).strip()
     doc_classes = _build_doc_classes(
         safe_theme, safe_font, safe_size, safe_spacing,
         safe_recipient_pos, safe_signature_space, safe_compact_attachments,
@@ -677,6 +964,7 @@ def render_cover_letter_preview(
         spacing=safe_spacing,
         doc_classes=doc_classes,
         signature_image=signature_image,
+        show_field_warnings=True,
     )
     return HTMLResponse(html)
 
@@ -694,17 +982,35 @@ def export_cover_letter_pdf(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
     cover_letter_id: int,
+    template: Annotated[str | None, Query()] = None,
+    theme_key: Annotated[str | None, Query()] = None,
+    font_key: Annotated[str | None, Query()] = None,
+    size_key: Annotated[str | None, Query()] = None,
+    spacing_key: Annotated[str | None, Query()] = None,
+    recipient_pos: Annotated[str | None, Query()] = None,
+    signature_space: Annotated[str | None, Query()] = None,
+    compact_attachments_pos: Annotated[str | None, Query()] = None,
+    document_filename: Annotated[str | None, Query()] = None,
 ) -> Response:
-    """Render the cover letter to PDF using WeasyPrint and return a download.
+    """Render the cover letter to PDF using Playwright and return a download.
 
     Builds the same document context as the HTMX preview but renders a
-    standalone HTML document (cover_letter_weasyprint.html) with WeasyPrint-
-    specific CSS that uses @page for DIN 5008 margins.
+    standalone HTML document (cover_letter_weasyprint.html).  Optional query
+    params override the persisted layout settings so the PDF reflects the
+    current (unsaved) editor state when the user exports without saving first.
 
     :param request: Incoming HTTP request.
     :param current_user: Authenticated user.
     :param db: Active database session.
     :param cover_letter_id: Identifier of the completed cover letter.
+    :param template: Optional template override (query param).
+    :param theme_key: Optional theme override (query param).
+    :param font_key: Optional font override (query param).
+    :param size_key: Optional size override (query param).
+    :param spacing_key: Optional spacing override (query param).
+    :param recipient_pos: Optional recipient position override (query param).
+    :param signature_space: Optional signature space override (query param).
+    :param compact_attachments_pos: Optional compact attachments override (query param).
     :return: PDF file download response.
     """
     cover_letter = get_cover_letter_by_id(
@@ -715,9 +1021,31 @@ def export_cover_letter_pdf(
         return RedirectResponse(url=editor_url, status_code=303)
 
     content = CoverLetterContent(**cover_letter.content)
+    if not content.signature_name:
+        content.signature_name = " ".join(
+            p for p in [content.candidate_first_name, content.candidate_last_name] if p
+        ).strip()
     layout = LayoutSettings(**(cover_letter.layout_settings or {}))
-    safe_template = cover_letter.template.value
     signature_image = (cover_letter.layout_settings or {}).get("signature_image")
+
+    # Apply query-param overrides (reflect unsaved editor state).
+    safe_template = cover_letter.template.value
+    if template and template in {t.value for t in CoverLetterTemplate}:
+        safe_template = template
+    if theme_key and theme_key in _ALLOWED_THEMES:
+        layout.theme_key = theme_key
+    if font_key and font_key in _ALLOWED_FONTS:
+        layout.font_key = font_key
+    if size_key and size_key in _ALLOWED_SIZES:
+        layout.size_key = size_key
+    if spacing_key and spacing_key in _ALLOWED_SPACINGS:
+        layout.spacing_key = spacing_key
+    if recipient_pos and recipient_pos in _ALLOWED_RECIPIENT_POS:
+        layout.recipient_pos = recipient_pos
+    if signature_space and signature_space in _ALLOWED_SIGNATURE_SPACE:
+        layout.signature_space = signature_space
+    if compact_attachments_pos and compact_attachments_pos in _ALLOWED_COMPACT_ATTACHMENTS_POS:
+        layout.compact_attachments_pos = compact_attachments_pos
 
     doc_classes = _build_doc_classes(
         layout.theme_key, layout.font_key, layout.size_key, layout.spacing_key,
@@ -745,7 +1073,9 @@ def export_cover_letter_pdf(
         pdf_bytes = pg.pdf(format="A4", print_background=True)
         browser.close()
 
-    filename = _sanitise_filename(cover_letter.document_filename or "Anschreiben") + ".pdf"
+    filename = _sanitise_filename(
+        (document_filename or "").strip() or cover_letter.document_filename or "Anschreiben"
+    ) + ".pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -802,6 +1132,8 @@ async def save_cover_letter_content_action(
         "candidate_email", "candidate_phone",
         "candidate_street", "candidate_city", "candidate_location",
         "company_name", "contact_person", "company_street", "company_city",
+        "date", "reference_number", "signature_name",
+        "attachments",
     )
     for field in _EDITABLE_SCALAR_FIELDS:
         if field in form:
@@ -841,10 +1173,17 @@ async def save_cover_letter_content_action(
     }
     profile = get_profile_for_user(db, user_id=current_user.id)
     profile_changes: dict = {}
+    _NAME_FIELDS = {"candidate_first_name", "candidate_last_name"}
     for content_field, profile_field in _PROFILE_FIELD_MAP.items():
         new_val = merged.get(content_field) or ""
         old_val = (getattr(profile, profile_field, None) or "") if profile else ""
-        if new_val and new_val != old_val:
+        # For name fields, only flag as changed if the value is meaningfully different
+        # (case-insensitive); CSS text-transform uppercase can produce case-only diffs.
+        if content_field in _NAME_FIELDS:
+            differs = new_val.lower() != old_val.lower()
+        else:
+            differs = new_val != old_val
+        if new_val and differs:
             profile_changes[content_field] = {
                 "profile_value": old_val,
                 "new_value": new_val,
@@ -923,17 +1262,66 @@ def save_cover_letter_document_action(
         ),
     )
 
+    # Preserve the signature_image that was stored separately via the insert route —
+    # LayoutSettings.model_dump() doesn't include it, so we must merge it back in
+    # or the JSONB field gets overwritten without the image.
+    new_layout = layout.model_dump()
+    existing_sig = (cover_letter.layout_settings or {}).get("signature_image")
+    if existing_sig:
+        new_layout["signature_image"] = existing_sig
+
     save_cover_letter_document(
         db,
         cover_letter=cover_letter,
         document_name=document_name.strip(),
         document_filename=document_filename.strip(),
-        layout_settings=layout.model_dump(),
+        layout_settings=new_layout,
         template=template.strip() or None,
     )
     db.commit()
 
     query_string = build_feedback_query(message="Anschreiben gespeichert.", message_type="success")
+    return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Save as copy
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/cover-letter/{cover_letter_id}/copy",
+    name="copy_cover_letter_action",
+)
+def copy_cover_letter_action(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    cover_letter_id: int,
+) -> RedirectResponse:
+    """Create a copy of the cover letter and redirect to the new copy's editor.
+
+    The copy is immediately marked as saved and inherits all content, layout
+    settings, and metadata from the source document.
+
+    :param request: Incoming HTTP request.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param cover_letter_id: Identifier of the source cover letter.
+    :return: Redirect to the new copy's editor page.
+    """
+    cover_letter = get_cover_letter_by_id(
+        db, cover_letter_id=cover_letter_id, user_id=current_user.id
+    )
+    if cover_letter is None:
+        return RedirectResponse(
+            url=str(request.url_for("render_application_tracker_page")), status_code=303
+        )
+
+    new_cl = clone_cover_letter(db, source=cover_letter, user_id=current_user.id)
+    db.commit()
+
+    editor_url = str(request.url_for("render_cover_letter_editor_page", cover_letter_id=new_cl.id))
+    query_string = build_feedback_query(message="Kopie erstellt.", message_type="success")
     return RedirectResponse(url=f"{editor_url}?{query_string}", status_code=303)
 
 
@@ -1229,6 +1617,8 @@ def _build_doc_classes(
         classes.append("recipient-pos-high")
     if signature_space == "compact":
         classes.append("signature-space-compact")
+    elif signature_space == "none":
+        classes.append("signature-space-none")
     if compact_attachments_pos == "higher":
         classes.append("compact-attachments-higher")
     elif compact_attachments_pos == "very-high":

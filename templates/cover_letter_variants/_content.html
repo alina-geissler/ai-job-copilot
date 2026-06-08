@@ -9,72 +9,156 @@
     variant-specific letterhead and the variant-specific footer
     (closing / signature / attachments).
 
-    Every field is optional and carries a stable data-field hook for edit mode.
-    No icons live here (icons belong to the letterhead only).
+    Every field carries a stable data-field hook.  contenteditable is NOT set
+    here — it is applied dynamically by JS only when the user enters edit mode.
+    set show_field_warnings=true in the calling context to show red empty-field
+    warnings (editor only; never in the weasyprint PDF template).
 ========================================================================= -#}
+{%- set _warnings = show_field_warnings | default(false) -%}
 
 {#- ===== RECIPIENT ============================================= -#}
-{% if company_name or contact_person or company_street or company_city %}
+{% if company_name or contact_person or company_street or company_city or _warnings %}
 <section class="cl-recipient" data-field-group="recipient">
-  {% if company_name %}<p class="cl-field cl-company-name" data-field="company_name" contenteditable="true" spellcheck="true">{{ company_name }}</p>{% endif %}
-  {% if contact_person %}<p class="cl-field cl-contact-person" data-field="contact_person" contenteditable="true" spellcheck="true">{{ contact_person }}</p>{% endif %}
-  {% if company_street %}<p class="cl-field cl-company-street" data-field="company_street" contenteditable="true" spellcheck="true">{{ company_street }}</p>{% endif %}
-  {% if company_city %}<p class="cl-field cl-company-city" data-field="company_city" contenteditable="true" spellcheck="true">{{ company_city }}</p>{% endif %}
+  <p class="cl-field cl-company-name" data-field="company_name" data-placeholder="Firmenname">{{ company_name or '' }}</p>
+  {% if not company_name and _warnings %}
+  <div class="cl-field-warning" data-warning-for="company_name">
+    <span class="cl-warning-text">⚠ Kein Firmenname – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('company_name')">Bearbeiten</button>
+  </div>
+  {% endif %}
+  <p class="cl-field cl-contact-person" data-field="contact_person" data-placeholder="Ansprechpartner">{{ contact_person or '' }}</p>
+  {% if not contact_person and _warnings %}
+  <div class="cl-field-warning" data-warning-for="contact_person">
+    <span class="cl-warning-text">⚠ Kein Ansprechpartner – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('contact_person')">Bearbeiten</button>
+  </div>
+  {% endif %}
+  <p class="cl-field cl-company-street" data-field="company_street" data-placeholder="Straße Nr.">{{ company_street or '' }}</p>
+  {% if not company_street and _warnings %}
+  <div class="cl-field-warning" data-warning-for="company_street">
+    <span class="cl-warning-text">⚠ Keine Unternehmensstraße – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('company_street')">Bearbeiten</button>
+  </div>
+  {% endif %}
+  <p class="cl-field cl-company-city" data-field="company_city" data-placeholder="Ort">{{ company_city or '' }}</p>
+  {% if not company_city and _warnings %}
+  <div class="cl-field-warning" data-warning-for="company_city">
+    <span class="cl-warning-text">⚠ Kein Unternehmensort – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('company_city')">Bearbeiten</button>
+  </div>
+  {% endif %}
 </section>
 {% endif %}
 
 {#- ===== DATE LINE (right-aligned) ============================= -#}
-{% if candidate_location or date %}
+{#- The ", den " separator is always structural so it stays visible even when
+    candidate_location or date is missing — per DIN 5008 convention. -#}
 <section class="cl-date-line" data-field-group="date">
   <p class="cl-date">
-    {%- if candidate_location %}<span class="cl-field cl-date-location" data-field="candidate_location" contenteditable="true">{{ candidate_location }}</span>{% endif -%}
-    {%- if candidate_location and date %}, {% endif -%}
-    {%- if date %}<span class="cl-field cl-date-value" data-field="date">{{ date }}</span>{% endif -%}
+    <span class="cl-field cl-date-location" data-field="candidate_location" data-placeholder="Ort">{{ candidate_location or '' }}</span>, den <span class="cl-field cl-date-value" data-field="date" data-placeholder="Datum">{{ date or '' }}</span>
   </p>
+  {% if not candidate_location and _warnings %}
+  <div class="cl-field-warning" data-warning-for="candidate_location" style="text-align:left;">
+    <span class="cl-warning-text">⚠ Kein Standort – bitte im Profil ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('candidate_location')">Bearbeiten</button>
+  </div>
+  {% endif %}
+  {% if not date and _warnings %}
+  <div class="cl-field-warning" data-warning-for="date" style="text-align:left;">
+    <span class="cl-warning-text">⚠ Kein Datum – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('date')">Bearbeiten</button>
+  </div>
+  {% endif %}
 </section>
-{% endif %}
 
 {#- ===== SUBJECT + REFERENCE =================================== -#}
-{% if subject_line or reference_number %}
+{% if subject_line or reference_number or _warnings %}
 <section class="cl-subject" data-field-group="subject">
-  {% if subject_line %}<h1 class="cl-field cl-subject-line" data-field="subject_line" contenteditable="true" spellcheck="true">{{ subject_line }}</h1>{% endif %}
-  {% if reference_number %}<p class="cl-field cl-reference" data-field="reference_number">{{ reference_number }}</p>{% endif %}
+  <h1 class="cl-field cl-subject-line" data-field="subject_line" data-placeholder="Betreff">{{ subject_line or '' }}</h1>
+  {% if not subject_line and _warnings %}
+  <div class="cl-field-warning" data-warning-for="subject_line">
+    <span class="cl-warning-text">⚠ Kein Betreff generiert – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('subject_line')">Bearbeiten</button>
+  </div>
+  {% endif %}
+  <p class="cl-field cl-reference" data-field="reference_number" data-placeholder="Referenznummer">{{ reference_number or '' }}</p>
+  {% if not reference_number and _warnings %}
+  <div class="cl-field-warning" data-warning-for="reference_number">
+    <span class="cl-warning-text">⚠ Keine Referenznummer – ergänzen, falls in der Stellenanzeige angegeben.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('reference_number')">Bearbeiten</button>
+  </div>
+  {% endif %}
 </section>
 {% endif %}
 
 {#- ===== SALUTATION ============================================ -#}
-{% if salutation %}
-<p class="cl-field cl-salutation" data-field="salutation" contenteditable="true" spellcheck="true">{{ salutation }}</p>
+<p class="cl-field cl-salutation" data-field="salutation" data-placeholder="Anrede">{{ salutation or '' }}</p>
+{% if not salutation and _warnings %}
+<div class="cl-field-warning" data-warning-for="salutation">
+  <span class="cl-warning-text">⚠ Keine Anrede generiert – bitte manuell ergänzen.</span>
+  <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+  <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('salutation')">Bearbeiten</button>
+</div>
 {% endif %}
 
 {#- ===== BODY: introduction + body paragraphs + conclusion ======= -#}
-{% if introduction or main_body_qualifications or main_body_fit or main_body or conclusion %}
+{% if introduction or main_body_qualifications or main_body_fit or main_body or conclusion or _warnings %}
 <div class="cl-body" data-field-group="body">
-  {% if introduction %}
-  <p class="cl-field cl-introduction" data-field="introduction" contenteditable="true" spellcheck="true">{{ introduction }}</p>
+
+  <p class="cl-field cl-introduction" data-field="introduction" data-placeholder="Einleitungsabsatz">{{ introduction or '' }}</p>
+  {% if not introduction and _warnings %}
+  <div class="cl-field-warning" data-warning-for="introduction">
+    <span class="cl-warning-text">⚠ Keine Einleitung generiert – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('introduction')">Bearbeiten</button>
+  </div>
   {% endif %}
 
   {#- Phase 2 letters: two separate paragraphs, no gap between them -#}
-  {% if main_body_qualifications or main_body_fit %}
+  {% if main_body_qualifications or main_body_fit or _warnings %}
   <div class="cl-body-split">
-    {% if main_body_qualifications %}
-    <p class="cl-field cl-main-body-qualifications" data-field="main_body_qualifications" contenteditable="true" spellcheck="true">{{ main_body_qualifications }}</p>
+    <p class="cl-field cl-main-body-qualifications" data-field="main_body_qualifications" data-placeholder="Qualifikationsteil">{{ main_body_qualifications or '' }}</p>
+    {% if not main_body_qualifications and _warnings %}
+    <div class="cl-field-warning" data-warning-for="main_body_qualifications">
+      <span class="cl-warning-text">⚠ Kein Qualifikationsteil generiert – bitte manuell ergänzen.</span>
+      <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+      <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('main_body_qualifications')">Bearbeiten</button>
+    </div>
     {% endif %}
-    {% if main_body_fit %}
-    <p class="cl-field cl-main-body-fit" data-field="main_body_fit" contenteditable="true" spellcheck="true">{{ main_body_fit }}</p>
+    <p class="cl-field cl-main-body-fit" data-field="main_body_fit" data-placeholder="Motivationsteil">{{ main_body_fit or '' }}</p>
+    {% if not main_body_fit and _warnings %}
+    <div class="cl-field-warning" data-warning-for="main_body_fit">
+      <span class="cl-warning-text">⚠ Kein Motivationsteil generiert – bitte manuell ergänzen.</span>
+      <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+      <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('main_body_fit')">Bearbeiten</button>
+    </div>
     {% endif %}
   </div>
   {#- Backward-compat: Phase 1 letters with legacy main_body list -#}
   {% elif main_body %}
   <div class="cl-field cl-main-body" data-field="main_body">
     {% for paragraph in main_body %}
-    <p class="cl-paragraph" data-list-field="main_body" data-list-index="{{ loop.index0 }}" contenteditable="true" spellcheck="true">{{ paragraph }}</p>
+    <p class="cl-paragraph" data-list-field="main_body" data-list-index="{{ loop.index0 }}">{{ paragraph }}</p>
     {% endfor %}
   </div>
   {% endif %}
 
-  {% if conclusion %}
-  <p class="cl-field cl-conclusion" data-field="conclusion" contenteditable="true" spellcheck="true">{{ conclusion }}</p>
+  <p class="cl-field cl-conclusion" data-field="conclusion" data-placeholder="Schlussabsatz">{{ conclusion or '' }}</p>
+  {% if not conclusion and _warnings %}
+  <div class="cl-field-warning" data-warning-for="conclusion">
+    <span class="cl-warning-text">⚠ Kein Schlussteil generiert – bitte manuell ergänzen.</span>
+    <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
+    <button class="cl-warning-edit" type="button" onclick="window._enterEditModeAndFocus('conclusion')">Bearbeiten</button>
+  </div>
   {% endif %}
+
 </div>
 {% endif %}
