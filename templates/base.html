@@ -1,59 +1,193 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}AI Job Copilot{% endblock %}</title>
+  <title>{% block title %}Hire Hero{% endblock %}</title>
+
+  {# Prevent flash of wrong theme before Alpine/JS initialises #}
+  <script>
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
   <link rel="stylesheet" href="{{ url_for('static', path='/css/dev-ui.css') }}">
   {% block head %}{% endblock %}
 </head>
-<body>
-  <header class="site-header">
-    <div class="container site-header__inner">
-      <a class="site-brand" href="{{ request.url_for('render_index_page') }}">AI Job Copilot</a>
 
-      <nav class="site-nav" aria-label="Hauptnavigation">
-        <ul class="site-nav__list list-clean">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
+
+  {# ── Navigation ─────────────────────────────────────────────────────────── #}
+  <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50"
+       x-data="{ open: false }">
+    <div class="max-w-screen-xl mx-auto px-4 sm:px-6">
+      <div class="flex items-center justify-between h-16">
+
+        {# Brand #}
+        <a href="{{ request.url_for('render_index_page') }}"
+           class="flex items-center gap-2 font-bold text-gray-900 dark:text-white no-underline">
+          <svg class="w-6 h-6 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/>
+          </svg>
+          <div class="flex flex-col leading-tight">
+            <span>Hire Hero</span>
+            <span class="hidden sm:block text-xs font-normal text-gray-500 dark:text-gray-400">Dein Traumjob. Unsere Mission.</span>
+          </div>
+        </a>
+
+        {# Desktop nav links #}
+        <div class="hidden md:flex items-center gap-0.5">
           {% if is_authenticated %}
-          <li><a href="{{ request.url_for('render_index_page') }}">Home</a></li>
-          <li><a href="/single-job-analysis">Single Job Analysis</a></li>
-          <li><a href="{{ request.url_for('render_dashboard_page') }}">Dashboard</a></li>
-          <li><a href="{{ request.url_for('render_job_search_page') }}">Jobsuche</a></li>
-          <li><a href="{{ request.url_for('render_application_tracker_page') }}">Bewerbungstracker</a></li>
-          <li><a href="{{ request.url_for('render_documents_page') }}">Dokumente</a></li>
-          <li><a href="{{ request.url_for('render_profile_page') }}">Profil</a></li>
-          <li>
-            <form method="post" action="{{ request.url_for('logout_user') }}">
-              <button type="submit" class="btn">Logout</button>
-            </form>
-          </li>
-          {% else %}
-          <li><a href="{{ request.url_for('render_index_page') }}">Home</a></li>
-          <li><a href="/single-job-analysis">Single Job Analysis</a></li>
-          <li><a href="{{ request.url_for('render_auth_page') }}">Registrierung + Login</a></li>
-          {% endif %}
-        </ul>
-      </nav>
-    </div>
-  </header>
+          <a href="{{ request.url_for('render_dashboard_page') }}"
+             class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline">Dashboard</a>
+          <a href="{{ request.url_for('render_job_search_page') }}"
+             class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline">Jobsuche</a>
+          <a href="/single-job-analysis"
+             class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline">Anschreiben generieren</a>
+          <a href="{{ request.url_for('render_application_tracker_page') }}"
+             class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline">Bewerbungs-Tracker</a>
+          <a href="{{ request.url_for('render_documents_page') }}"
+             class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline">Dokumente</a>
+          <a href="{{ request.url_for('render_profile_page') }}"
+             class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline">Profil</a>
 
-  <main class="page">
-    <div class="container">
-      {% if feedback %}
-        <div class="alert alert-{{ feedback.type }}" role="alert">
-          <p>{{ feedback.message }}</p>
+          {% endif %}
         </div>
+
+        {# Right controls: theme toggle + logout/login + hamburger #}
+        <div class="flex items-center gap-2">
+
+          {# Dark / light mode toggle #}
+          <button onclick="toggleTheme()"
+                  class="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title="Farbschema wechseln">
+            {# Sun — shown in dark mode #}
+            <svg class="w-5 h-5 hidden dark:block" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
+            </svg>
+            {# Moon — shown in light mode #}
+            <svg class="w-5 h-5 block dark:hidden" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
+
+          {% if is_authenticated %}
+          <form method="post" action="{{ request.url_for('logout_user') }}" class="hidden md:block">
+            <button type="submit"
+                    class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              Logout
+            </button>
+          </form>
+          {% else %}
+          <a href="{{ request.url_for('render_auth_page') }}"
+             class="hidden md:inline-flex px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors no-underline">
+            Registrierung + Login
+          </a>
+          {% endif %}
+
+          {# Mobile hamburger #}
+          <button @click="open = !open"
+                  class="md:hidden p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  aria-label="Menü öffnen">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path x-show="!open" stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+              <path x-show="open"  stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {# Mobile menu #}
+      <div x-show="open" x-cloak
+           class="md:hidden border-t border-gray-200 dark:border-gray-700 py-2 space-y-0.5">
+        {% if is_authenticated %}
+        <a href="{{ request.url_for('render_dashboard_page') }}"
+           class="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 no-underline">Dashboard</a>
+        <a href="{{ request.url_for('render_job_search_page') }}"
+           class="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 no-underline">Jobsuche</a>
+        <a href="/single-job-analysis"
+           class="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 no-underline">Anschreiben generieren</a>
+        <a href="{{ request.url_for('render_application_tracker_page') }}"
+           class="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 no-underline">Tracker</a>
+        <a href="{{ request.url_for('render_documents_page') }}"
+           class="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 no-underline">Dokumente</a>
+        <a href="{{ request.url_for('render_profile_page') }}"
+           class="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 no-underline">Profil</a>
+        <div class="px-3 py-2">
+          <form method="post" action="{{ request.url_for('logout_user') }}">
+            <button type="submit"
+                    class="text-sm font-medium text-red-600 dark:text-red-400 bg-transparent border-0 p-0 cursor-pointer">
+              Logout
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <a href="/single-job-analysis"
+           class="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 no-underline">Job-Analyse</a>
+        <a href="{{ request.url_for('render_auth_page') }}"
+           class="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 no-underline">Registrierung + Login</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  {# ── Flash messages ──────────────────────────────────────────────────────── #}
+  {# ── Main content ────────────────────────────────────────────────────────── #}
+  <main class="flex-1 py-8">
+    <div class="max-w-screen-xl mx-auto px-4 sm:px-6">
+
+      {% if feedback %}
+        {% if feedback.type == 'success' %}
+        <div class="mb-6 p-4 rounded-lg border bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300" role="alert">
+          <p class="text-sm font-medium m-0">{{ feedback.message }}</p>
+        </div>
+        {% elif feedback.type == 'error' %}
+        <div class="mb-6 p-4 rounded-lg border bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300" role="alert">
+          <p class="text-sm font-medium m-0">{{ feedback.message }}</p>
+        </div>
+        {% else %}
+        <div class="mb-6 p-4 rounded-lg border bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300" role="alert">
+          <p class="text-sm font-medium m-0">{{ feedback.message }}</p>
+        </div>
+        {% endif %}
       {% endif %}
 
       {% block content %}{% endblock %}
     </div>
   </main>
 
-  <footer class="site-footer">
-    <div class="container">
-      <p class="muted">&copy; 2026 AI Job Match &amp; Application Copilot. All rights reserved. – Dev UI</p>
+  {# ── Footer ──────────────────────────────────────────────────────────────── #}
+  <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 mt-auto">
+    <div class="max-w-screen-xl mx-auto px-4 sm:px-6">
+      <p class="text-sm text-center text-gray-500 dark:text-gray-400 m-0">&copy; 2026 Hire Hero</p>
     </div>
   </footer>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        localStorage.theme = 'light';
+      } else {
+        html.classList.add('dark');
+        localStorage.theme = 'dark';
+      }
+    }
+  </script>
+
+  {% block scripts %}{% endblock %}
 </body>
 </html>
-

@@ -1,143 +1,172 @@
 {% extends "base.html" %}
 
-{% block title %}Bewerbungstracker | AI Job Copilot{% endblock %}
+{% block title %}Bewerbungstracker | Hire Hero{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>Bewerbungstracker</h1>
-  <p class="muted">Verwaltung gespeicherter Stellenanzeigen und Bewerbungsstatus.</p>
-</header>
 
-<section class="section">
-  <div class="actions">
-    <a href="{{ request.url_for('render_job_search_page') }}" class="btn btn-secondary">Zur Jobsuche</a>
+{# ── Header ─────────────────────────────────────────────────────────────────── #}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Bewerbungstracker</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Verwalte deine Bewerbungen und deren Status.</p>
   </div>
-</section>
+  <a href="{{ request.url_for('render_job_search_page') }}"
+     class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    Zur Jobsuche
+  </a>
+</div>
 
-<section class="section">
-  {% if tracker_entries %}
-    <div class="tracker-list">
-      {% for entry in tracker_entries %}
-        <details class="tracker-card">
-          <summary class="tracker-card__summary">
-            <div class="tracker-card__summary-main">
-              <h2 class="tracker-card__title">{{ entry.job.title }}</h2>
-              <p class="job-card__meta">
-                <strong>{{ entry.job.company }}</strong>
-                {% if entry.job.location %} · {{ entry.job.location }}{% endif %}
-              </p>
-              <p class="job-card__meta muted">
-                Status: <span class="status-badge tracker-status-pill {{ entry.status_css_class }}">{{ entry.status_label }}</span>
-                · Gespeichert am {{ entry.created_at.strftime("%d.%m.%Y") }}
-                {% if entry.job_id in jobs_with_cover_letters %}
-                  · <span class="status-badge">Anschreiben vorhanden</span>
-                {% endif %}
-              </p>
-            </div>
-          </summary>
+{# ── Entry list ─────────────────────────────────────────────────────────────── #}
+{% if tracker_entries %}
+  <div class="space-y-4">
+    {% for entry in tracker_entries %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+         x-data="{ notesOpen: false }">
 
-          <div class="tracker-card__content stack">
-            <div class="tracker-status-section">
-              <span class="tracker-status-section__label">Status:</span>
-
-              <div class="tracker-status-bar" aria-label="Status-Tracker">
-                {% for status_item in entry.status_items %}
-                  {% if status_item.opens_date_form %}
-                    <details class="tracker-status-segment">
-                      <summary class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}">
-                        <span class="tracker-status-button__label">{{ status_item.label }}</span>
-
-                        {% if status_item.shows_date %}
-                          <span class="tracker-status-button__date">
-                            {{ status_item.date_value.strftime("%d.%m.%Y") }}
-                          </span>
-                        {% endif %}
-                      </summary>
-
-                      <form
-                        method="post"
-                        action="{{ request.url_for('update_application_tracker_status_action', entry_id=entry.id) }}"
-                        class="tracker-status-segment__form"
-                      >
-                        <input type="hidden" name="status" value="{{ status_item.value }}">
-                        <input type="hidden" name="redirect_to" value="overview">
-
-                        <input
-                          id="status-date-overview-{{ entry.id }}-{{ status_item.value }}"
-                          type="date"
-                          name="status_date"
-                          value="{{ status_item.default_date }}"
-                          class="tracker-status-segment__date-input"
-                        >
-
-                        <button type="submit" class="tracker-status-segment__submit">
-                          Status setzen
-                        </button>
-                      </form>
-                    </details>
-                  {% else %}
-                    <form
-                      method="post"
-                      action="{{ request.url_for('update_application_tracker_status_action', entry_id=entry.id) }}"
-                      class="tracker-status-segment tracker-status-segment--direct"
-                    >
-                      <input type="hidden" name="status" value="{{ status_item.value }}">
-                      <input type="hidden" name="redirect_to" value="overview">
-
-                      <button
-                        type="submit"
-                        class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}"
-                      >
-                        <span class="tracker-status-button__label">{{ status_item.label }}</span>
-
-                        {% if status_item.shows_date %}
-                          <span class="tracker-status-button__date">
-                            {{ status_item.date_value.strftime("%d.%m.%Y") }}
-                          </span>
-                        {% endif %}
-                      </button>
-                    </form>
-                  {% endif %}
-                {% endfor %}
-              </div>
-            </div>
-
-            <form method="post" action="{{ request.url_for('update_application_tracker_notes_action', entry_id=entry.id) }}" class="form">
-              <input type="hidden" name="redirect_to" value="overview">
-
-              <div class="form-group">
-                <textarea name="notes" placeholder="Platz für deine Notizen">{{ entry.notes }}</textarea>
-              </div>
-
-              <div class="actions">
-                <button type="submit" class="btn btn-secondary">Notizen speichern</button>
-              </div>
-            </form>
-
-            <div class="actions">
-              <a
-                href="{{ request.url_for('render_application_tracker_detail_page', entry_id=entry.id) }}"
-                class="btn btn-primary"
-              >
-                Zur Tracker-Detailsseite
-              </a>
-
-              <form
-                method="post"
-                action="{{ request.url_for('delete_application_tracker_entry_action', entry_id=entry.id) }}"
-                onsubmit="return confirm('Möchtest du diesen Tracker-Eintrag wirklich löschen?');"
-              >
-                <button type="submit" class="btn btn-secondary">Eintrag löschen</button>
-              </form>
-            </div>
+      {# Card header: title + status badge + meta #}
+      <div class="p-5 pb-4">
+        <div class="flex items-start justify-between gap-4 mb-2">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white m-0">{{ entry.job.title }}</h2>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            {% if entry.job_id in jobs_with_cover_letters %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              Anschreiben
+            </span>
+            {% endif %}
+            <span class="tracker-status-pill {{ entry.status_css_class }}">{{ entry.status_label }}</span>
           </div>
-        </details>
-      {% endfor %}
+        </div>
+        <p class="text-sm text-gray-500 dark:text-gray-400 m-0">
+          <strong class="text-gray-700 dark:text-gray-300">{{ entry.job.company }}</strong>
+          {% if entry.job.location %} &middot; {{ entry.job.location }}{% endif %}
+          &middot; Gespeichert am {{ entry.created_at.strftime("%d.%m.%Y") }}
+        </p>
+      </div>
+
+      {# Status bar #}
+      <div class="px-5 pb-4">
+        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Status ändern</p>
+        <div class="tracker-status-bar" aria-label="Status-Tracker">
+          {% for status_item in entry.status_items %}
+            {% if status_item.opens_date_form %}
+              <details class="tracker-status-segment">
+                <summary class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}">
+                  <span class="tracker-status-button__label">{{ status_item.label }}</span>
+                  {% if status_item.shows_date %}
+                  <span class="tracker-status-button__date">{{ status_item.date_value.strftime("%d.%m.%Y") }}</span>
+                  {% endif %}
+                </summary>
+                <form method="post"
+                      action="{{ request.url_for('update_application_tracker_status_action', entry_id=entry.id) }}"
+                      class="tracker-status-segment__form">
+                  <input type="hidden" name="status" value="{{ status_item.value }}">
+                  <input type="hidden" name="redirect_to" value="overview">
+                  <input type="date" name="status_date" value="{{ status_item.default_date }}"
+                         class="tracker-status-segment__date-input">
+                  <button type="submit" class="tracker-status-segment__submit">Status setzen</button>
+                </form>
+              </details>
+            {% else %}
+              <form method="post"
+                    action="{{ request.url_for('update_application_tracker_status_action', entry_id=entry.id) }}"
+                    class="tracker-status-segment tracker-status-segment--direct">
+                <input type="hidden" name="status" value="{{ status_item.value }}">
+                <input type="hidden" name="redirect_to" value="overview">
+                <button type="submit"
+                        class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}">
+                  <span class="tracker-status-button__label">{{ status_item.label }}</span>
+                  {% if status_item.shows_date %}
+                  <span class="tracker-status-button__date">{{ status_item.date_value.strftime("%d.%m.%Y") }}</span>
+                  {% endif %}
+                </button>
+              </form>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Notes (collapsible) #}
+      <div class="px-5 pb-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+        <button @click="notesOpen = !notesOpen"
+                type="button"
+                class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+          <svg class="w-3.5 h-3.5 transition-transform" :class="notesOpen ? 'rotate-90' : ''"
+               fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+          Notizen
+          {% if entry.notes %}
+          <span class="ml-1 w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+          {% endif %}
+        </button>
+        <div x-show="notesOpen" x-cloak>
+          <form method="post"
+                action="{{ request.url_for('update_application_tracker_notes_action', entry_id=entry.id) }}">
+            <input type="hidden" name="redirect_to" value="overview">
+            <textarea name="notes"
+                      placeholder="Platz für deine Notizen…"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 resize-y min-h-[80px] focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2">{{ entry.notes }}</textarea>
+            <button type="submit"
+                    class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+              Notizen speichern
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {# Action buttons #}
+      <div class="px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex flex-wrap items-center gap-2">
+        <a href="{{ request.url_for('prepare_cover_letter_action') }}?tracker_entry_id={{ entry.id }}"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          {% if entry.job_id in jobs_with_cover_letters %}Neues Anschreiben{% else %}Anschreiben generieren{% endif %}
+        </a>
+
+        <a href="{{ request.url_for('render_application_tracker_detail_page', entry_id=entry.id) }}"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors no-underline">
+          Details
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+
+        <form method="post"
+              action="{{ request.url_for('delete_application_tracker_entry_action', entry_id=entry.id) }}"
+              class="ml-auto"
+              onsubmit="return confirm('Möchtest du diesen Tracker-Eintrag wirklich löschen?');">
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-white dark:bg-gray-700 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Löschen
+          </button>
+        </form>
+      </div>
+
     </div>
-  {% else %}
-    <div class="card">
-      <p>Du hast noch keine Stellenanzeigen im Bewerbungstracker gespeichert.</p>
-    </div>
-  {% endif %}
-</section>
+    {% endfor %}
+  </div>
+
+{% else %}
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-10 text-center">
+    <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+    </svg>
+    <p class="text-gray-500 dark:text-gray-400 mb-4">Du hast noch keine Stellenanzeigen im Bewerbungstracker gespeichert.</p>
+    <a href="{{ request.url_for('render_job_search_page') }}"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors no-underline">
+      Jetzt Jobs suchen
+    </a>
+  </div>
+{% endif %}
+
 {% endblock %}

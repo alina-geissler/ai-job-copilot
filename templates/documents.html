@@ -1,232 +1,396 @@
 {% extends "base.html" %}
 
-{% block title %}Dokumente | AI Job Copilot{% endblock %}
+{% block title %}Dokumente | Hire Hero{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>Dokumente</h1>
-  {% if job_id_filter %}
-    <div class="alert alert-info">
-      <p>Zeige Anschreiben für diese Stelle. <a href="{{ request.url_for('render_documents_page') }}">Alle Dokumente anzeigen</a></p>
-    </div>
-  {% else %}
-    <p class="muted">Verwalte deine hochgeladenen Dokumente und Anschreiben.</p>
-  {% endif %}
-</header>
 
-{# ── 1. Hochgeladene Dokumente ── #}
+{# ── Header ─────────────────────────────────────────────────────────────────── #}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dokumente</h1>
+  {% if job_id_filter %}
+  <div class="mt-2 flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-sm text-blue-700 dark:text-blue-300">
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    Zeige Anschreiben für diese Stelle.
+    <a href="{{ request.url_for('render_documents_page') }}" class="font-medium underline">Alle Dokumente anzeigen</a>
+  </div>
+  {% else %}
+  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Verwalte deine hochgeladenen Dokumente und Anschreiben.</p>
+  {% endif %}
+</div>
+
+{# ── Upload sections (hidden when filtering by job) ─────────────────────────── #}
 {% if not job_id_filter %}
-<section class="section">
-  <div class="card">
-    <h2>Lebenslauf hochladen</h2>
+
+{# CV Upload accordion #}
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 mb-4"
+     x-data="{ open: {{ 'false' if has_existing_cv else 'true' }} }">
+  <button @click="open = !open" type="button"
+          class="w-full flex items-center justify-between px-5 py-4 text-left">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <span class="text-sm font-semibold text-gray-900 dark:text-white">Lebenslauf hochladen</span>
+      {% if has_existing_cv %}
+      <span class="text-xs text-green-600 dark:text-green-400 font-medium">Vorhanden</span>
+      {% endif %}
+    </div>
+    <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''"
+         fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </button>
+  <div x-show="open" x-cloak class="px-5 pb-5 border-t border-gray-100 dark:border-gray-700 pt-4">
     {% if has_existing_cv %}
-      <p class="alert alert-success">Du hast bereits einen Lebenslauf hochgeladen, auf dem deine Profilinformationen basieren. Erneutes Hochladen ersetzt deinen Lebenslauf und passt deine Infos an.</p>
+    <div class="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-sm text-green-700 dark:text-green-300">
+      Du hast bereits einen Lebenslauf hochgeladen. Erneutes Hochladen ersetzt ihn und passt deine Profilinformationen an.
+    </div>
     {% endif %}
     {% if profile_has_error %}
-      <div class="alert alert-error">
-        <p>Die automatische Profilerstellung aus deinem Lebenslauf ist fehlgeschlagen.</p>
-        <form method="post" action="{{ request.url_for('retry_profile_extraction_route') }}">
-          <button type="submit" class="btn btn-secondary">Profil erneut erstellen</button>
-        </form>
-      </div>
+    <div class="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-sm text-red-700 dark:text-red-300">
+      <p class="font-medium mb-2">Die automatische Profilerstellung ist fehlgeschlagen.</p>
+      <form method="post" action="{{ request.url_for('retry_profile_extraction_route') }}">
+        <button type="submit"
+                class="px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 border border-red-300 dark:border-red-600 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+          Profil erneut erstellen
+        </button>
+      </form>
+    </div>
     {% endif %}
     <form method="post" action="{{ request.url_for('upload_document_action') }}" enctype="multipart/form-data">
       <input type="hidden" name="document_type" value="cv">
-      <div class="form-group">
-        <label for="file">PDF-Datei (max. 10 MB)</label>
-        <input type="file" name="file" id="file" accept=".pdf,application/pdf" required>
+      <div class="flex flex-col gap-3">
+        <label for="file" class="text-sm font-medium text-gray-700 dark:text-gray-300">PDF-Datei (max. 10 MB)</label>
+        <input type="file" name="file" id="file" accept=".pdf,application/pdf" required
+               class="text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 dark:file:border-gray-600 file:text-sm file:font-medium file:bg-white dark:file:bg-gray-700 file:text-gray-700 dark:file:text-gray-300 hover:file:bg-gray-50 dark:hover:file:bg-gray-600">
+        <button type="submit"
+                class="self-start px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+          Hochladen
+        </button>
       </div>
-      <button type="submit" class="btn btn-primary">Hochladen</button>
     </form>
   </div>
-</section>
+</div>
 
-{# ── 1b. Unterschrift hochladen ── #}
-<section class="section">
-  <div class="card">
-    <h2>Unterschrift</h2>
-    <p class="muted" style="margin-bottom:0.75rem;">
-      Dunkle Unterschrift auf weißem Papier, gut ausgeleuchtet, scharf und ohne Schatten hochladen.
+{# Signature accordion #}
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 mb-4"
+     x-data="{ open: false }">
+  <button @click="open = !open" type="button"
+          class="w-full flex items-center justify-between px-5 py-4 text-left">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-purple-600 dark:text-purple-400">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+        </svg>
+      </div>
+      <span class="text-sm font-semibold text-gray-900 dark:text-white">Unterschrift</span>
+      {% if signature_image %}
+      <span class="text-xs text-green-600 dark:text-green-400 font-medium">Vorhanden</span>
+      {% endif %}
+    </div>
+    <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''"
+         fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </button>
+  <div x-show="open" x-cloak class="px-5 pb-5 border-t border-gray-100 dark:border-gray-700 pt-4">
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      Dunkle Unterschrift auf weißem Papier, gut ausgeleuchtet, scharf und ohne Schatten.
     </p>
     {% if signature_image %}
-      <div style="margin-bottom:0.75rem;">
-        <img src="{{ signature_image }}"
-             alt="Gespeicherte Unterschrift"
-             style="max-height:80px;opacity:0.9;border:1px solid var(--border-color, #e0e0e0);padding:0.4rem;background:#fff;display:block;">
-      </div>
-      <form method="post"
-            action="{{ request.url_for('upload_profile_signature_action') }}"
-            enctype="multipart/form-data">
-        <label class="btn btn-secondary" style="display:inline-block;cursor:pointer;">
-          Unterschrift ersetzen
-          <input type="file" name="file" accept="image/png,image/jpeg"
-                 style="display:none" onchange="this.closest('form').submit()">
-        </label>
-      </form>
-    {% else %}
-      <form method="post"
-            action="{{ request.url_for('upload_profile_signature_action') }}"
-            enctype="multipart/form-data">
-        <label class="btn btn-primary" style="display:inline-block;cursor:pointer;">
-          Unterschrift hochladen
-          <input type="file" name="file" accept="image/png,image/jpeg"
-                 style="display:none" onchange="this.closest('form').submit()">
-        </label>
-      </form>
+    <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg inline-block">
+      <img src="{{ signature_image }}" alt="Gespeicherte Unterschrift"
+           class="max-h-16 opacity-90">
+    </div>
     {% endif %}
+    <form method="post" action="{{ request.url_for('upload_profile_signature_action') }}"
+          enctype="multipart/form-data">
+      <label class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium cursor-pointer rounded-lg border transition-colors
+                    {% if signature_image %}text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600
+                    {% else %}text-white bg-blue-600 border-blue-600 hover:bg-blue-700{% endif %}">
+        {% if signature_image %}Unterschrift ersetzen{% else %}Unterschrift hochladen{% endif %}
+        <input type="file" name="file" accept="image/png,image/jpeg"
+               class="hidden" onchange="this.closest('form').submit()">
+      </label>
+    </form>
   </div>
-</section>
+</div>
 
-<section class="section">
-  <div class="card">
-    <h2>Hochgeladene Dokumente</h2>
+{% endif %}{# /not job_id_filter #}
 
-    {% if not documents %}
-      <p class="muted">Noch keine Dokumente hochgeladen.</p>
-    {% else %}
-      <ul class="document-list list-clean">
-        {% for doc in documents %}
-          <li class="document-card">
-            <div class="document-card__header">
-              <strong>{{ doc.document_name }}</strong>
+{# ── Unified document list with filter + sort ────────────────────────────────── #}
+<div x-data="docsApp()" x-init="init()">
+
+  {# Filter tabs + sort #}
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+
+    {# Filter tabs #}
+    <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+      {% if not job_id_filter %}
+      <button @click="setFilter('all')" type="button"
+              :class="activeFilter === 'all' ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-all">
+        Alle
+      </button>
+      <button @click="setFilter('document')" type="button"
+              :class="activeFilter === 'document' ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-all">
+        Lebenslauf
+      </button>
+      {% endif %}
+      <button @click="setFilter('cover-letter')" type="button"
+              :class="activeFilter === 'cover-letter' ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-all">
+        Anschreiben
+      </button>
+      <button @click="setFilter('draft')" type="button"
+              :class="activeFilter === 'draft' ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-all">
+        Entwürfe
+      </button>
+    </div>
+
+    {# Sort dropdown #}
+    <select @change="setSort($event.target.value)"
+            class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <option value="newest">Neueste zuerst</option>
+      <option value="oldest">Älteste zuerst</option>
+      <option value="name">Name (A–Z)</option>
+    </select>
+  </div>
+
+  {# Document list #}
+  <div x-ref="list" class="space-y-3">
+
+    {# ── Uploaded documents ── #}
+    {% if not job_id_filter %}
+    {% for doc in documents %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+         x-show="showItem('document')"
+         data-sortable
+         data-type="document"
+         data-date="{{ doc.created_at.strftime('%Y-%m-%dT%H:%M:%S') }}"
+         data-name="{{ doc.document_name | lower }}">
+
+      <div class="p-4">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-medium text-gray-900 dark:text-white text-sm">{{ doc.document_name }}</span>
               <span class="document-status-pill {{ doc.processing_status_css_class }}"
                     {% if doc.processing_status.value in ('pending', 'processing') %}data-doc-pending{% endif %}>
                 {{ doc.processing_status_label }}
               </span>
             </div>
-
-            <form method="post"
-                  action="{{ request.url_for('update_document_name_action', doc_id=doc.id) }}"
-                  class="document-card__rename-form">
-              <input type="text"
-                     name="name"
-                     value="{{ doc.document_name }}"
-                     required
-                     aria-label="Dokumentname">
-              <button type="submit" class="btn btn-secondary">Umbenennen</button>
-            </form>
-
-            <div class="document-card__meta muted">
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 m-0">
               {{ doc.document_type_label }}
-              &middot;
-              {{ (doc.file_size_bytes / 1024) | round(1) }} KB
-              &middot;
-              {{ doc.created_at.strftime('%d.%m.%Y %H:%M') }}
-              {% if doc.extraction_method_label %}
-                &middot; {{ doc.extraction_method_label }}
-              {% endif %}
-              &middot;
-              <span class="muted">{{ doc.original_filename }}</span>
-            </div>
-
-            {% if doc.processing_status.value in ('pending', 'processing') %}
-              <div class="document-card__processing">
-                <span class="document-spinner" aria-hidden="true"></span>
-                Die Infos aus deinem Lebenslauf werden verarbeitet…
-              </div>
+              &middot; {{ (doc.file_size_bytes / 1024) | round(1) }} KB
+              &middot; {{ doc.created_at.strftime('%d.%m.%Y') }}
+              {% if doc.extraction_method_label %}&middot; {{ doc.extraction_method_label }}{% endif %}
+            </p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            {% if doc.processing_status.value == 'completed' %}
+            <a href="{{ request.url_for('render_document_view_action', doc_id=doc.id) }}"
+               target="_blank"
+               class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors no-underline">
+              Öffnen
+            </a>
             {% endif %}
+            <form method="post"
+                  action="{{ request.url_for('delete_document_action', document_id=doc.id) }}"
+                  onsubmit="return confirm('Dokument wirklich löschen?');">
+              <button type="submit"
+                      class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-white dark:bg-gray-700 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                Löschen
+              </button>
+            </form>
+          </div>
+        </div>
 
-            {% if doc.extraction_error %}
-              <p class="alert alert-error">Fehler: {{ doc.extraction_error }}</p>
-            {% endif %}
+        {# Rename form #}
+        <form method="post"
+              action="{{ request.url_for('update_document_name_action', doc_id=doc.id) }}"
+              class="flex gap-2 items-center mb-3">
+          <input type="text" name="name" value="{{ doc.document_name }}" required
+                 aria-label="Dokumentname"
+                 class="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button type="submit"
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+            Umbenennen
+          </button>
+        </form>
 
-            {% if doc.extracted_text %}
-              <div class="document-card__extracted">
-                <p class="muted document-card__extracted-note">Dieser Text wird von der KI verwendet und zeigt, was aus deinem Dokument ausgelesen wurde.</p>
-                <pre class="document-card__text-preview">{{ doc.extracted_text }}</pre>
-              </div>
-            {% endif %}
+        {# Processing indicator #}
+        {% if doc.processing_status.value in ('pending', 'processing') %}
+        <div class="document-card__processing text-sm">
+          <span class="document-spinner" aria-hidden="true"></span>
+          Die Infos aus deinem Lebenslauf werden verarbeitet…
+        </div>
+        {% endif %}
 
-            <div class="document-card__actions">
-              {% if doc.processing_status.value == 'completed' %}
-                <a href="{{ request.url_for('render_document_view_action', doc_id=doc.id) }}"
-                   target="_blank"
-                   class="btn btn-secondary">Öffnen</a>
-              {% endif %}
-              <form method="post"
-                    action="{{ request.url_for('delete_document_action', document_id=doc.id) }}"
-                    onsubmit="return confirm('Dokument wirklich löschen?');">
-                <button type="submit" class="btn btn-secondary">Löschen</button>
-              </form>
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
+        {% if doc.extraction_error %}
+        <div class="mt-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-xs text-red-700 dark:text-red-300">
+          Fehler: {{ doc.extraction_error }}
+        </div>
+        {% endif %}
+
+        {% if doc.extracted_text %}
+        <details class="mt-3">
+          <summary class="text-xs font-medium text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">
+            Extrahierten Text anzeigen
+          </summary>
+          <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">Dieser Text wird von der KI verwendet, um das Profil zu befüllen.</p>
+          <pre class="document-card__text-preview mt-1 text-xs bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">{{ doc.extracted_text }}</pre>
+        </details>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
     {% endif %}
-  </div>
-</section>
-{% endif %}
 
-{# ── 2. Gespeicherte Anschreiben ── #}
-<section class="section">
-  <div class="card">
-    <h2>Gespeicherte Anschreiben</h2>
-    {% if not saved_cover_letters %}
-      <p class="muted">Noch keine gespeicherten Anschreiben.</p>
-    {% else %}
-      <ul class="document-list list-clean">
-        {% for cl in saved_cover_letters %}
-          <li class="document-card">
-            <div class="document-card__header">
-              <strong>{{ cl.document_name or 'Unbenanntes Anschreiben' }}</strong>
-              <span class="document-status-pill status--completed">{{ cl.template_label }}</span>
-            </div>
-            <div class="document-card__meta muted">
-              Erstellt am {{ cl.created_at.strftime('%d.%m.%Y') }}
-            </div>
-            <div class="document-card__actions">
-              <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
-                 class="btn btn-secondary">Bearbeiten</a>
-              <form method="post"
-                    action="{{ request.url_for('delete_cover_letter_action', cover_letter_id=cl.id) }}"
-                    onsubmit="return confirm('Anschreiben wirklich löschen?');">
-                <button type="submit" class="btn btn-secondary">Löschen</button>
-              </form>
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-  </div>
-</section>
+    {# ── Saved cover letters ── #}
+    {% for cl in saved_cover_letters %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4"
+         x-show="showItem('cover-letter')"
+         data-sortable
+         data-type="cover-letter"
+         data-date="{{ cl.created_at.strftime('%Y-%m-%dT%H:%M:%S') }}"
+         data-name="{{ (cl.document_name or '') | lower }}">
 
-{# ── 3. Entwürfe ── #}
-<section class="section">
-  <div class="card">
-    <h2>Entwürfe</h2>
-    {% if not draft_cover_letters %}
-      <p class="muted">Keine ungespeicherten Entwürfe vorhanden.</p>
-    {% else %}
-      <ul class="document-list list-clean">
-        {% for cl in draft_cover_letters %}
-          <li class="document-card">
-            <div class="document-card__header">
-              <strong>{{ cl.document_name or 'Unbenannter Entwurf' }}</strong>
-              <span class="document-status-pill status--pending">Entwurf</span>
-              <span class="document-status-pill">{{ cl.template_label }}</span>
-            </div>
-            <div class="document-card__meta muted">
-              Erstellt am {{ cl.created_at.strftime('%d.%m.%Y') }}
-            </div>
-            <div class="document-card__actions">
-              <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
-                 class="btn btn-primary">Öffnen &amp; Speichern</a>
-              <form method="post"
-                    action="{{ request.url_for('delete_cover_letter_action', cover_letter_id=cl.id) }}"
-                    onsubmit="return confirm('Anschreiben wirklich löschen?');">
-                <button type="submit" class="btn btn-secondary">Löschen</button>
-              </form>
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-  </div>
-</section>
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <span class="font-medium text-gray-900 dark:text-white text-sm">
+              {{ cl.document_name or 'Unbenanntes Anschreiben' }}
+            </span>
+            <span class="document-status-pill status--completed">{{ cl.template_label }}</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">Gespeichert</span>
+          </div>
+          <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Erstellt am {{ cl.created_at.strftime('%d.%m.%Y') }}</p>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
+             class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
+            Bearbeiten
+          </a>
+          <form method="post"
+                action="{{ request.url_for('delete_cover_letter_action', cover_letter_id=cl.id) }}"
+                onsubmit="return confirm('Anschreiben wirklich löschen?');">
+            <button type="submit"
+                    class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-white dark:bg-gray-700 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+              Löschen
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {# ── Drafts ── #}
+    {% for cl in draft_cover_letters %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-yellow-200 dark:border-yellow-700/50 p-4"
+         x-show="showItem('draft')"
+         data-sortable
+         data-type="draft"
+         data-date="{{ cl.created_at.strftime('%Y-%m-%dT%H:%M:%S') }}"
+         data-name="{{ (cl.document_name or '') | lower }}">
+
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <span class="font-medium text-gray-900 dark:text-white text-sm">
+              {{ cl.document_name or 'Unbenannter Entwurf' }}
+            </span>
+            <span class="document-status-pill status--pending">Entwurf</span>
+            <span class="document-status-pill">{{ cl.template_label }}</span>
+          </div>
+          <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Erstellt am {{ cl.created_at.strftime('%d.%m.%Y') }}</p>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
+             class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
+            Öffnen &amp; Speichern
+          </a>
+          <form method="post"
+                action="{{ request.url_for('delete_cover_letter_action', cover_letter_id=cl.id) }}"
+                onsubmit="return confirm('Anschreiben wirklich löschen?');">
+            <button type="submit"
+                    class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-white dark:bg-gray-700 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+              Löschen
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {# Empty state #}
+    <div x-show="isEmpty()" x-cloak
+         class="py-12 text-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+      <svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <p class="text-sm">Keine Einträge für diesen Filter.</p>
+    </div>
+
+  </div>{# /x-ref="list" #}
+
+</div>{# /x-data #}
 
 <script>
-  // Reload only when a CV document is pending/processing — NOT for cover letter drafts,
-  // which share the visual 'status--pending' class but don't need polling.
+  function docsApp() {
+    return {
+      activeFilter: '{{ "cover-letter" if job_id_filter else "all" }}',
+      activeSort: 'newest',
+
+      init() {
+        this.$nextTick(() => this.applySort());
+      },
+
+      setFilter(f) {
+        this.activeFilter = f;
+        this.$nextTick(() => this.updateEmpty());
+      },
+
+      setSort(s) {
+        this.activeSort = s;
+        this.$nextTick(() => this.applySort());
+      },
+
+      showItem(type) {
+        return this.activeFilter === 'all' || this.activeFilter === type;
+      },
+
+      isEmpty() {
+        const items = this.$refs.list.querySelectorAll('[data-sortable]');
+        return Array.from(items).every(el => el.style.display === 'none');
+      },
+
+      updateEmpty() { /* triggers re-evaluation */ },
+
+      applySort() {
+        const container = this.$refs.list;
+        const items = Array.from(container.querySelectorAll('[data-sortable]'));
+        items.sort((a, b) => {
+          if (this.activeSort === 'name') {
+            return (a.dataset.name || '').localeCompare(b.dataset.name || '', 'de');
+          } else if (this.activeSort === 'oldest') {
+            return (a.dataset.date || '').localeCompare(b.dataset.date || '');
+          } else {
+            return (b.dataset.date || '').localeCompare(a.dataset.date || '');
+          }
+        });
+        items.forEach(el => container.insertBefore(el, container.querySelector('[x-show="isEmpty()"]')));
+      }
+    };
+  }
+
+  // Reload when CV is still processing (docs only, not cover letter drafts)
   var hasPending = !!document.querySelector('[data-doc-pending]');
   var shouldRedirect = {{ 'true' if redirect_to_profile else 'false' }};
   if (hasPending && !shouldRedirect) {
@@ -235,4 +399,5 @@
     window.location.href = '{{ request.url_for("render_profile_page") }}';
   }
 </script>
+
 {% endblock %}

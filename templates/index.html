@@ -1,30 +1,131 @@
 {% extends "base.html" %}
 
-{% block title %}Home | AI Job Copilot{% endblock %}
+{% block title %}Hire Hero – Finde deinen Traumjob{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>AI Job Match &amp; Application Copilot</h1>
-  <p class="muted">Finde passende Jobs und erstelle bessere Bewerbungen.</p>
-</header>
 
-<section class="section">
-  <div class="card">
-    <p>Öffentliche Einstiegsseite mit Hero-Bereich, Nutzenbeschreibung und CTAs.</p>
-    <div class="actions">
-      <a href="/single-job-analysis" class="btn btn-primary">Single Job Analysis starten</a>
+{# ── Hero ───────────────────────────────────────────────────────────────────── #}
+<section class="-mx-4 sm:-mx-6 -mt-8 mb-12 relative">
+  {# Image in normal flow — defines section height, no cropping; rounded corners applied directly #}
+  <img src="{{ url_for('static', path='/hero.png') }}"
+       alt=""
+       aria-hidden="true"
+       class="w-full block rounded-b-2xl">
+  {# Gradient overlay — fully opaque on left for text, fades to transparent so right side shows full image colours #}
+  <div class="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/70 to-transparent rounded-b-2xl" aria-hidden="true"></div>
+  {# Subtle blue tint blob for colour accent #}
+  <div class="absolute inset-0 opacity-15 pointer-events-none rounded-b-2xl" aria-hidden="true">
+    <div class="absolute bottom-0 left-0 w-72 h-72 bg-indigo-600 rounded-full blur-3xl"></div>
+  </div>
+
+  {# Text absolutely centred over the image #}
+  <div class="absolute inset-0 flex items-center">
+  <div class="px-4 sm:px-6 text-white max-w-xl py-10">
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold tracking-wide uppercase mb-6">
+      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.956a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.37 2.448a1 1 0 00-.364 1.118l1.287 3.956c.3.921-.755 1.688-1.54 1.118l-3.37-2.448a1 1 0 00-1.175 0l-3.37 2.448c-.784.57-1.838-.197-1.539-1.118l1.287-3.956a1 1 0 00-.364-1.118L2.063 9.383c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69L9.049 2.927z"/>
+      </svg>
+      KI-gestützte Bewerbungshilfe
+    </span>
+
+    <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight mb-3">
+      Höher hinaus.<br>
+      <span class="text-blue-400">Schneller bewerben.</span>
+    </h1>
+
+    <p class="text-xl text-gray-200 font-medium mb-4">
+      Sei der <span class="text-yellow-300 font-extrabold">Held</span> deiner Karriere!
+    </p>
+
+    <p class="text-base text-gray-300 mb-8">
+      Finde passende Jobs, analysiere Stellenanzeigen und erstelle überzeugende Anschreiben –
+      alles mit KI-Unterstützung an deiner Seite.
+    </p>
+
+    <div class="flex flex-wrap gap-3">
+      <a href="{{ request.url_for('render_job_search_page') }}"
+         class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors no-underline">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        Traumjob finden
+      </a>
       {% if not is_authenticated %}
-        <a href="/auth" class="btn btn-secondary">Login / Registrierung</a>
+      <a href="{{ request.url_for('render_auth_page') }}"
+         class="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg border border-white/20 transition-colors no-underline">
+        Kostenlos starten
+      </a>
+      {% else %}
+      <a href="/single-job-analysis"
+         class="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg border border-white/20 transition-colors no-underline">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
+        </svg>
+        Mit maßgeschneidertem Anschreiben überzeugen
+      </a>
       {% endif %}
+    </div>
+  </div>
+  </div>
+</section>
+
+{# ── Feature cards ──────────────────────────────────────────────────────────── #}
+<section class="mb-12">
+  <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">Was Hire Hero für dich tut</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col gap-3">
+      <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+      <h3 class="font-semibold text-gray-900 dark:text-white m-0">Jobsuche</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 m-0">Hier wird für dich gesucht: Finde deine nächste Karriere-Chance in tausenden Stellenanzeigen.</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col gap-3">
+      <div class="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-purple-600 dark:text-purple-400">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+      <h3 class="font-semibold text-gray-900 dark:text-white m-0">Job-Analyse</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 m-0">Verstehe Anforderungen auf einen Blick. KI normalisiert und bewertet die Stellenanzeigen für dich.</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col gap-3">
+      <div class="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <h3 class="font-semibold text-gray-900 dark:text-white m-0">Anschreiben-Generator</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 m-0">Erstelle individuelle Anschreiben in Sekunden – abgestimmt auf jede Stelle und dein Profil.</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col gap-3">
+      <div class="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center text-orange-600 dark:text-orange-400">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+        </svg>
+      </div>
+      <h3 class="font-semibold text-gray-900 dark:text-white m-0">Bewerbungstracker</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 m-0">Behalte den Überblick vom Entdecken der Anzeige bis zum Unterschreiben des Vertrags.</p>
     </div>
   </div>
 </section>
 
-<section class="section">
-  <div class="card">
-    <h2>Hinweise</h2>
-    <p>Guest Mode ohne dauerhafte Speicherung, voller Funktionsumfang mit Konto.</p>
-    <p class="muted">Jobsuche als Trial-Funktion für eingeloggte Nutzerinnen.</p>
-  </div>
+{# ── Bottom CTA (only for guests) ───────────────────────────────────────────── #}
+{% if not is_authenticated %}
+<section class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-8 text-center">
+  <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Bereit für die nächste Stelle?</h2>
+  <p class="text-gray-500 dark:text-gray-400 mb-6">Kostenlos registrieren und sofort loslegen.</p>
+  <a href="{{ request.url_for('render_auth_page') }}"
+     class="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors no-underline">
+    Jetzt registrieren
+  </a>
 </section>
+{% endif %}
+
 {% endblock %}

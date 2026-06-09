@@ -1,37 +1,134 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard | AI Job Copilot{% endblock %}
+{% block title %}Dashboard | Hire Hero{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>Dashboard</h1>
-  <p class="muted">Zentrale Startseite nach dem Login mit Überblick und Quick Actions.</p>
-</header>
 
-<section class="section">
-  <div class="card">
-    <h2>Statuskarten</h2>
-    <ul class="list-clean">
-      <li>Offene Bewerbungen</li>
-      <li>Gespeicherte Jobs</li>
-      <li>Letzte Dokumente</li>
-      <li>Profilstatus</li>
-      <li>Trial-Status</li>
-    </ul>
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Dein nächster Karriereschritt auf einen Blick.</p>
+</div>
+
+{# ── Stats row ──────────────────────────────────────────────────────────────── #}
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-1">
+    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide m-0">Gespeicherte Jobs</p>
+    <p class="text-2xl font-bold text-gray-900 dark:text-white m-0">{{ total_saved_jobs }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 m-0">im Bewerbungstracker</p>
   </div>
-</section>
 
-<section class="section">
-  <div class="card">
-    <h2>Quick Actions</h2>
-    <div class="actions">
-      <a href="/tracker" class="btn btn-primary">Bewerbungstracker öffnen</a>
-      <a href="/jobs/search" class="btn btn-secondary">Jobs suchen</a>
-      <a href="/single-job-analysis" class="btn btn-secondary">Single Job Analysis</a>
-      <a href="/profil" class="btn btn-secondary">Profil bearbeiten</a>
-      <a href="/documents" class="btn btn-secondary">Dokumente öffnen</a>
-      <a href="/documents" class="btn btn-primary">Lebenslauf hochladen</a>
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-1">
+    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide m-0">Bewerbungen</p>
+    <p class="text-2xl font-bold text-gray-900 dark:text-white m-0">{{ active_applications }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 m-0">aktiv im Prozess</p>
+  </div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-1">
+    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide m-0">Anschreiben</p>
+    <p class="text-2xl font-bold text-gray-900 dark:text-white m-0">{{ total_cover_letters }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 m-0">erzeugt</p>
+  </div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-1">
+    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide m-0">Profil</p>
+    <p class="text-2xl font-bold text-gray-900 dark:text-white m-0">{{ profile_completion }}%</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 m-0">Vollständigkeit</p>
+  </div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-1">
+    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide m-0">Jobsuche</p>
+    <p class="text-2xl font-bold text-gray-900 dark:text-white m-0">{{ job_searches_left }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 m-0">Suchläufe heute noch verfügbar</p>
+  </div>
+</div>
+
+{# ── Quick actions ──────────────────────────────────────────────────────────── #}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+  {# Group: Bewerbungen #}
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+      </div>
+      <h2 class="text-sm font-semibold text-gray-900 dark:text-white m-0">Bewerbungen</h2>
+    </div>
+    <div class="flex flex-col gap-2">
+      <a href="{{ request.url_for('render_application_tracker_page') }}"
+         class="inline-flex items-center justify-between px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors no-underline">
+        Bewerbungstracker öffnen
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+      <a href="{{ request.url_for('render_documents_page') }}"
+         class="inline-flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 transition-colors no-underline">
+        Dokumente & Anschreiben
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
     </div>
   </div>
-</section>
+
+  {# Group: Jobsuche #}
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-purple-600 dark:text-purple-400">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+      <h2 class="text-sm font-semibold text-gray-900 dark:text-white m-0">Jobsuche</h2>
+    </div>
+    <div class="flex flex-col gap-2">
+      <a href="{{ request.url_for('render_job_search_page') }}"
+         class="inline-flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 transition-colors no-underline">
+        Jobs suchen
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+      <a href="{{ request.url_for('render_search_run_history_page') }}"
+         class="inline-flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 transition-colors no-underline">
+        Suchlauf-Historie
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  {# Group: Profil & Dokumente #}
+  <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-400">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+      </div>
+      <h2 class="text-sm font-semibold text-gray-900 dark:text-white m-0">Profil & Dokumente</h2>
+    </div>
+    <div class="flex flex-col gap-2">
+      <a href="{{ request.url_for('render_profile_page') }}"
+         class="inline-flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 transition-colors no-underline">
+        Profil bearbeiten
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+      <a href="{{ request.url_for('render_documents_page') }}"
+         class="inline-flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 transition-colors no-underline">
+        Lebenslauf hochladen
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+</div>
 {% endblock %}

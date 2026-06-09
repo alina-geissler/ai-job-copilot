@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ default_document_name }} | AI Job Copilot{% endblock %}
+{% block title %}{{ default_document_name }} | Hire Hero{% endblock %}
 
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static', path='css/cover_letter/base.css') }}?v=2">
@@ -10,12 +10,15 @@
   <link rel="stylesheet" media="print" href="{{ url_for('static', path='css/cover_letter/print.css') }}">
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
   <style>
+    /* Remove main padding so editor fills full viewport below nav */
+    main { padding-top: 0 !important; padding-bottom: 0 !important; }
+
     /* Editor chrome — screen only, not printed */
     .editor-layout {
       display: flex;
       gap: 0;
-      height: calc(100vh - 120px);
-      /* Break out of the 980px container to span the full viewport */
+      height: calc(100vh - 4rem); /* 4rem = 64px sticky nav */
+      /* Break out of the max-w-screen-xl container to span the full viewport */
       width: 100vw;
       margin-left: calc(-50vw + 50%);
       margin-right: calc(-50vw + 50%);
@@ -202,11 +205,10 @@
 
     @media print {
       .editor-sidebar,
-      .site-header,
-      .site-footer,
-      .alert { display: none !important; }
-      .page      { padding: 0 !important; }
-      .container { width: 100% !important; margin: 0 !important; }
+      nav,
+      footer,
+      [role="alert"] { display: none !important; }
+      main { padding: 0 !important; }
       .editor-layout { display: block !important; height: auto !important; width: 100% !important; margin: 0 !important; }
       .editor-preview-bg { background: none !important; padding: 0 !important; display: block !important; }
       #preview-pane { min-width: 0 !important; width: 100% !important; }

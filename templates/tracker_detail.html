@@ -1,293 +1,308 @@
 {% extends "base.html" %}
 
-{% block title %}Tracker-Details | AI Job Copilot{% endblock %}
+{% block title %}Tracker-Details | Hire Hero{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>Tracker-Details</h1>
-  <p class="muted">Verwalte Status, Notizen und Stelleninformationen für diesen Eintrag.</p>
-</header>
 
-<section class="section">
-  <div class="actions">
-    <a href="{{ request.url_for('render_application_tracker_page') }}" class="btn btn-secondary">
-      Zurück zum Bewerbungstracker
+{# ── Back button + actions ───────────────────────────────────────────────────── #}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  <a href="{{ request.url_for('render_application_tracker_page') }}"
+     class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors no-underline">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+    </svg>
+    Zurück zum Tracker
+  </a>
+
+  <div class="flex flex-wrap items-center gap-2">
+    {% if tracker_entry.job.job_url %}
+    <a href="{{ tracker_entry.job.job_url }}" target="_blank" rel="noopener noreferrer"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+      </svg>
+      Zur Stellenanzeige
+    </a>
+    {% endif %}
+
+    <a href="{{ request.url_for('prepare_cover_letter_action') }}?tracker_entry_id={{ tracker_entry.id }}"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      {% if cover_letters %}Neues Anschreiben{% else %}Anschreiben generieren{% endif %}
     </a>
 
-    {% if tracker_entry.job.job_url %}
-      <a
-        href="{{ tracker_entry.job.job_url }}"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="btn btn-primary"
-      >
-        Zur Stellenanzeige / Bewerbung
-      </a>
-    {% endif %}
-
-    {% if cover_letters %}
-      <a
-        href="{{ request.url_for('prepare_cover_letter_action') }}?tracker_entry_id={{ tracker_entry.id }}"
-        class="btn btn-secondary"
-      >Neues Anschreiben generieren</a>
-    {% else %}
-      <a
-        href="{{ request.url_for('prepare_cover_letter_action') }}?tracker_entry_id={{ tracker_entry.id }}"
-        class="btn btn-secondary"
-      >Anschreiben generieren</a>
-    {% endif %}
-    <a href="{{ request.url_for('render_documents_page') }}?job_id={{ tracker_entry.job_id }}" class="btn btn-secondary">Dokumente einsehen</a>
-    <span class="muted">Match-Analyse (optional später)</span>
+    <a href="{{ request.url_for('render_documents_page') }}?job_id={{ tracker_entry.job_id }}"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+      </svg>
+      Dokumente
+    </a>
   </div>
-</section>
+</div>
 
-<section class="section">
-  <article class="card stack">
-    <div>
-      <h2>{{ tracker_entry.job.title }}</h2>
+{# ── Job info + status + notes ────────────────────────────────────────────────── #}
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-5">
 
-      <p class="job-card__meta">
-        <strong>{{ tracker_entry.job.company }}</strong>
-        {% if tracker_entry.job.location %} · {{ tracker_entry.job.location }}{% endif %}
-        {% if tracker_entry.job.employment_type %} · {{ tracker_entry.job.employment_type }}{% endif %}
-        {% if tracker_entry.job.is_remote %} · Remote{% endif %}
-      </p>
-
-      <p class="job-card__meta muted">
-        Status: <span class="status-badge tracker-status-pill {{ tracker_entry.status_css_class }}">{{ tracker_entry.status_label }}</span>
-        · Gespeichert am {{ tracker_entry.created_at.strftime("%d.%m.%Y") }}
-        {% if tracker_entry.updated_at %}
-          · Zuletzt geändert am {{ tracker_entry.updated_at.strftime("%d.%m.%Y") }}
-        {% endif %}
-      </p>
+  {# Title and meta #}
+  <div class="mb-5">
+    <div class="flex items-start justify-between gap-4 mb-2">
+      <h1 class="text-xl font-bold text-gray-900 dark:text-white m-0">{{ tracker_entry.job.title }}</h1>
+      <span class="tracker-status-pill {{ tracker_entry.status_css_class }} flex-shrink-0">{{ tracker_entry.status_label }}</span>
     </div>
+    <p class="text-sm text-gray-500 dark:text-gray-400 m-0">
+      <strong class="text-gray-700 dark:text-gray-300">{{ tracker_entry.job.company }}</strong>
+      {% if tracker_entry.job.location %} &middot; {{ tracker_entry.job.location }}{% endif %}
+      {% if tracker_entry.job.employment_type %} &middot; {{ tracker_entry.job.employment_type }}{% endif %}
+      {% if tracker_entry.job.is_remote %} &middot; Remote{% endif %}
+      &middot; Gespeichert {{ tracker_entry.created_at.strftime("%d.%m.%Y") }}
+      {% if tracker_entry.updated_at %}
+        &middot; Geändert {{ tracker_entry.updated_at.strftime("%d.%m.%Y") }}
+      {% endif %}
+    </p>
+  </div>
 
-    <div class="tracker-status-section">
-      <span class="tracker-status-section__label">Status:</span>
-
-      <div class="tracker-status-bar" aria-label="Status-Tracker">
-        {% for status_item in tracker_entry.status_items %}
-          {% if status_item.opens_date_form %}
-            <details class="tracker-status-segment">
-              <summary class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}">
-                <span class="tracker-status-button__label">{{ status_item.label }}</span>
-
-                {% if status_item.shows_date %}
-                  <span class="tracker-status-button__date">
-                    {{ status_item.date_value.strftime("%d.%m.%Y") }}
-                  </span>
-                {% endif %}
-              </summary>
-
-              <form
-                method="post"
-                action="{{ request.url_for('update_application_tracker_status_action', entry_id=tracker_entry.id) }}"
-                class="tracker-status-segment__form"
-              >
-                <input type="hidden" name="status" value="{{ status_item.value }}">
-                <input type="hidden" name="redirect_to" value="detail">
-
-                <input
-                  id="status-date-detail-{{ tracker_entry.id }}-{{ status_item.value }}"
-                  type="date"
-                  name="status_date"
-                  value="{{ status_item.default_date }}"
-                  class="tracker-status-segment__date-input"
-                >
-
-                <button type="submit" class="tracker-status-segment__submit">
-                  Status setzen
-                </button>
-              </form>
-            </details>
-          {% else %}
-            <form
-              method="post"
-              action="{{ request.url_for('update_application_tracker_status_action', entry_id=tracker_entry.id) }}"
-              class="tracker-status-segment tracker-status-segment--direct"
-            >
+  {# Status bar #}
+  <div class="mb-5">
+    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Status ändern</p>
+    <div class="tracker-status-bar" aria-label="Status-Tracker">
+      {% for status_item in tracker_entry.status_items %}
+        {% if status_item.opens_date_form %}
+          <details class="tracker-status-segment">
+            <summary class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}">
+              <span class="tracker-status-button__label">{{ status_item.label }}</span>
+              {% if status_item.shows_date %}
+              <span class="tracker-status-button__date">{{ status_item.date_value.strftime("%d.%m.%Y") }}</span>
+              {% endif %}
+            </summary>
+            <form method="post"
+                  action="{{ request.url_for('update_application_tracker_status_action', entry_id=tracker_entry.id) }}"
+                  class="tracker-status-segment__form">
               <input type="hidden" name="status" value="{{ status_item.value }}">
               <input type="hidden" name="redirect_to" value="detail">
-
-              <button
-                type="submit"
-                class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}"
-              >
-                <span class="tracker-status-button__label">{{ status_item.label }}</span>
-
-                {% if status_item.shows_date %}
-                  <span class="tracker-status-button__date">
-                    {{ status_item.date_value.strftime("%d.%m.%Y") }}
-                  </span>
-                {% endif %}
-              </button>
+              <input type="date" name="status_date" value="{{ status_item.default_date }}"
+                     class="tracker-status-segment__date-input">
+              <button type="submit" class="tracker-status-segment__submit">Status setzen</button>
             </form>
-          {% endif %}
-        {% endfor %}
-      </div>
+          </details>
+        {% else %}
+          <form method="post"
+                action="{{ request.url_for('update_application_tracker_status_action', entry_id=tracker_entry.id) }}"
+                class="tracker-status-segment tracker-status-segment--direct">
+            <input type="hidden" name="status" value="{{ status_item.value }}">
+            <input type="hidden" name="redirect_to" value="detail">
+            <button type="submit"
+                    class="tracker-status-button {% if status_item.is_current %}{{ status_item.css_class }} is-current{% endif %}">
+              <span class="tracker-status-button__label">{{ status_item.label }}</span>
+              {% if status_item.shows_date %}
+              <span class="tracker-status-button__date">{{ status_item.date_value.strftime("%d.%m.%Y") }}</span>
+              {% endif %}
+            </button>
+          </form>
+        {% endif %}
+      {% endfor %}
     </div>
-    <form method="post" action="{{ request.url_for('update_application_tracker_notes_action', entry_id=tracker_entry.id) }}" class="form">
+  </div>
+
+  {# Notes #}
+  <div>
+    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Notizen</p>
+    <form method="post"
+          action="{{ request.url_for('update_application_tracker_notes_action', entry_id=tracker_entry.id) }}">
       <input type="hidden" name="redirect_to" value="detail">
-
-      <div class="form-group">
-        <textarea name="notes" placeholder="Platz für deine Notizen">{{ tracker_entry.notes }}</textarea>
-      </div>
-
-      <div class="actions">
-        <button type="submit" class="btn btn-secondary">Notizen speichern</button>
-      </div>
+      <textarea name="notes"
+                placeholder="Platz für deine Notizen…"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 resize-y min-h-[96px] focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3">{{ tracker_entry.notes }}</textarea>
+      <button type="submit"
+              class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+        Notizen speichern
+      </button>
     </form>
-  </article>
-</section>
+  </div>
+</div>
 
-<section class="section">
-  <article class="card stack">
-    <h2>Anschreiben</h2>
-    {% if cover_letters %}
-      <ul class="stack">
-        {% for cl in cover_letters %}
-        <li style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-          <span>
-            {{ cl.document_name or 'Unbenannter Entwurf' }}
-            {% if cl.is_saved %}<span class="status-badge" style="margin-left:.5rem;">Gespeichert</span>{% else %}<span class="status-badge" style="margin-left:.5rem;">Entwurf</span>{% endif %}
-            <span class="muted" style="font-size:.85em; margin-left:.5rem;">{{ cl.created_at.strftime("%d.%m.%Y") }}</span>
-          </span>
-          <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}" class="btn btn-primary">Anschreiben öffnen</a>
-        </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">Noch kein Anschreiben für diese Stelle erstellt.</p>
-    {% endif %}
-  </article>
-</section>
+{# ── Anschreiben ─────────────────────────────────────────────────────────────── #}
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-5">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-base font-semibold text-gray-900 dark:text-white m-0">Anschreiben</h2>
+    <a href="{{ request.url_for('prepare_cover_letter_action') }}?tracker_entry_id={{ tracker_entry.id }}"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors no-underline">
+      + Neu generieren
+    </a>
+  </div>
 
-<section class="section">
-  <article class="card stack">
-    <div>
-      <h2>Stelleninformationen</h2>
-
-      <h3>{{ tracker_entry.job.title }}</h3>
-      <p><strong>{{ tracker_entry.job.company }}</strong></p>
-
-      <ul>
-        <li>Quelle: {{ tracker_entry.job.source or '-' }}</li>
-        <li>Standort: {{ tracker_entry.job.location or '-' }}</li>
-        <li>Anstellungsart: {{ tracker_entry.job.employment_type or '-' }}</li>
-        <li>Remote: {% if tracker_entry.job.is_remote %}Ja{% else %}Nein{% endif %}</li>
-        <li>
-          Veröffentlicht am:
-          {% if tracker_entry.job.published_at %}
-            {{ tracker_entry.job.published_at.strftime("%d.%m.%Y") }}
+  {% if cover_letters %}
+  <div class="space-y-3">
+    {% for cl in cover_letters %}
+    <div class="flex items-center justify-between gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700">
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-gray-900 dark:text-white m-0 truncate">
+          {{ cl.document_name or 'Unbenannter Entwurf' }}
+        </p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 m-0 mt-0.5">
+          {{ cl.created_at.strftime("%d.%m.%Y") }}
+          &middot;
+          {% if cl.is_saved %}
+          <span class="text-green-600 dark:text-green-400">Gespeichert</span>
           {% else %}
-            -
+          <span class="text-yellow-600 dark:text-yellow-400">Entwurf</span>
           {% endif %}
-        </li>
-      </ul>
+        </p>
+      </div>
+      <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
+         class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
+        Öffnen
+      </a>
     </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-sm text-gray-400 dark:text-gray-500">Noch kein Anschreiben für diese Stelle erstellt.</p>
+  {% endif %}
+</div>
 
+{# ── Stelleninformationen ────────────────────────────────────────────────────── #}
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
+     x-data="{ normOpen: false }">
+
+  <h2 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Stelleninformationen</h2>
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm mb-5">
     <div>
-      <h3>Stellenbeschreibung</h3>
-      {% if tracker_entry.job.description %}
-        <p>{{ tracker_entry.job.description }}</p>
+      <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Quelle</p>
+      <p class="text-gray-700 dark:text-gray-300 m-0">{{ tracker_entry.job.source or '–' }}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Standort</p>
+      <p class="text-gray-700 dark:text-gray-300 m-0">{{ tracker_entry.job.location or '–' }}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Anstellungsart</p>
+      <p class="text-gray-700 dark:text-gray-300 m-0">{{ tracker_entry.job.employment_type or '–' }}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Remote</p>
+      <p class="text-gray-700 dark:text-gray-300 m-0">{% if tracker_entry.job.is_remote %}Ja{% else %}Nein{% endif %}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Veröffentlicht</p>
+      <p class="text-gray-700 dark:text-gray-300 m-0">
+        {% if tracker_entry.job.published_at %}{{ tracker_entry.job.published_at.strftime("%d.%m.%Y") }}{% else %}–{% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% if tracker_entry.job.description %}
+  <div class="mb-5">
+    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Stellenbeschreibung</p>
+    <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{{ tracker_entry.job.description }}</p>
+  </div>
+  {% endif %}
+
+  {# Normalisierung — collapsible #}
+  <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+    <button @click="normOpen = !normOpen" type="button"
+            class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+      <svg class="w-4 h-4 transition-transform" :class="normOpen ? 'rotate-90' : ''"
+           fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+      </svg>
+      Normierte Stellenanzeige
+    </button>
+
+    <div x-show="normOpen" x-cloak class="mt-4">
+      {% if normalization %}
+      <div class="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Normierter Titel</p>
+            <p class="m-0">{{ normalization.canonical_job_title or '–' }}</p>
+          </div>
+          {% if normalization.job_title_variants %}
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Varianten</p>
+            <p class="m-0">{{ normalization.job_title_variants | join(', ') }}</p>
+          </div>
+          {% endif %}
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Seniority</p>
+            <p class="m-0">{{ normalization.seniority_level or '–' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Arbeitsmodell</p>
+            <p class="m-0">{{ normalization.work_model or '–' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Anstellungsart</p>
+            <p class="m-0">{{ normalization.employment_type or '–' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Standort</p>
+            <p class="m-0">{{ normalization.job_location or '–' }}</p>
+          </div>
+        </div>
+
+        {% if normalization.role_summary %}
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Rollenbeschreibung</p>
+          <p class="m-0">{{ normalization.role_summary }}</p>
+        </div>
+        {% endif %}
+
+        {% if normalization.must_have_competencies %}
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Must-have-Kompetenzen</p>
+          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.must_have_competencies %}<li>{{ item }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {% if normalization.nice_to_have_competencies %}
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Nice-to-have</p>
+          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.nice_to_have_competencies %}<li>{{ item }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {% if normalization.responsibilities %}
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Aufgaben</p>
+          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.responsibilities %}<li>{{ item }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {% if normalization.soft_skills %}
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Soft Skills</p>
+          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.soft_skills %}<li>{{ item }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {% if normalization.language_requirements %}
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Sprachanforderungen</p>
+          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.language_requirements %}<li>{{ item }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {% if normalization.benefits_perks %}
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Benefits</p>
+          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.benefits_perks %}<li>{{ item }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+      </div>
       {% else %}
-        <p class="muted">Für diesen Eintrag liegt keine Stellenbeschreibung vor.</p>
+      <p class="text-sm text-gray-400 dark:text-gray-500 mt-2">
+        Noch keine Normierung vorhanden. Erstelle ein Anschreiben, um die Normierung auszulösen.
+      </p>
       {% endif %}
     </div>
+  </div>
 
-    <details>
-      <summary style="cursor:pointer; font-weight:600; padding: 0.25rem 0;">
-        Normierte Stellenanzeige
-      </summary>
-      {% if normalization %}
-        <div style="margin-top:1rem;" class="stack">
+</div>
 
-          {# Identity / classification #}
-          <div>
-            <p><strong>Normierter Stellentitel:</strong> {{ normalization.canonical_job_title or '–' }}</p>
-            {% if normalization.job_title_variants %}
-              <p><strong>Varianten:</strong> {{ normalization.job_title_variants | join(', ') }}</p>
-            {% endif %}
-            <p>
-              <strong>Branchengruppe:</strong>
-              {% set ig_labels = {
-                'conservative_business': 'Konservativ / Business',
-                'dynamic_modern': 'Dynamisch / Modern',
-                'technical_scientific': 'Technisch / Wissenschaftlich',
-                'social_health_education': 'Sozial / Gesundheit / Bildung'
-              } %}
-              {{ ig_labels.get(normalization.industry_group, normalization.industry_group or '–') }}
-            </p>
-            <p>
-              <strong>Hierarchiestufe:</strong>
-              {% set hl_labels = {
-                'entry_junior': 'Einstieg / Junior',
-                'professional_senior': 'Berufserfahren / Senior',
-                'executive_c_level': 'Führungskraft / C-Level'
-              } %}
-              {{ hl_labels.get(normalization.hierarchy_level, normalization.hierarchy_level or '–') }}
-            </p>
-            <p><strong>Senioritätslevel:</strong> {{ normalization.seniority_level or '–' }}</p>
-            <p><strong>Arbeitsmodell:</strong> {{ normalization.work_model or '–' }}</p>
-            <p><strong>Anstellungsart:</strong> {{ normalization.employment_type or '–' }}</p>
-            <p><strong>Standort:</strong> {{ normalization.job_location or '–' }}</p>
-          </div>
-
-          {% if normalization.role_summary %}
-          <div>
-            <p><strong>Rollenbeschreibung:</strong></p>
-            <p>{{ normalization.role_summary }}</p>
-          </div>
-          {% endif %}
-
-          {% if normalization.must_have_competencies %}
-          <div>
-            <p><strong>Must-have-Kompetenzen:</strong></p>
-            <ul>{% for item in normalization.must_have_competencies %}<li>{{ item }}</li>{% endfor %}</ul>
-          </div>
-          {% endif %}
-
-          {% if normalization.nice_to_have_competencies %}
-          <div>
-            <p><strong>Nice-to-have-Kompetenzen:</strong></p>
-            <ul>{% for item in normalization.nice_to_have_competencies %}<li>{{ item }}</li>{% endfor %}</ul>
-          </div>
-          {% endif %}
-
-          {% if normalization.responsibilities %}
-          <div>
-            <p><strong>Aufgaben / Verantwortlichkeiten:</strong></p>
-            <ul>{% for item in normalization.responsibilities %}<li>{{ item }}</li>{% endfor %}</ul>
-          </div>
-          {% endif %}
-
-          {% if normalization.soft_skills %}
-          <div>
-            <p><strong>Soft Skills:</strong></p>
-            <ul>{% for item in normalization.soft_skills %}<li>{{ item }}</li>{% endfor %}</ul>
-          </div>
-          {% endif %}
-
-          {% if normalization.language_requirements %}
-          <div>
-            <p><strong>Sprachanforderungen:</strong></p>
-            <ul>{% for item in normalization.language_requirements %}<li>{{ item }}</li>{% endfor %}</ul>
-          </div>
-          {% endif %}
-
-          {% if normalization.benefits_perks %}
-          <div>
-            <p><strong>Benefits / Vorteile:</strong></p>
-            <ul>{% for item in normalization.benefits_perks %}<li>{{ item }}</li>{% endfor %}</ul>
-          </div>
-          {% endif %}
-
-        </div>
-      {% else %}
-        <p class="muted" style="margin-top:0.75rem;">Noch keine Normierung vorhanden. Erstelle ein Anschreiben für diese Stelle, um die Normierung auszulösen.</p>
-      {% endif %}
-    </details>
-
-  </article>
-</section>
 {% endblock %}

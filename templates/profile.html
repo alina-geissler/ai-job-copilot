@@ -1,12 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Profil | AI Job Copilot{% endblock %}
+{% block title %}Profil | Hire Hero{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>Mein Profil</h1>
-  <p class="muted">Übersicht deiner extrahierten und gepflegten Kandidateninformationen.</p>
-</header>
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Mein Profil</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Übersicht deiner Kandidateninformationen.</p>
+  </div>
+  {% if profile_has_content %}
+  <a href="{{ request.url_for('render_profile_edit_page') }}"
+     class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+    </svg>
+    Profil bearbeiten
+  </a>
+  {% endif %}
+</div>
 
 {% if request.query_params.get('needs_profile') %}
   <section class="section">
@@ -15,7 +26,7 @@
         <strong>Wir brauchen zunächst deine Profildaten.</strong>
         Bitte lade deinen Lebenslauf hoch oder trage deine Informationen manuell ein.
       </p>
-      <p class="muted">Sobald dein Profil vorhanden ist, kannst du direkt mit der Anschreiben-Generierung fortfahren.</p>
+      <p class="muted dark:text-gray-400">Sobald dein Profil vorhanden ist, kannst du direkt mit der Anschreiben-Generierung fortfahren.</p>
       <div class="actions">
         <a href="{{ request.url_for('render_cover_letter_setup_page') }}" class="btn btn-primary">
           Weiter zum Anschreiben-Generator
@@ -27,15 +38,15 @@
 
 {% if not profile_has_content %}
   <section class="section">
-    <div class="card">
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       {% if extraction_in_progress %}
         <div class="document-card__processing">
           <span class="document-spinner" aria-hidden="true"></span>
           Profil wird aus deinem Lebenslauf erstellt…
         </div>
-        <p class="muted">Dies kann einige Minuten dauern. Die Seite aktualisiert sich automatisch.</p>
+        <p class="muted dark:text-gray-400">Dies kann einige Minuten dauern. Die Seite aktualisiert sich automatisch.</p>
       {% else %}
-        <p class="muted">Noch kein Profil vorhanden. Lade deinen Lebenslauf unter
+        <p class="muted dark:text-gray-400">Noch kein Profil vorhanden. Lade deinen Lebenslauf unter
           <a href="{{ request.url_for('render_documents_page') }}">Dokumente</a> hoch, um dein Profil automatisch zu befüllen,
           oder <a href="{{ request.url_for('render_profile_edit_page') }}">trage deine Daten manuell ein</a>.</p>
         {% if has_completed_cv %}
@@ -65,28 +76,20 @@
 
   {% if profile.cv_reconstruction %}
   <section class="section">
-    <div class="card">
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2>Debug: Rekonstruierter CV-Text (Schritt 1)</h2>
       <pre style="white-space: pre-wrap; font-size: 0.85em; margin: 0;">{{ profile.cv_reconstruction }}</pre>
     </div>
   </section>
   {% endif %}
 
-  <section class="section">
-    <div class="card">
-      <div class="profile-section-header">
-        <a href="{{ request.url_for('render_profile_edit_page') }}" class="btn btn-primary">Profil bearbeiten</a>
-      </div>
-    </div>
-  </section>
-
   {# Persönliche Daten #}
   {% if profile.first_name or profile.last_name or profile.email or profile.street or profile.city or profile.location or profile.phone or profile.signature_image %}
   <section class="section">
-    <div class="card">
-      <h2>Persönliche Daten</h2>
-      <p class="muted profile-personal-note">Diese Daten werden nicht für die Stellensuche verwendet.</p>
-      <dl class="profile-dl">
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Persönliche Daten</h2>
+      <p class="muted profile-personal-note dark:text-gray-400">Diese Daten werden nicht für die Stellensuche verwendet.</p>
+      <dl class="profile-dl dark:text-gray-200">
         {% if profile.first_name or profile.last_name %}
           <dt>Name</dt>
           <dd>{{ ((profile.first_name or '') ~ ' ' ~ (profile.last_name or '')) | trim or '–' }}</dd>
@@ -100,7 +103,7 @@
         {% if has_signature %}
           <dd>Gespeichert &middot; <a href="{{ request.url_for('render_documents_page') }}">Einsehen / Erneut hochladen</a></dd>
         {% else %}
-          <dd class="muted">Noch keine Unterschrift &middot; <a href="{{ request.url_for('render_documents_page') }}">Jetzt hochladen</a></dd>
+          <dd class="muted dark:text-gray-400">Noch keine Unterschrift &middot; <a href="{{ request.url_for('render_documents_page') }}">Jetzt hochladen</a></dd>
         {% endif %}
       </dl>
     </div>
@@ -110,9 +113,9 @@
   {# Berufliches Profil #}
   {% if profile.target_role or profile.seniority_level or profile.leadership_experience %}
   <section class="section">
-    <div class="card">
-      <h2>Berufliches Profil</h2>
-      <dl class="profile-dl">
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Berufliches Profil</h2>
+      <dl class="profile-dl dark:text-gray-200">
         {% if profile.target_role %}<dt>Zielrolle</dt><dd>{{ profile.target_role }}</dd>{% endif %}
         {% if profile.seniority_level %}<dt>Senioritätsstufe</dt><dd>{{ profile.seniority_level }}</dd>{% endif %}
         {% if profile.leadership_experience %}<dt>Führungserfahrung</dt><dd>{{ profile.leadership_experience }}</dd>{% endif %}
@@ -124,31 +127,31 @@
   {# Berufserfahrung #}
   {% if profile.work_experience %}
   <section class="section">
-    <div class="card">
-      <h2>Berufserfahrung</h2>
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Berufserfahrung</h2>
       {% for entry in profile.work_experience %}
         <div class="profile-entry-card">
           <div class="profile-entry-card__header">
             <strong>{{ entry.position or '–' }}</strong>
-            {% if entry.company %}<span class="muted"> · {{ entry.company }}</span>{% endif %}
+            {% if entry.company %}<span class="muted dark:text-gray-400"> · {{ entry.company }}</span>{% endif %}
             {% if entry.period %}
-              <span class="muted"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
+              <span class="muted dark:text-gray-400"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
             {% endif %}
           </div>
           {% if entry.responsibilities %}
-            <p class="profile-entry-card__label">Aufgaben</p>
+            <p class="profile-entry-card__label dark:text-gray-400">Aufgaben</p>
             <ul class="list-clean profile-bullet-list">
               {% for r in entry.responsibilities %}<li>{{ r }}</li>{% endfor %}
             </ul>
           {% endif %}
           {% if entry.achievements %}
-            <p class="profile-entry-card__label">Erfolge</p>
+            <p class="profile-entry-card__label dark:text-gray-400">Erfolge</p>
             <ul class="list-clean profile-bullet-list">
               {% for a in entry.achievements %}<li>{{ a }}</li>{% endfor %}
             </ul>
           {% endif %}
           {% if entry.skills %}
-            <p class="profile-entry-card__label">Tools / Technologien</p>
+            <p class="profile-entry-card__label dark:text-gray-400">Tools / Technologien</p>
             <p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>
           {% endif %}
         </div>
@@ -160,20 +163,20 @@
   {# Ausbildung #}
   {% if profile.education %}
   <section class="section">
-    <div class="card">
-      <h2>Ausbildung</h2>
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Ausbildung</h2>
       {% for entry in profile.education %}
         <div class="profile-entry-card">
           <div class="profile-entry-card__header">
             <strong>{{ entry.degree or '–' }}</strong>
-            {% if entry.institution %}<span class="muted"> · {{ entry.institution }}</span>{% endif %}
+            {% if entry.institution %}<span class="muted dark:text-gray-400"> · {{ entry.institution }}</span>{% endif %}
             {% if entry.period %}
-              <span class="muted"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
+              <span class="muted dark:text-gray-400"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
             {% endif %}
           </div>
-          {% if entry.grade %}<p class="muted">Note: {{ entry.grade }}</p>{% endif %}
+          {% if entry.grade %}<p class="muted dark:text-gray-400">Note: {{ entry.grade }}</p>{% endif %}
           {% if entry.coursework %}
-            <p class="profile-entry-card__label">Studieninhalte</p>
+            <p class="profile-entry-card__label dark:text-gray-400">Studieninhalte</p>
             <ul class="list-clean profile-bullet-list">
               {% for c in entry.coursework %}<li>{{ c }}</li>{% endfor %}
             </ul>
@@ -187,27 +190,27 @@
   {# Fähigkeiten & Sprachen #}
   {% if profile.soft_skills or profile.hard_skills or profile.languages %}
   <section class="section">
-    <div class="card">
-      <h2>Fähigkeiten &amp; Sprachen</h2>
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Fähigkeiten &amp; Sprachen</h2>
       {% if profile.soft_skills %}
-        <h3>Soft Skills</h3>
+        <h3 class="dark:text-gray-200">Soft Skills</h3>
         <p class="profile-tags">{% for s in profile.soft_skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>
       {% endif %}
       {% if profile.hard_skills %}
-        <h3>Hard Skills</h3>
+        <h3 class="dark:text-gray-200">Hard Skills</h3>
         <ul class="list-clean profile-bullet-list">
           {% for hs in profile.hard_skills %}
             <li>
               <strong>{{ hs.skill }}</strong>
               {% if hs.proficiency %} · {{ hs.proficiency }}{% endif %}
               {% if hs.years_experience %} · {{ hs.years_experience }} Jahre{% endif %}
-              {% if hs.evidence %}<span class="muted"> ({{ hs.evidence }})</span>{% endif %}
+              {% if hs.evidence %}<span class="muted dark:text-gray-400"> ({{ hs.evidence }})</span>{% endif %}
             </li>
           {% endfor %}
         </ul>
       {% endif %}
       {% if profile.languages %}
-        <h3>Sprachen</h3>
+        <h3 class="dark:text-gray-200">Sprachen</h3>
         <ul class="list-clean profile-bullet-list">
           {% for lang in profile.languages %}
             <li><strong>{{ lang.language }}</strong>{% if lang.level %} · {{ lang.level }}{% endif %}</li>
@@ -221,27 +224,27 @@
   {# Zertifikate & Kurse #}
   {% if profile.certifications or profile.courses %}
   <section class="section">
-    <div class="card">
-      <h2>Zertifikate &amp; Kurse</h2>
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Zertifikate &amp; Kurse</h2>
       {% if profile.certifications %}
-        <h3>Zertifikate / Lizenzen</h3>
+        <h3 class="dark:text-gray-200">Zertifikate / Lizenzen</h3>
         {% for entry in profile.certifications %}
           <div class="profile-entry-card">
             <strong>{{ entry.name }}</strong>
-            {% if entry.issuer %}<span class="muted"> · {{ entry.issuer }}</span>{% endif %}
-            {% if entry.issue_date %}<span class="muted"> · {{ entry.issue_date }}</span>{% endif %}
+            {% if entry.issuer %}<span class="muted dark:text-gray-400"> · {{ entry.issuer }}</span>{% endif %}
+            {% if entry.issue_date %}<span class="muted dark:text-gray-400"> · {{ entry.issue_date }}</span>{% endif %}
             {% if entry.skills %}<p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>{% endif %}
           </div>
         {% endfor %}
       {% endif %}
       {% if profile.courses %}
-        <h3>Kurse</h3>
+        <h3 class="dark:text-gray-200">Kurse</h3>
         {% for entry in profile.courses %}
           <div class="profile-entry-card">
             <strong>{{ entry.name }}</strong>
-            {% if entry.provider %}<span class="muted"> · {{ entry.provider }}</span>{% endif %}
+            {% if entry.provider %}<span class="muted dark:text-gray-400"> · {{ entry.provider }}</span>{% endif %}
             {% if entry.period %}
-              <span class="muted"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
+              <span class="muted dark:text-gray-400"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
             {% endif %}
             {% if entry.skills %}<p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>{% endif %}
           </div>
@@ -254,16 +257,16 @@
   {# Projekte #}
   {% if profile.projects %}
   <section class="section">
-    <div class="card">
-      <h2>Projekte</h2>
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Projekte</h2>
       {% for entry in profile.projects %}
         <div class="profile-entry-card">
           <div class="profile-entry-card__header">
             <strong>{{ entry.name }}</strong>
-            {% if entry.period %}<span class="muted"> · {{ entry.period }}</span>{% endif %}
+            {% if entry.period %}<span class="muted dark:text-gray-400"> · {{ entry.period }}</span>{% endif %}
           </div>
           {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
-          {% if entry.outcome %}<p class="muted">Ergebnis: {{ entry.outcome }}</p>{% endif %}
+          {% if entry.outcome %}<p class="muted dark:text-gray-400">Ergebnis: {{ entry.outcome }}</p>{% endif %}
           {% if entry.technologies %}
             <p class="profile-tags">{% for t in entry.technologies %}<span class="profile-tag">{{ t }}</span>{% endfor %}</p>
           {% endif %}
@@ -276,16 +279,16 @@
   {# Ehrenamt #}
   {% if profile.volunteering %}
   <section class="section">
-    <div class="card">
-      <h2>Ehrenamt</h2>
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Ehrenamt</h2>
       {% for entry in profile.volunteering %}
         <div class="profile-entry-card">
           <div class="profile-entry-card__header">
             <strong>{{ entry.role }}</strong>
-            {% if entry.organization %}<span class="muted"> · {{ entry.organization }}</span>{% endif %}
-            {% if entry.cause %}<span class="muted"> · {{ entry.cause }}</span>{% endif %}
+            {% if entry.organization %}<span class="muted dark:text-gray-400"> · {{ entry.organization }}</span>{% endif %}
+            {% if entry.cause %}<span class="muted dark:text-gray-400"> · {{ entry.cause }}</span>{% endif %}
             {% if entry.period %}
-              <span class="muted"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
+              <span class="muted dark:text-gray-400"> · {{ entry.period.start }}{% if entry.period.end %} – {{ entry.period.end }}{% endif %}</span>
             {% endif %}
           </div>
           {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
@@ -301,13 +304,13 @@
   {# Publikationen #}
   {% if profile.publications %}
   <section class="section">
-    <div class="card">
-      <h2>Publikationen</h2>
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Publikationen</h2>
       {% for entry in profile.publications %}
         <div class="profile-entry-card">
           <strong>{{ entry.title }}</strong>
-          {% if entry.publisher %}<span class="muted"> · {{ entry.publisher }}</span>{% endif %}
-          {% if entry.date %}<span class="muted"> · {{ entry.date }}</span>{% endif %}
+          {% if entry.publisher %}<span class="muted dark:text-gray-400"> · {{ entry.publisher }}</span>{% endif %}
+          {% if entry.date %}<span class="muted dark:text-gray-400"> · {{ entry.date }}</span>{% endif %}
           {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
           {% if entry.topics %}
             <p class="profile-tags">{% for t in entry.topics %}<span class="profile-tag">{{ t }}</span>{% endfor %}</p>
@@ -321,13 +324,13 @@
   {# Auszeichnungen #}
   {% if profile.honors_awards %}
   <section class="section">
-    <div class="card">
-      <h2>Auszeichnungen &amp; Ehrungen</h2>
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Auszeichnungen &amp; Ehrungen</h2>
       {% for entry in profile.honors_awards %}
         <div class="profile-entry-card">
           <strong>{{ entry.title }}</strong>
-          {% if entry.issuer %}<span class="muted"> · {{ entry.issuer }}</span>{% endif %}
-          {% if entry.date %}<span class="muted"> · {{ entry.date }}</span>{% endif %}
+          {% if entry.issuer %}<span class="muted dark:text-gray-400"> · {{ entry.issuer }}</span>{% endif %}
+          {% if entry.date %}<span class="muted dark:text-gray-400"> · {{ entry.date }}</span>{% endif %}
           {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
         </div>
       {% endfor %}
@@ -338,9 +341,9 @@
   {# Präferenzen #}
   {% if profile.target_role or profile.salary_expectation or profile.work_model or profile.availability or profile.employment_types %}
   <section class="section">
-    <div class="card">
-      <h2>Präferenzen</h2>
-      <dl class="profile-dl">
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+      <h2 class="dark:text-gray-100">Präferenzen</h2>
+      <dl class="profile-dl dark:text-gray-200">
         {% if profile.salary_expectation %}<dt>Gehaltsvorstellung</dt><dd>{{ profile.salary_expectation }}</dd>{% endif %}
         {% if profile.work_model %}<dt>Arbeitsmodell</dt><dd>{{ profile.work_model }}</dd>{% endif %}
         {% if profile.availability %}<dt>Frühestmöglicher Start</dt><dd>{{ profile.availability }}</dd>{% endif %}

@@ -1,77 +1,59 @@
 {% extends "base.html" %}
 
-{% block title %}Suchlauf-Ergebnisse | AI Job Copilot{% endblock %}
+{% block title %}Suchlauf-Ergebnisse | Hire Hero{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>Suchlauf-Ergebnisse</h1>
+<div class="mb-6">
+  <a href="{{ request.url_for('render_job_search_page') }}"
+     class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors no-underline mb-3">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+    </svg>
+    Zurück zur Jobsuche
+  </a>
+
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Suchlauf-Ergebnisse</h1>
 
   {% if search_run %}
-    <p class="muted">
-      <strong>
-        {% if search_profile %}
-          {{ search_profile.profile_name }}
-        {% else %}
-          Gelöschtes Suchprofil
-        {% endif %}
+  <div class="mt-2 space-y-1 text-sm text-gray-500 dark:text-gray-400">
+    <p class="m-0">
+      <strong class="text-gray-700 dark:text-gray-300">
+        {% if search_profile %}{{ search_profile.profile_name }}{% else %}Gelöschtes Suchprofil{% endif %}
       </strong>
-      · {{ search_run.query_snapshot }}
-      {% if search_run.location_snapshot %} · {{ search_run.location_snapshot }}{% endif %}
+      &middot; {{ search_run.query_snapshot }}
+      {% if search_run.location_snapshot %} &middot; {{ search_run.location_snapshot }}{% endif %}
     </p>
-  {% endif %}
-
-  {% if search_run %}
-    <p class="muted">
+    <p class="m-0">
       Lauf vom {{ search_run.run_date.strftime("%d.%m.%Y") }}
-      · Geladene Seiten bis {{ search_run.current_page }}
-      · Gespeicherte Treffer {{ search_run.total_jobs_loaded }}
-      · Neue Treffer {{ search_run.total_new_jobs_loaded }}
+      &middot; Gespeicherte Treffer: {{ search_run.total_jobs_loaded }}
+      &middot; Neu: {{ search_run.total_new_jobs_loaded }}
     </p>
-  {% endif %}
-
-  {% if search_run %}
-    <p class="muted">
-      <strong>Verwendete Filter:</strong>
-      Suchbegriff: {{ search_run.query_snapshot }}
-      · Standort: {{ search_run.location_snapshot }}
-      · Remote only: {% if search_run.remote_only_snapshot %}Ja{% else %}Nein{% endif %}
-      · Employment types:
-      {% if search_run.employment_types_snapshot %}
-        {{ search_run.employment_types_snapshot | join(", ") }}
-      {% else %}
-        -
-      {% endif %}
-      · Experience levels:
-      {% if search_run.experience_levels_snapshot %}
-        {{ search_run.experience_levels_snapshot | join(", ") }}
-      {% else %}
-        -
-      {% endif %}
-      · Radius:
-      {% if search_run.radius_km_snapshot is not none %}
-        {{ search_run.radius_km_snapshot }} km
-      {% else %}
-        -
-      {% endif %}
-    </p>
-  {% endif %}
-</header>
-
-<section class="section">
-  <div class="actions">
-    <a href="{{ request.url_for('render_job_search_page') }}" class="btn btn-secondary">Zur Profilübersicht</a>
-    <a href="{{ request.url_for('render_search_run_history_page') }}" class="btn btn-secondary">Zur Historie</a>
-    <a href="{{ request.url_for('render_application_tracker_page') }}" class="btn btn-secondary">Zum Bewerbungstracker</a>
-
-    {% if search_run and can_load_more %}
-      <form method="post" action="{{ request.url_for('load_more_search_run_results', search_run_id=search_run.id) }}">
-        <button type="submit" class="btn btn-primary">Mehr Ergebnisse laden</button>
-      </form>
-    {% elif search_run %}
-      <p class="muted">Heute können keine weiteren Jobs für dieses Profil gefunden werden. Probiere es gerne morgen nochmal!</p>
-    {% endif %}
   </div>
-</section>
+  {% endif %}
+</div>
+
+<div class="flex flex-wrap items-center gap-2 mb-6">
+  <a href="{{ request.url_for('render_search_run_history_page') }}"
+     class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
+    Historie
+  </a>
+  <a href="{{ request.url_for('render_application_tracker_page') }}"
+     class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
+    Zum Tracker
+  </a>
+  {% if search_run and can_load_more %}
+  <form method="post" action="{{ request.url_for('load_more_search_run_results', search_run_id=search_run.id) }}">
+    <button type="submit"
+            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+      Mehr Ergebnisse laden
+    </button>
+  </form>
+  {% elif search_run %}
+  <p class="text-sm text-gray-400 dark:text-gray-500 m-0">
+    Heute keine weiteren Ergebnisse verfügbar.
+  </p>
+  {% endif %}
+</div>
 
 <section class="section">
   {% set jobs = search_results.get('results', []) %}

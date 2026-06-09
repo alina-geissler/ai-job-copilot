@@ -1,31 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}Jobsuche | AI Job Copilot{% endblock %}
+{% block title %}Jobsuche | Hire Hero{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>Jobsuche</h1>
-  <p class="muted">Wähle ein Suchprofil, um eine Suche zu starten oder einen heutigen Suchlauf fortzusetzen.</p>
-</header>
-
-<section class="section">
-  <div class="actions">
-    <a href="{{ request.url_for('render_search_profile_create_page') }}" class="btn btn-primary">Neues Suchprofil anlegen</a>
-    <a href="{{ request.url_for('render_search_run_history_page') }}" class="btn btn-secondary">Suchlauf-Historie</a>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Jobsuche</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Wähle ein Suchprofil, um eine Suche zu starten.</p>
   </div>
-</section>
+  <div class="flex items-center gap-2">
+    <a href="{{ request.url_for('render_search_run_history_page') }}"
+       class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
+      Historie
+    </a>
+    <a href="{{ request.url_for('render_search_profile_create_page') }}"
+       class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      Suchprofil anlegen
+    </a>
+  </div>
+</div>
 
 <section class="section">
   {% if search_profiles %}
     <div class="profile-list">
       {% for profile in search_profiles %}
-        <article class="card profile-card">
-          <details class="profile-card__disclosure">
+        <article class="card profile-card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+          <details class="profile-card__disclosure dark:bg-gray-800 dark:border-gray-700">
             <summary class="profile-card__summary">
               <div class="profile-card__header">
                 <div>
                   <h2 class="profile-card__title">{{ profile.profile_name }}</h2>
-                  <p class="muted">
+                  <p class="muted dark:text-gray-400">
                     {{ profile.query }}{% if profile.location %} · {{ profile.location }}{% endif %}
                   </p>
                 </div>
@@ -124,7 +132,7 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="card">
+    <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <p>Es gibt noch keine Suchprofile.</p>
       <div class="actions">
         <a href="{{ request.url_for('render_search_profile_create_page') }}" class="btn btn-primary">Erstes Suchprofil anlegen</a>
