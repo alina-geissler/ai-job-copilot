@@ -3,7 +3,7 @@ app/api/__pycache__/
 app/api/routes/__pycache__/
 .env
 app/core/__pycache__/
-docs/
+my_docs/
 app/schemas/__pycache__/
 app/services/__pycache__/
 app/dependencies/__pycache__/providers.cpython-314.pyc
