@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     database_url: str
     openai_api_key: str
 
-    job_search_provider: Literal["fixture", "live"] = "fixture"
+    job_search_provider: Literal["fixture", "live"] = "live"
     job_api_base_url: str | None = None
     job_api_key: str | None = None
     job_api_host: str | None = None

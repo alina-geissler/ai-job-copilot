@@ -5,6 +5,11 @@ from __future__ import annotations
 from app.schemas.search_profile import SearchProfileBase
 
 
+_DATE_POSTED_API_MAP: dict[str, str] = {
+    "three_days": "3days",
+}
+
+
 def build_job_search_request_params(
     filters: SearchProfileBase,
     *,
@@ -32,7 +37,7 @@ def build_job_search_request_params(
     request_params["page"] = str(start_page)
     request_params["num_pages"] = str(pages_to_fetch)
     request_params["country"] = "de"
-    request_params["date_posted"] = date_posted
+    request_params["date_posted"] = _DATE_POSTED_API_MAP.get(date_posted, date_posted)
 
     if filters.remote_only:
         request_params["work_from_home"] = "true"

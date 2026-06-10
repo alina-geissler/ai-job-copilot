@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.crud.application_tracker_entry import list_tracker_entries_for_user
@@ -230,7 +231,7 @@ def run_job_search(
                                           search_run_id=today_search_run.id)
                           )
         query_string = build_feedback_query(
-            message="Für dieses Suchprofil wurde heute bereits ein Suchlauf geöffnet.",
+            message="Für dieses Suchprofil wurde heute bereits eine Suche durchgeführt.",
             message_type="info"
         )
         return RedirectResponse(
@@ -259,15 +260,31 @@ def run_job_search(
         date_posted=primary_decision.date_posted
     )
 
-    persisted_result: PersistedSearchResult = persist_primary_search_response(
-        db,
-        user_id=current_user.id,
-        search_profile=search_profile,
-        run_date=today,
-        date_posted=primary_decision.date_posted,
-        loaded_page=primary_decision.loaded_page,
-        search_response=search_response
-    )
+    try:
+        persisted_result: PersistedSearchResult = persist_primary_search_response(
+            db,
+            user_id=current_user.id,
+            search_profile=search_profile,
+            run_date=today,
+            date_posted=primary_decision.date_posted,
+            loaded_page=primary_decision.loaded_page,
+            search_response=search_response
+        )
+    except IntegrityError:
+        # A concurrent request already committed a run for this profile today.
+        existing_run = get_today_search_run_for_profile(
+            db,
+            user_id=current_user.id,
+            search_profile_id=search_profile.id,
+            today=today
+        )
+        if existing_run is not None:
+            return RedirectResponse(
+                url=str(request.url_for("render_search_run_detail_page",
+                                        search_run_id=existing_run.id)),
+                status_code=303
+            )
+        raise
 
     results_url = str(request.url_for("render_search_run_detail_page",
                                       search_run_id=persisted_result.search_run.id)
