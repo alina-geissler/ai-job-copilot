@@ -1,5 +1,7 @@
 # Hire Hero - AI Application Assistant
 
+![Startseite](screenshots/index_page.png)
+
 An AI-powered job search and application management assistant for German-speaking job seekers. Search for relevant positions, analyze them, track your applications, and generate personalised, professional cover letters — all in one place.
 
 Built with **FastAPI**, **PostgreSQL**, **OpenAI**, and **HTMX**.
