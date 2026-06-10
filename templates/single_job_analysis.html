@@ -19,9 +19,9 @@
   <div class="card stack">
     <p>
       Wähle eine Stellenanzeige aus deinem
-      <a href="{{ request.url_for('render_application_tracker_page') }}">Bewerbungstracker</a>,
-      aus früheren <a href="{{ request.url_for('render_search_run_history_page') }}">Suchen</a>
-      oder <a href="{{ request.url_for('render_job_search_page') }}">finde zuerst den richtigen Job</a>.
+      <a href="{{ request.url_for('render_application_tracker_page') }}" class="text-yellow-600 dark:text-yellow-400 underline">Bewerbungstracker</a>,
+      aus <a href="{{ request.url_for('render_search_run_history_page') }}" class="text-yellow-600 dark:text-yellow-400 underline">früheren Suchen</a>
+      oder <a href="{{ request.url_for('render_job_search_page') }}" class="text-yellow-600 dark:text-yellow-400 underline">finde zuerst den richtigen Job</a>.
     </p>
     <p class="muted">Oder füge eine Stellenanzeige direkt hier ein:</p>
   </div>

@@ -5,11 +5,14 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app.crud.application_tracker_entry import list_tracker_entries_for_user
+from app.crud.cover_letter import get_completed_drafts_for_user, get_saved_cover_letters_for_user
+from app.crud.job_normalization import get_normalization_by_job_id, get_normalizations_for_job_ids
 from app.crud.search_profile import get_search_profile_by_id_for_user, get_search_profiles_for_user
 from app.crud.search_run import (
     count_load_more_actions_for_user_today,
@@ -24,6 +27,7 @@ from app.dependencies.auth import get_current_user
 from app.dependencies.providers import get_job_search_provider
 from app.dependencies.templates import build_feedback_query, get_base_template_context
 from app.models.user import User
+from app.services.job_normalization_task import NORM_ERRORS, norm_task_key, run_normalization_task
 from app.services.job_search_persistence import (
     PersistedSearchResult,
     persist_load_more_response,
@@ -64,19 +68,37 @@ def _build_results_page_context(
         request: Request,
         *,
         current_user: User,
-        search_run
+        search_run,
+        db: Session,
 ) -> dict[str, Any]:
     """Build the template context for one persisted search run.
 
     :param request: Incoming HTTP request.
     :param current_user: Authenticated user.
     :param search_run: Persisted search run with related jobs and profile data.
+    :param db: Active database session used for tracker and normalisation lookups.
     :return: Template context for the search-run detail page.
     """
     search_run_jobs = sorted(
         search_run.search_run_jobs,
         key=lambda item: (item.result_position, item.id)
     )
+
+    tracker_entries = list_tracker_entries_for_user(db, user_id=current_user.id)
+    tracked_job_map: dict[int, int] = {e.job_id: e.id for e in tracker_entries}
+
+    all_cls = (
+        get_saved_cover_letters_for_user(db, user_id=current_user.id)
+        + get_completed_drafts_for_user(db, user_id=current_user.id)
+    )
+    jobs_with_cover_letters: set[int] = {cl.job_id for cl in all_cls if cl.job_id is not None}
+    cover_letter_id_map: dict[int, int] = {}
+    for cl in all_cls:
+        if cl.job_id is not None and cl.job_id not in cover_letter_id_map:
+            cover_letter_id_map[cl.job_id] = cl.id
+
+    job_ids = [item.job.id for item in search_run_jobs]
+    job_norm_map = get_normalizations_for_job_ids(db, job_ids=job_ids)
 
     results = []
     for item in search_run_jobs:
@@ -97,7 +119,11 @@ def _build_results_page_context(
                 "published_at": job.published_at,
                 "is_previously_seen": item.is_previously_seen,
                 "page_number": item.page_number,
-                "result_position": item.result_position
+                "result_position": item.result_position,
+                "tracker_entry_id": tracked_job_map.get(job.id),
+                "has_cover_letter": job.id in jobs_with_cover_letters,
+                "cover_letter_id": cover_letter_id_map.get(job.id),
+                "normalization": job_norm_map.get(job.id),
             }
         )
 
@@ -294,7 +320,8 @@ def render_search_run_detail_page(
         context=_build_results_page_context(
             request,
             current_user=current_user,
-            search_run=search_run
+            search_run=search_run,
+            db=db,
         )
     )
 
@@ -434,4 +461,85 @@ def render_search_run_history_page(
             "search_profiles": search_profiles,
             "selected_search_profile_id": search_profile_id
         }
+    )
+
+
+@router.post("/{job_id}/analyse", response_class=HTMLResponse, name="analyse_job_for_results_action")
+def analyse_job_for_results_route(
+        request: Request,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+        background_tasks: BackgroundTasks,
+        job_id: int,
+) -> Response:
+    """Trigger job normalisation from a search-results job card.
+
+    If normalisation already exists, returns the completed section partial
+    immediately. Otherwise enqueues a background task and returns a spinner
+    partial that polls for completion.
+
+    :param request: Incoming HTTP request.
+    :param job_id: Identifier of the job to analyse.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :param background_tasks: FastAPI background task queue.
+    :return: Spinner or completed analysis partial.
+    """
+    existing_norm = get_normalization_by_job_id(db, job_id=job_id)
+    if existing_norm is not None:
+        return templates.TemplateResponse(
+            request=request,
+            name="_job_analyse_done.html",
+            context={"job_id": job_id, "normalization": existing_norm.normalized_data},
+        )
+
+    NORM_ERRORS.pop(norm_task_key(job_id, None), None)
+    background_tasks.add_task(run_normalization_task, job_id=job_id, manual_job_id=None)
+
+    status_url = str(request.url_for("job_analyse_status_for_results", job_id=job_id))
+    return templates.TemplateResponse(
+        request=request,
+        name="_job_analyse_spinner.html",
+        context={"job_id": job_id, "status_url": status_url},
+    )
+
+
+@router.get("/{job_id}/analyse/status", response_class=HTMLResponse, name="job_analyse_status_for_results")
+def job_analyse_status_for_results_route(
+        request: Request,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+        job_id: int,
+) -> Response:
+    """HTMX polling endpoint: check normalisation progress for a search-results job.
+
+    Returns the spinner partial while the background task is still running.
+    Returns the completed analysis partial when normalisation finishes.
+    Returns an error snippet on failure.
+
+    :param request: Incoming HTTP request.
+    :param job_id: Identifier of the job being analysed.
+    :param current_user: Authenticated user.
+    :param db: Active database session.
+    :return: Spinner partial, completed partial, or error HTML.
+    """
+    key = norm_task_key(job_id, None)
+
+    if key in NORM_ERRORS:
+        error_msg = NORM_ERRORS.pop(key)
+        return HTMLResponse(content=f'<div id="job-analyse-{job_id}" class="mt-2 text-sm text-red-600">Fehler bei der Analyse: {error_msg}</div>')
+
+    existing_norm = get_normalization_by_job_id(db, job_id=job_id)
+    if existing_norm is not None:
+        return templates.TemplateResponse(
+            request=request,
+            name="_job_analyse_done.html",
+            context={"job_id": job_id, "normalization": existing_norm.normalized_data},
+        )
+
+    status_url = str(request.url_for("job_analyse_status_for_results", job_id=job_id))
+    return templates.TemplateResponse(
+        request=request,
+        name="_job_analyse_spinner.html",
+        context={"job_id": job_id, "status_url": status_url},
     )

@@ -45,9 +45,7 @@ templates = Jinja2Templates(directory="templates")
 
 _SETUP_PARAMS_SESSION_KEY = "cover_letter_setup_params"
 
-# In-memory normalization error tracking (single-process dev server only).
-# Key: "job_{id}" or "manual_{id}"; value: error message string.
-_NORM_ERRORS: dict[str, str] = {}
+from app.services.job_normalization_task import NORM_ERRORS as _NORM_ERRORS, norm_task_key as _norm_task_key, run_normalization_task as _run_normalization_task
 
 # ---------------------------------------------------------------------------
 # Allowed preset values (validated before persisting layout_settings)
@@ -241,80 +239,6 @@ def _save_manual_job_to_tracker(
     if existing is None:
         entry = ApplicationTrackerEntry(user_id=user_id, job_id=job.id)
         db.add(entry)
-
-
-# ---------------------------------------------------------------------------
-# Job normalization intermediate step
-# ---------------------------------------------------------------------------
-
-def _norm_task_key(job_id: int | None, manual_job_id: int | None) -> str:
-    """Build a stable string key for tracking per-job normalization state.
-
-    :param job_id: API-sourced job identifier, or ``None``.
-    :param manual_job_id: Manual job posting identifier, or ``None``.
-    :return: String key used in ``_NORM_ERRORS``.
-    """
-    if job_id is not None:
-        return f"job_{job_id}"
-    return f"manual_{manual_job_id}"
-
-
-def _run_normalization_task(
-    *, job_id: int | None, manual_job_id: int | None
-) -> None:
-    """Background task: normalise a job ad and persist the result.
-
-    Opens its own database session, resolves the raw job text, calls the
-    normalisation service, and commits the result. Errors are stored in
-    ``_NORM_ERRORS`` so the polling endpoint can surface them.
-
-    :param job_id: API-sourced job identifier, or ``None``.
-    :param manual_job_id: Manual job posting identifier, or ``None``.
-    """
-    from app.db.session import SessionLocal
-    from app.models.job import Job
-    from app.models.manual_job_posting import ManualJobPosting
-    from app.services.job_normalization_service import get_or_create_normalization
-
-    key = _norm_task_key(job_id, manual_job_id)
-    db = SessionLocal()
-    try:
-        existing_job = None
-        if job_id is not None:
-            job = db.get(Job, job_id)
-            if job is None:
-                _NORM_ERRORS[key] = "Job nicht gefunden."
-                return
-            raw_text: str = job.description or job.title or ""
-            existing_job = job
-        elif manual_job_id is not None:
-            posting = db.get(ManualJobPosting, manual_job_id)
-            if posting is None:
-                _NORM_ERRORS[key] = "Stellenangebot nicht gefunden."
-                return
-            raw_text = posting.raw_text
-        else:
-            _NORM_ERRORS[key] = "Kein Job angegeben."
-            return
-
-        if not raw_text:
-            _NORM_ERRORS[key] = "Kein Anzeigentext gefunden."
-            return
-
-        get_or_create_normalization(
-            db,
-            job_id=job_id,
-            manual_job_posting_id=manual_job_id,
-            raw_text=raw_text,
-            existing_job=existing_job,
-        )
-        db.commit()
-        _NORM_ERRORS.pop(key, None)
-    except Exception as exc:
-        logger.exception("Normalization task failed for key=%s: %s", key, exc)
-        _NORM_ERRORS[key] = str(exc)[:200]
-    finally:
-        db.close()
 
 
 @router.get("/cover-letter/prepare", name="prepare_cover_letter_action")

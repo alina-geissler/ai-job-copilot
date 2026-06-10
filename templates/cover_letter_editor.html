@@ -213,6 +213,32 @@
       .editor-preview-bg { background: none !important; padding: 0 !important; display: block !important; }
       #preview-pane { min-width: 0 !important; width: 100% !important; }
     }
+
+    /* ── Dark mode overrides for editor sidebar ─────────────────────────── */
+    .dark .editor-sidebar {
+      background: #1f2937;
+      border-right-color: #374151;
+    }
+    .dark .sidebar-section h3 { color: #9ca3af; }
+    .dark .sidebar-section + .sidebar-section { border-top-color: #374151; }
+    .dark .tpl-card {
+      border-color: #4b5563;
+      background: #374151;
+      color: #f3f4f6;
+    }
+    .dark .tpl-card:has(input:checked) { border-color: #3b82f6; background: #1e3a5f; }
+    .dark .radio-pill {
+      border-color: #4b5563;
+      background: #374151;
+      color: #f3f4f6;
+    }
+    .dark .radio-pill:has(input:checked) { border-color: #3b82f6; background: #1e3a5f; }
+    .dark .sidebar-input {
+      border-color: #4b5563;
+      background: #374151;
+      color: #f3f4f6;
+    }
+    .dark .sidebar-label { color: #d1d5db; }
   </style>
 {% endblock %}
 

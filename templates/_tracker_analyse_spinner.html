@@ -1,0 +1,12 @@
+{# Spinner shown while tracker-entry job normalisation is running.
+   Context: entry_id (int), status_url (str).
+   Replaces #analyse-trigger-container via HTMX. #}
+<div id="analyse-trigger-container"
+     hx-get="{{ status_url }}"
+     hx-trigger="every 2s"
+     hx-target="this"
+     hx-swap="outerHTML"
+     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg">
+  <span class="document-spinner" aria-hidden="true"></span>
+  Analyse läuft…
+</div>

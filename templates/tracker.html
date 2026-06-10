@@ -39,6 +39,14 @@
               Anschreiben
             </span>
             {% endif %}
+            {% if entry.job_id in jobs_with_normalizations %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-medium">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              Analyse
+            </span>
+            {% endif %}
             <span class="tracker-status-pill {{ entry.status_css_class }}">{{ entry.status_label }}</span>
           </div>
         </div>
@@ -71,6 +79,17 @@
                          class="tracker-status-segment__date-input">
                   <button type="submit" class="tracker-status-segment__submit">Status setzen</button>
                 </form>
+                {% if status_item.shows_date and status_item.value != 'saved' %}
+                <form method="post"
+                      action="{{ request.url_for('clear_application_tracker_status_date_action', entry_id=entry.id) }}"
+                      class="tracker-status-segment__form">
+                  <input type="hidden" name="status" value="{{ status_item.value }}">
+                  <input type="hidden" name="redirect_to" value="overview">
+                  <button type="submit" class="tracker-status-segment__submit tracker-status-segment__submit--danger">
+                    Datum löschen
+                  </button>
+                </form>
+                {% endif %}
               </details>
             {% else %}
               <form method="post"
@@ -137,6 +156,25 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
           </svg>
         </a>
+
+        {% if entry.job_id not in jobs_with_normalizations %}
+        <form method="post" action="{{ request.url_for('analyse_tracker_job_action', entry_id=entry.id) }}">
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+            Stellenanzeige analysieren
+          </button>
+        </form>
+        {% endif %}
+
+        {% if entry.job.job_url %}
+        <a href="{{ entry.job.job_url }}" target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+          Zur Stellenanzeige
+        </a>
+        {% endif %}
 
         <form method="post"
               action="{{ request.url_for('delete_application_tracker_entry_action', entry_id=entry.id) }}"

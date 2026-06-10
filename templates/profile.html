@@ -84,21 +84,24 @@
   {% endif %}
 
   {# Persönliche Daten #}
-  {% if profile.first_name or profile.last_name or profile.email or profile.street or profile.city or profile.location or profile.phone or profile.signature_image %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Persönliche Daten</h2>
-      <p class="muted profile-personal-note dark:text-gray-400">Diese Daten werden nicht für die Stellensuche verwendet.</p>
+      <p class="text-blue-700 dark:text-blue-300 text-sm bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg px-3 py-2">Diese Daten werden nicht an die KI geschickt, wenn du Dokumente generieren lässt.</p>
       <dl class="profile-dl dark:text-gray-200">
-        {% if profile.first_name or profile.last_name %}
-          <dt>Name</dt>
-          <dd>{{ ((profile.first_name or '') ~ ' ' ~ (profile.last_name or '')) | trim or '–' }}</dd>
-        {% endif %}
-        {% if profile.email %}<dt>E-Mail</dt><dd>{{ profile.email }}</dd>{% endif %}
-        {% if profile.phone %}<dt>Telefon</dt><dd>{{ profile.phone }}</dd>{% endif %}
-        {% if profile.street %}<dt>Straße</dt><dd>{{ profile.street }}</dd>{% endif %}
-        {% if profile.city %}<dt>Ort</dt><dd>{{ profile.city }}</dd>{% endif %}
-        {% if profile.location %}<dt>Standort</dt><dd>{{ profile.location }}</dd>{% endif %}
+        <dt>Name</dt>
+        {% set full_name = ((profile.first_name or '') ~ ' ' ~ (profile.last_name or '')) | trim %}
+        {% if full_name %}<dd>{{ full_name }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>E-Mail</dt>
+        {% if profile.email %}<dd>{{ profile.email }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Telefon</dt>
+        {% if profile.phone %}<dd>{{ profile.phone }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Straße</dt>
+        {% if profile.street %}<dd>{{ profile.street }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Ort</dt>
+        {% if profile.city %}<dd>{{ profile.city }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Standort</dt>
+        {% if profile.location %}<dd>{{ profile.location }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
         <dt>Unterschrift</dt>
         {% if has_signature %}
           <dd>Gespeichert &middot; <a href="{{ request.url_for('render_documents_page') }}">Einsehen / Erneut hochladen</a></dd>
@@ -108,27 +111,27 @@
       </dl>
     </div>
   </section>
-  {% endif %}
 
   {# Berufliches Profil #}
-  {% if profile.target_role or profile.seniority_level or profile.leadership_experience %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Berufliches Profil</h2>
       <dl class="profile-dl dark:text-gray-200">
-        {% if profile.target_role %}<dt>Zielrolle</dt><dd>{{ profile.target_role }}</dd>{% endif %}
-        {% if profile.seniority_level %}<dt>Senioritätsstufe</dt><dd>{{ profile.seniority_level }}</dd>{% endif %}
-        {% if profile.leadership_experience %}<dt>Führungserfahrung</dt><dd>{{ profile.leadership_experience }}</dd>{% endif %}
+        <dt>Zielrolle</dt>
+        {% if profile.target_role %}<dd>{{ profile.target_role }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Senioritätsstufe</dt>
+        {% if profile.seniority_level %}<dd>{{ profile.seniority_level }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Führungserfahrung</dt>
+        {% if profile.leadership_experience %}<dd>{{ profile.leadership_experience }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
       </dl>
     </div>
   </section>
-  {% endif %}
 
   {# Berufserfahrung #}
-  {% if profile.work_experience %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Berufserfahrung</h2>
+      {% if profile.work_experience %}
       {% for entry in profile.work_experience %}
         <div class="profile-entry-card">
           <div class="profile-entry-card__header">
@@ -156,15 +159,17 @@
           {% endif %}
         </div>
       {% endfor %}
+      {% else %}
+      <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
+      {% endif %}
     </div>
   </section>
-  {% endif %}
 
   {# Ausbildung #}
-  {% if profile.education %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Ausbildung</h2>
+      {% if profile.education %}
       {% for entry in profile.education %}
         <div class="profile-entry-card">
           <div class="profile-entry-card__header">
@@ -183,21 +188,24 @@
           {% endif %}
         </div>
       {% endfor %}
+      {% else %}
+      <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
+      {% endif %}
     </div>
   </section>
-  {% endif %}
 
   {# Fähigkeiten & Sprachen #}
-  {% if profile.soft_skills or profile.hard_skills or profile.languages %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Fähigkeiten &amp; Sprachen</h2>
+      <h3 class="dark:text-gray-200">Soft Skills</h3>
       {% if profile.soft_skills %}
-        <h3 class="dark:text-gray-200">Soft Skills</h3>
         <p class="profile-tags">{% for s in profile.soft_skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>
+      {% else %}
+        <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
       {% endif %}
+      <h3 class="dark:text-gray-200">Hard Skills</h3>
       {% if profile.hard_skills %}
-        <h3 class="dark:text-gray-200">Hard Skills</h3>
         <ul class="list-clean profile-bullet-list">
           {% for hs in profile.hard_skills %}
             <li>
@@ -208,26 +216,28 @@
             </li>
           {% endfor %}
         </ul>
+      {% else %}
+        <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
       {% endif %}
+      <h3 class="dark:text-gray-200">Sprachen</h3>
       {% if profile.languages %}
-        <h3 class="dark:text-gray-200">Sprachen</h3>
         <ul class="list-clean profile-bullet-list">
           {% for lang in profile.languages %}
             <li><strong>{{ lang.language }}</strong>{% if lang.level %} · {{ lang.level }}{% endif %}</li>
           {% endfor %}
         </ul>
+      {% else %}
+        <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
       {% endif %}
     </div>
   </section>
-  {% endif %}
 
   {# Zertifikate & Kurse #}
-  {% if profile.certifications or profile.courses %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Zertifikate &amp; Kurse</h2>
+      <h3 class="dark:text-gray-200">Zertifikate / Lizenzen</h3>
       {% if profile.certifications %}
-        <h3 class="dark:text-gray-200">Zertifikate / Lizenzen</h3>
         {% for entry in profile.certifications %}
           <div class="profile-entry-card">
             <strong>{{ entry.name }}</strong>
@@ -236,9 +246,11 @@
             {% if entry.skills %}<p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>{% endif %}
           </div>
         {% endfor %}
+      {% else %}
+        <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
       {% endif %}
+      <h3 class="dark:text-gray-200">Kurse</h3>
       {% if profile.courses %}
-        <h3 class="dark:text-gray-200">Kurse</h3>
         {% for entry in profile.courses %}
           <div class="profile-entry-card">
             <strong>{{ entry.name }}</strong>
@@ -249,16 +261,17 @@
             {% if entry.skills %}<p class="profile-tags">{% for s in entry.skills %}<span class="profile-tag">{{ s }}</span>{% endfor %}</p>{% endif %}
           </div>
         {% endfor %}
+      {% else %}
+        <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
       {% endif %}
     </div>
   </section>
-  {% endif %}
 
   {# Projekte #}
-  {% if profile.projects %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Projekte</h2>
+      {% if profile.projects %}
       {% for entry in profile.projects %}
         <div class="profile-entry-card">
           <div class="profile-entry-card__header">
@@ -272,15 +285,17 @@
           {% endif %}
         </div>
       {% endfor %}
+      {% else %}
+      <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
+      {% endif %}
     </div>
   </section>
-  {% endif %}
 
   {# Ehrenamt #}
-  {% if profile.volunteering %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Ehrenamt</h2>
+      {% if profile.volunteering %}
       {% for entry in profile.volunteering %}
         <div class="profile-entry-card">
           <div class="profile-entry-card__header">
@@ -297,15 +312,17 @@
           {% endif %}
         </div>
       {% endfor %}
+      {% else %}
+      <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
+      {% endif %}
     </div>
   </section>
-  {% endif %}
 
   {# Publikationen #}
-  {% if profile.publications %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Publikationen</h2>
+      {% if profile.publications %}
       {% for entry in profile.publications %}
         <div class="profile-entry-card">
           <strong>{{ entry.title }}</strong>
@@ -317,15 +334,17 @@
           {% endif %}
         </div>
       {% endfor %}
+      {% else %}
+      <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
+      {% endif %}
     </div>
   </section>
-  {% endif %}
 
   {# Auszeichnungen #}
-  {% if profile.honors_awards %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Auszeichnungen &amp; Ehrungen</h2>
+      {% if profile.honors_awards %}
       {% for entry in profile.honors_awards %}
         <div class="profile-entry-card">
           <strong>{{ entry.title }}</strong>
@@ -334,27 +353,28 @@
           {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
         </div>
       {% endfor %}
+      {% else %}
+      <p class="text-purple-500 dark:text-purple-400 text-sm">Noch keine Einträge.</p>
+      {% endif %}
     </div>
   </section>
-  {% endif %}
 
   {# Präferenzen #}
-  {% if profile.target_role or profile.salary_expectation or profile.work_model or profile.availability or profile.employment_types %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2 class="dark:text-gray-100">Präferenzen</h2>
       <dl class="profile-dl dark:text-gray-200">
-        {% if profile.salary_expectation %}<dt>Gehaltsvorstellung</dt><dd>{{ profile.salary_expectation }}</dd>{% endif %}
-        {% if profile.work_model %}<dt>Arbeitsmodell</dt><dd>{{ profile.work_model }}</dd>{% endif %}
-        {% if profile.availability %}<dt>Frühestmöglicher Start</dt><dd>{{ profile.availability }}</dd>{% endif %}
-        {% if profile.employment_types %}
-          <dt>Beschäftigungsarten</dt>
-          <dd>{{ profile.employment_types | join(', ') }}</dd>
-        {% endif %}
+        <dt>Gehaltsvorstellung</dt>
+        {% if profile.salary_expectation %}<dd>{{ profile.salary_expectation }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Arbeitsmodell</dt>
+        {% if profile.work_model %}<dd>{{ profile.work_model }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Frühestmöglicher Start</dt>
+        {% if profile.availability %}<dd>{{ profile.availability }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
+        <dt>Beschäftigungsarten</dt>
+        {% if profile.employment_types %}<dd>{{ profile.employment_types | join(', ') }}</dd>{% else %}<dd class="text-purple-500 dark:text-purple-400">Noch kein Eintrag.</dd>{% endif %}
       </dl>
     </div>
   </section>
-  {% endif %}
 
 {% endif %}
 {% endblock %}

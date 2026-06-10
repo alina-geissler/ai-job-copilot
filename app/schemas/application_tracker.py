@@ -46,6 +46,13 @@ class TrackerStatusUpdateForm(BaseModel):
         return value
 
 
+class TrackerStatusClearDateForm(BaseModel):
+    """Represent validated form input for clearing a status date field."""
+
+    status: ApplicationStatus
+    redirect_to: Literal["overview", "detail"] = "detail"
+
+
 class TrackerNotesUpdateForm(BaseModel):
     """Represent validated form input for updating tracker entry notes."""
 

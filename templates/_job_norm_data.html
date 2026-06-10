@@ -1,0 +1,84 @@
+{# Renders the structured fields of a normalised job ad.
+   Context variable: normalization (dict / SimpleNamespace with attribute access via dot notation).
+   Supports both dict and object access because tracker_detail passes a plain dict from JSONB. #}
+<div class="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+    <div>
+      <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Normierter Titel</p>
+      <p class="m-0">{{ normalization.canonical_job_title or '–' }}</p>
+    </div>
+    {% if normalization.job_title_variants %}
+    <div>
+      <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Varianten</p>
+      <p class="m-0">{{ normalization.job_title_variants | join(', ') }}</p>
+    </div>
+    {% endif %}
+    <div>
+      <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Seniority</p>
+      <p class="m-0">{{ normalization.seniority_level or '–' }}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Arbeitsmodell</p>
+      <p class="m-0">{{ normalization.work_model or '–' }}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Anstellungsart</p>
+      <p class="m-0">{{ normalization.employment_type or '–' }}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Standort</p>
+      <p class="m-0">{{ normalization.job_location or '–' }}</p>
+    </div>
+  </div>
+
+  {% if normalization.role_summary %}
+  <div>
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Rollenbeschreibung</p>
+    <p class="m-0">{{ normalization.role_summary }}</p>
+  </div>
+  {% endif %}
+
+  {% if normalization.must_have_competencies %}
+  <div>
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Must-have-Kompetenzen</p>
+    <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.must_have_competencies %}<li>{{ item }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if normalization.nice_to_have_competencies %}
+  <div>
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Nice-to-have</p>
+    <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.nice_to_have_competencies %}<li>{{ item }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if normalization.responsibilities %}
+  <div>
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Aufgaben</p>
+    <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.responsibilities %}<li>{{ item }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if normalization.soft_skills %}
+  <div>
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Soft Skills</p>
+    <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.soft_skills %}<li>{{ item }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if normalization.language_requirements %}
+  <div>
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Sprachanforderungen</p>
+    <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.language_requirements %}<li>{{ item }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if normalization.benefits_perks %}
+  <div>
+    <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Benefits</p>
+    <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.benefits_perks %}<li>{{ item }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+</div>

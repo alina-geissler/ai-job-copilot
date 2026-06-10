@@ -1,0 +1,12 @@
+{# Spinner shown while search-results job normalisation is running.
+   Context: job_id (int), status_url (str).
+   Replaces #job-analyse-{job_id} via HTMX. #}
+<div id="job-analyse-{{ job_id }}"
+     hx-get="{{ status_url }}"
+     hx-trigger="every 2s"
+     hx-target="this"
+     hx-swap="outerHTML"
+     class="mt-2 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+  <span class="document-spinner" aria-hidden="true"></span>
+  Stellenanzeige wird analysiert…
+</div>

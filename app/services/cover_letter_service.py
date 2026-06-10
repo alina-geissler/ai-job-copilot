@@ -411,7 +411,7 @@ def _llm_generate(
         main_body_fit=letter.get("main_body_fit", ""),
         conclusion=letter.get("conclusion", ""),
         closing="Mit freundlichen Grüßen",
-        attachments=["Lebenslauf"],
+        attachments="– Lebenslauf",
     )
 
 

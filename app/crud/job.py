@@ -97,6 +97,19 @@ def update_job_from_search_result(
     return job
 
 
+def get_jobs_by_ids(db: Session, *, job_ids: list[int]) -> dict[int, "Job"]:
+    """Return a mapping of job ID to Job for a batch of IDs.
+
+    :param db: Active database session.
+    :param job_ids: List of job primary keys to fetch.
+    :return: Dict mapping each found job ID to its Job record.
+    """
+    if not job_ids:
+        return {}
+    rows = db.execute(select(Job).where(Job.id.in_(job_ids))).scalars().all()
+    return {job.id: job for job in rows}
+
+
 def get_or_create_job_from_search_result(
     db: Session,
     *,

@@ -213,6 +213,29 @@ def update_tracker_entry_status(
     return entry
 
 
+def clear_tracker_entry_status_date(
+    db: Session,
+    *,
+    entry: ApplicationTrackerEntry,
+    status: ApplicationStatus,
+) -> ApplicationTrackerEntry:
+    """Set the date field associated with *status* to null.
+
+    Skips ``SAVED`` because its date is ``created_at``, which must not be
+    cleared. All other statuses have a dedicated nullable timestamp column.
+
+    :param db: Active database session.
+    :param entry: Existing tracker entry to update.
+    :param status: The status whose date field should be cleared.
+    :return: Updated tracker entry.
+    """
+    field = _STATUS_DATE_FIELD_BY_STATUS.get(status)
+    if field and field != "created_at":
+        setattr(entry, field, None)
+        db.add(entry)
+    return entry
+
+
 def delete_tracker_entry(
     db: Session,
     *,

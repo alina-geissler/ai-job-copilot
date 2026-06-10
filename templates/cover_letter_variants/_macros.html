@@ -66,11 +66,12 @@
     empty. The "Anlagen zufügen" button is shown by CSS only in edit mode
     when the field is empty (sibling selector on data-field-empty). -#}
 {%- macro attachments(items, show_warnings=false) -%}
-  {%- set has_content = items and items.strip() -%}
+  {%- set _items_str = items if items is string else (items | join('\n')) -%}
+  {%- set has_content = _items_str and _items_str.strip() -%}
   {% if has_content or show_warnings %}
   <section class="cl-attachments" data-field-group="attachments">
     <p class="cl-attachments-label">Anlagen</p>
-    <p class="cl-field cl-attachments-content" data-field="attachments" data-placeholder="z.B. Lebenslauf">{{ items or '' }}</p>
+    <p class="cl-field cl-attachments-content" data-field="attachments" data-placeholder="z.B. Lebenslauf">{{ _items_str or '' }}</p>
     {% if show_warnings %}
     <button class="cl-attachments-add" type="button" onclick="if(window._addAttachments)window._addAttachments()">+ Anlagen zufügen</button>
     {% endif %}

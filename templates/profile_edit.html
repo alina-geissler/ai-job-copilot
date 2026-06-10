@@ -17,6 +17,16 @@
 
 <form method="post" action="{{ request.url_for('save_profile_route') }}" id="profile-edit-form">
 
+  {# Top action bar #}
+  <section class="section">
+    <div class="card">
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Speichern</button>
+        <a href="{{ request.url_for('render_profile_page') }}" class="btn btn-secondary">Abbrechen</a>
+      </div>
+    </div>
+  </section>
+
   {# Persönliche Daten #}
   <section class="section">
     <div class="card stack">

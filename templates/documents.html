@@ -273,11 +273,28 @@
           </div>
           <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Erstellt am {{ cl.created_at.strftime('%d.%m.%Y') }}</p>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
           <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
              class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
             Bearbeiten
           </a>
+          {% set _job_url = job_url_map.get(cl.job_id) if cl.job_id else none %}
+          {% set _tracker_id = tracked_job_map.get(cl.job_id) if cl.job_id else none %}
+          {% if _job_url %}
+          <a href="{{ _job_url }}" target="_blank" rel="noopener noreferrer"
+             class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline inline-flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+            Zur Stellenanzeige
+          </a>
+          {% endif %}
+          {% if _tracker_id %}
+          <a href="{{ request.url_for('render_application_tracker_detail_page', entry_id=_tracker_id) }}"
+             class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors no-underline">
+            Zum Tracker-Eintrag
+          </a>
+          {% endif %}
           <form method="post"
                 action="{{ request.url_for('delete_cover_letter_action', cover_letter_id=cl.id) }}"
                 onsubmit="return confirm('Anschreiben wirklich löschen?');">
@@ -311,11 +328,28 @@
           </div>
           <p class="text-xs text-gray-400 dark:text-gray-500 m-0">Erstellt am {{ cl.created_at.strftime('%d.%m.%Y') }}</p>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="flex items-center gap-2 flex-shrink-0 flex-wrap">
           <a href="{{ request.url_for('render_cover_letter_editor_page', cover_letter_id=cl.id) }}"
              class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline">
             Öffnen &amp; Speichern
           </a>
+          {% set _job_url = job_url_map.get(cl.job_id) if cl.job_id else none %}
+          {% set _tracker_id = tracked_job_map.get(cl.job_id) if cl.job_id else none %}
+          {% if _job_url %}
+          <a href="{{ _job_url }}" target="_blank" rel="noopener noreferrer"
+             class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline inline-flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+            Zur Stellenanzeige
+          </a>
+          {% endif %}
+          {% if _tracker_id %}
+          <a href="{{ request.url_for('render_application_tracker_detail_page', entry_id=_tracker_id) }}"
+             class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors no-underline">
+            Zum Tracker-Eintrag
+          </a>
+          {% endif %}
           <form method="post"
                 action="{{ request.url_for('delete_cover_letter_action', cover_letter_id=cl.id) }}"
                 onsubmit="return confirm('Anschreiben wirklich löschen?');">
@@ -335,7 +369,14 @@
       <svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>
-      <p class="text-sm">Keine Einträge für diesen Filter.</p>
+      <p class="text-sm mb-2"
+         x-text="activeFilter === 'cover-letter' ? 'Noch keine Anschreiben vorhanden.' : activeFilter === 'draft' ? 'Noch keine Entwürfe vorhanden.' : 'Lade deinen Lebenslauf oben hoch.'">
+      </p>
+      <a href="{{ request.url_for('render_single_job_analysis_page') }}"
+         x-show="activeFilter === 'cover-letter' || activeFilter === 'draft'"
+         class="text-yellow-600 dark:text-yellow-400 underline text-sm font-medium hover:text-yellow-500 dark:hover:text-yellow-300 transition-colors">
+        Jetzt generieren
+      </a>
     </div>
 
   </div>{# /x-ref="list" #}
@@ -347,6 +388,11 @@
     return {
       activeFilter: '{{ "cover-letter" if job_id_filter else "all" }}',
       activeSort: 'newest',
+      counts: {
+        document: {{ documents | length }},
+        'cover-letter': {{ saved_cover_letters | length }},
+        draft: {{ draft_cover_letters | length }}
+      },
 
       init() {
         this.$nextTick(() => this.applySort());
@@ -354,7 +400,6 @@
 
       setFilter(f) {
         this.activeFilter = f;
-        this.$nextTick(() => this.updateEmpty());
       },
 
       setSort(s) {
@@ -367,11 +412,11 @@
       },
 
       isEmpty() {
-        const items = this.$refs.list.querySelectorAll('[data-sortable]');
-        return Array.from(items).every(el => el.style.display === 'none');
+        if (this.activeFilter === 'all') {
+          return this.counts.document + this.counts['cover-letter'] + this.counts.draft === 0;
+        }
+        return (this.counts[this.activeFilter] || 0) === 0;
       },
-
-      updateEmpty() { /* triggers re-evaluation */ },
 
       applySort() {
         const container = this.$refs.list;

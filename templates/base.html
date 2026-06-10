@@ -15,9 +15,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' };</script>
 
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
   <link rel="stylesheet" href="{{ url_for('static', path='/css/dev-ui.css') }}">
+  <style>
+    details[open] > summary.analyse-toggle .analyse-arrow { transform: rotate(90deg); }
+  </style>
   {% block head %}{% endblock %}
 </head>
 

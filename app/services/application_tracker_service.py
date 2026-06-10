@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.enums import ApplicationStatus
 from app.crud.application_tracker_entry import (
+    clear_tracker_entry_status_date,
     create_tracker_entry_if_missing,
     get_tracker_entry_by_id_for_user,
     update_tracker_entry_notes,
@@ -117,6 +118,41 @@ def change_application_tracker_notes(
             entry=tracker_entry,
             notes=notes
         )
+        db.commit()
+        return tracker_entry
+    except Exception:
+        db.rollback()
+        raise
+
+
+def clear_application_tracker_status_date(
+    db: Session,
+    *,
+    entry_id: int,
+    user_id: int,
+    status: ApplicationStatus,
+) -> ApplicationTrackerEntry | None:
+    """Clear the date field for the given status on one tracker entry.
+
+    Does not change the entry's current status value, only nulls the
+    corresponding timestamp column.
+
+    :param db: Active database session.
+    :param entry_id: Identifier of the tracker entry to update.
+    :param user_id: Identifier of the owning user.
+    :param status: The status whose date field should be cleared.
+    :return: Updated tracker entry or ``None`` when it does not exist.
+    """
+    tracker_entry = get_tracker_entry_by_id_for_user(
+        db,
+        entry_id=entry_id,
+        user_id=user_id,
+    )
+    if tracker_entry is None:
+        return None
+
+    try:
+        clear_tracker_entry_status_date(db, entry=tracker_entry, status=status)
         db.commit()
         return tracker_entry
     except Exception:

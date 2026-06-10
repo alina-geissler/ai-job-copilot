@@ -25,6 +25,31 @@
     </a>
     {% endif %}
 
+    <div id="analyse-trigger-container">
+      {% if auto_analyse %}
+      <div id="analyse-trigger-container"
+           hx-get="{{ request.url_for('tracker_analyse_status', entry_id=tracker_entry.id) }}"
+           hx-trigger="load, every 2s"
+           hx-target="this"
+           hx-swap="outerHTML"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg">
+        <span class="document-spinner" aria-hidden="true"></span>
+        Analyse läuft…
+      </div>
+      {% else %}
+      <button hx-post="{{ request.url_for('analyse_tracker_job_action', entry_id=tracker_entry.id) }}"
+              hx-target="#analyse-trigger-container"
+              hx-swap="outerHTML"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        {% if normalization %}Erneut analysieren{% else %}Stellenanzeige analysieren{% endif %}
+      </button>
+      {% endif %}
+    </div>
+
     <a href="{{ request.url_for('prepare_cover_letter_action') }}?tracker_entry_id={{ tracker_entry.id }}"
        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -86,6 +111,17 @@
                      class="tracker-status-segment__date-input">
               <button type="submit" class="tracker-status-segment__submit">Status setzen</button>
             </form>
+            {% if status_item.shows_date and status_item.value != 'saved' %}
+            <form method="post"
+                  action="{{ request.url_for('clear_application_tracker_status_date_action', entry_id=tracker_entry.id) }}"
+                  class="tracker-status-segment__form">
+              <input type="hidden" name="status" value="{{ status_item.value }}">
+              <input type="hidden" name="redirect_to" value="detail">
+              <button type="submit" class="tracker-status-segment__submit tracker-status-segment__submit--danger">
+                Datum löschen
+              </button>
+            </form>
+            {% endif %}
           </details>
         {% else %}
           <form method="post"
@@ -164,8 +200,7 @@
 </div>
 
 {# ── Stelleninformationen ────────────────────────────────────────────────────── #}
-<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
-     x-data="{ normOpen: false }">
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
 
   <h2 class="text-base font-semibold text-gray-900 dark:text-white mb-4">Stelleninformationen</h2>
 
@@ -202,102 +237,25 @@
   {% endif %}
 
   {# Normalisierung — collapsible #}
-  <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+  <div class="border-t border-gray-200 dark:border-gray-700 pt-4"
+       x-data="{ normOpen: {{ 'true' if norm_expanded else 'false' }} }"
+       x-init="if (normOpen) $nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
     <button @click="normOpen = !normOpen" type="button"
             class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
       <svg class="w-4 h-4 transition-transform" :class="normOpen ? 'rotate-90' : ''"
            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
       </svg>
-      Normierte Stellenanzeige
+      Analyse ansehen
     </button>
 
     <div x-show="normOpen" x-cloak class="mt-4">
       {% if normalization %}
-      <div class="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-          <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Normierter Titel</p>
-            <p class="m-0">{{ normalization.canonical_job_title or '–' }}</p>
-          </div>
-          {% if normalization.job_title_variants %}
-          <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Varianten</p>
-            <p class="m-0">{{ normalization.job_title_variants | join(', ') }}</p>
-          </div>
-          {% endif %}
-          <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Seniority</p>
-            <p class="m-0">{{ normalization.seniority_level or '–' }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Arbeitsmodell</p>
-            <p class="m-0">{{ normalization.work_model or '–' }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Anstellungsart</p>
-            <p class="m-0">{{ normalization.employment_type or '–' }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wide m-0">Standort</p>
-            <p class="m-0">{{ normalization.job_location or '–' }}</p>
-          </div>
-        </div>
-
-        {% if normalization.role_summary %}
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Rollenbeschreibung</p>
-          <p class="m-0">{{ normalization.role_summary }}</p>
-        </div>
-        {% endif %}
-
-        {% if normalization.must_have_competencies %}
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Must-have-Kompetenzen</p>
-          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.must_have_competencies %}<li>{{ item }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-
-        {% if normalization.nice_to_have_competencies %}
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Nice-to-have</p>
-          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.nice_to_have_competencies %}<li>{{ item }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-
-        {% if normalization.responsibilities %}
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Aufgaben</p>
-          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.responsibilities %}<li>{{ item }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-
-        {% if normalization.soft_skills %}
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Soft Skills</p>
-          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.soft_skills %}<li>{{ item }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-
-        {% if normalization.language_requirements %}
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Sprachanforderungen</p>
-          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.language_requirements %}<li>{{ item }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-
-        {% if normalization.benefits_perks %}
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Benefits</p>
-          <ul class="list-disc list-inside space-y-0.5">{% for item in normalization.benefits_perks %}<li>{{ item }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-
-      </div>
+        {% include "_job_norm_data.html" %}
       {% else %}
       <p class="text-sm text-gray-400 dark:text-gray-500 mt-2">
-        Noch keine Normierung vorhanden. Erstelle ein Anschreiben, um die Normierung auszulösen.
+        Noch keine Analyse vorhanden. Klicke oben auf „Stellenanzeige analysieren", um den Vorgang
+          auszulösen.
       </p>
       {% endif %}
     </div>

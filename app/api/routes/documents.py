@@ -17,8 +17,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.enums import DocumentProcessingStatus, DocumentType
+from app.crud.application_tracker_entry import list_tracker_entries_for_user
 from app.crud.cover_letter import get_completed_drafts_for_user, get_saved_cover_letters_for_user
 from app.crud.document import get_document_by_id_for_user, get_document_by_type_for_user
+from app.crud.job import get_jobs_by_ids
 from app.crud.profile_information import get_profile_for_user
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
@@ -165,6 +167,18 @@ def render_documents_page(
         for cl in get_completed_drafts_for_user(db, user_id=current_user.id, job_id=job_id)
     ]
 
+    tracker_entries = list_tracker_entries_for_user(db, user_id=current_user.id)
+    tracked_job_map: dict[int, int] = {e.job_id: e.id for e in tracker_entries if e.job_id}
+
+    all_cl_job_ids = list({
+        cl["job_id"] for cl in saved_cover_letters + draft_cover_letters
+        if cl.get("job_id")
+    })
+    job_map = get_jobs_by_ids(db, job_ids=all_cl_job_ids)
+    job_url_map: dict[int, str] = {
+        jid: job.job_url for jid, job in job_map.items() if job.job_url
+    }
+
     return templates.TemplateResponse(
         request=request,
         name="documents.html",
@@ -180,6 +194,8 @@ def render_documents_page(
             "saved_cover_letters": saved_cover_letters,
             "draft_cover_letters": draft_cover_letters,
             "job_id_filter": job_id,
+            "tracked_job_map": tracked_job_map,
+            "job_url_map": job_url_map,
         },
     )
 

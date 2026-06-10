@@ -62,6 +62,37 @@ def get_normalization_by_job_id(
     return db.execute(stmt).scalar_one_or_none()
 
 
+def get_normalizations_for_job_ids(
+    db: Session,
+    *,
+    job_ids: list[int],
+) -> dict[int, Any]:
+    """Return the most recent normalisation data keyed by job ID.
+
+    Issue a single query for all requested job IDs and keep only the newest
+    record per job when duplicates exist.
+
+    :param db: Active database session.
+    :param job_ids: List of API-sourced job identifiers to look up.
+    :return: Mapping of ``job_id`` → ``normalized_data`` dict.
+    """
+    if not job_ids:
+        return {}
+
+    stmt = (
+        select(JobNormalization)
+        .where(JobNormalization.job_id.in_(job_ids))
+        .order_by(JobNormalization.job_id, JobNormalization.created_at.desc())
+    )
+    rows = db.execute(stmt).scalars().all()
+
+    result: dict[int, Any] = {}
+    for row in rows:
+        if row.job_id not in result:
+            result[row.job_id] = row.normalized_data
+    return result
+
+
 def get_normalization_by_manual_job_id(
     db: Session,
     *,
