@@ -6,7 +6,7 @@ persisted search runs and their search-history metadata.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -22,6 +22,7 @@ def create_search_run(
     user_id: int,
     search_profile: SearchProfile,
     run_date: date,
+    profile_updated_at_snapshot: datetime,
     date_posted: str,
     current_page: int,
     can_load_more: bool = True
@@ -32,6 +33,7 @@ def create_search_run(
     :param user_id: Identifier of the owning user.
     :param search_profile: Search profile used to start the run.
     :param run_date: Calendar date of the search run.
+    :param profile_updated_at_snapshot: Timestamp of the profile version used for this run.
     :param date_posted: Effective provider ``date_posted`` filter.
     :param current_page: Last loaded provider page after the current fetch.
     :param can_load_more: Whether further load-more actions are initially allowed.
@@ -48,6 +50,7 @@ def create_search_run(
         experience_levels_snapshot=list(search_profile.experience_levels or []),
         radius_km_snapshot=search_profile.radius_km,
         run_date=run_date,
+        profile_updated_at_snapshot=profile_updated_at_snapshot,
         date_posted=date_posted,
         current_page=current_page,
         total_jobs_loaded=0,
@@ -161,6 +164,36 @@ def get_today_search_run_for_profile(
             SearchRun.user_id == user_id,
             SearchRun.search_profile_id == search_profile_id,
             SearchRun.run_date == today
+        )
+        .limit(1)
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def get_today_search_run_for_profile_version(
+    db: Session,
+    *,
+    user_id: int,
+    search_profile_id: int,
+    today: date,
+    profile_updated_at_snapshot: datetime
+) -> SearchRun | None:
+    """Return today's search run for a specific version of the user's search profile.
+
+    :param db: Active SQLAlchemy database session.
+    :param user_id: Identifier of the owning user.
+    :param search_profile_id: Identifier of the search profile.
+    :param today: Calendar date used for the lookup.
+    :param profile_updated_at_snapshot: Profile version timestamp to match.
+    :return: Matching persisted search-run ORM object, or ``None`` if not found.
+    """
+    stmt = (
+        select(SearchRun)
+        .where(
+            SearchRun.user_id == user_id,
+            SearchRun.search_profile_id == search_profile_id,
+            SearchRun.run_date == today,
+            SearchRun.profile_updated_at_snapshot == profile_updated_at_snapshot
         )
         .limit(1)
     )

@@ -9,11 +9,14 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from datetime import date
+
 from app.core.enums import ApplicationStatus, DocumentProcessingStatus, DocumentType
 from app.crud.application_tracker_entry import list_tracker_entries_for_user
 from app.crud.cover_letter import get_completed_drafts_for_user, get_saved_cover_letters_for_user
 from app.crud.document import get_document_by_type_for_user
 from app.crud.profile_information import get_profile_for_user
+from app.crud.search_run import count_primary_searches_for_user_today
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.templates import get_base_template_context
@@ -100,6 +103,8 @@ def render_dashboard_page(
             "active_applications": active_applications,
             "total_cover_letters": total_cover_letters,
             "profile_completion": profile_completion,
-            "job_searches_left": current_user.trial_job_searches_left,
+            "job_searches_left": max(0, 5 - count_primary_searches_for_user_today(
+                db, user_id=current_user.id, today=date.today()
+            )),
         }
     )

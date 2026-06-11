@@ -27,6 +27,7 @@
       Lauf vom {{ search_run.run_date.strftime("%d.%m.%Y") }}
       &middot; Gespeicherte Treffer: {{ search_run.total_jobs_loaded }}
       &middot; Neu: {{ search_run.total_new_jobs_loaded }}
+      {% if search_run.load_more_requests_used > 0 %}&middot; {{ search_run.load_more_requests_used }}× nachgeladen{% endif %}
     </p>
   </div>
   {% endif %}
@@ -35,14 +36,15 @@
 <div class="flex flex-wrap items-center gap-2 mb-6">
   <a href="{{ request.url_for('render_search_run_history_page') }}"
      class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
-    Historie
+    Übersicht Suchläufe
   </a>
   <a href="{{ request.url_for('render_application_tracker_page') }}"
      class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors no-underline">
     Zum Tracker
   </a>
   {% if search_run and can_load_more %}
-  <form method="post" action="{{ request.url_for('load_more_search_run_results', search_run_id=search_run.id) }}">
+  <form method="post" action="{{ request.url_for('load_more_search_run_results', search_run_id=search_run.id) }}"
+        onsubmit="var btn=this.querySelector('[type=submit]'); btn.disabled=true; btn.textContent='Bitte warten. Passende Jobs werden für dich gesucht...';">
     <button type="submit"
             class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
       Mehr Ergebnisse laden
@@ -50,7 +52,7 @@
   </form>
   {% elif search_run %}
   <p class="text-sm text-gray-400 dark:text-gray-500 m-0">
-    Heute keine weiteren Ergebnisse verfügbar.
+    Kein Nachladen möglich. Du kannst eine <a href="{{ request.url_for('render_job_search_page') }}" class="underline">neue Suche</a> starten.
   </p>
   {% endif %}
 </div>
@@ -62,7 +64,7 @@
     <div class="job-list">
       {% for job in jobs %}
         {% set description = job.get("description") or "" %}
-        <article class="job-card">
+        <article class="job-card" id="job-{{ job.get('result_position') }}">
           <div class="job-card__layout">
             {% if job.get('company_logo') %}
               <img
@@ -90,7 +92,14 @@
                   {% if job.get("source") %} · {% endif %}
                   Veröffentlicht: {{ job.get("published_at").strftime("%d.%m.%Y") }}
                 {% endif %}
-                · Seite {{ job.get("page_number") }}
+                {% set pn = job.get("page_number") %}
+                {% if pn is not none %}
+                  {% if pn <= 5 %}
+                    · Seiten 1–5
+                  {% else %}
+                    · Seite {{ pn }}
+                  {% endif %}
+                {% endif %}
                 · Position {{ job.get("result_position") }}
               </p>
 
@@ -181,9 +190,26 @@
         </article>
       {% endfor %}
     </div>
+    {% if search_run and can_load_more %}
+    <div class="flex flex-wrap items-center gap-2 mt-6">
+      <form method="post" action="{{ request.url_for('load_more_search_run_results', search_run_id=search_run.id) }}"
+            onsubmit="var btn=this.querySelector('[type=submit]'); btn.disabled=true; btn.textContent='Bitte warten. Passende Jobs werden für dich gesucht...';">
+        <button type="submit"
+                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+          Mehr Ergebnisse laden
+        </button>
+      </form>
+    </div>
+    {% endif %}
   {% else %}
-    <div class="card">
-      <p>Für diesen Suchlauf wurden keine Stellenanzeigen gespeichert.</p>
+    <div class="rounded-xl border border-yellow-300 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 p-5 flex gap-3">
+      <svg class="w-5 h-5 text-yellow-500 dark:text-yellow-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      </svg>
+      <div>
+        <p class="font-semibold text-yellow-800 dark:text-yellow-200 m-0">Keine Ergebnisse gefunden</p>
+        <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1 m-0">Bitte versuche es morgen erneut oder nutze ein anderes Suchprofil.</p>
+      </div>
     </div>
   {% endif %}
 </section>

@@ -69,6 +69,7 @@
               required
               {% if prefill.get('template') == tpl.value %}checked{% endif %}
             >
+            <span class="template-card__label">{{ template_labels[tpl] }}</span>
             <div class="template-card__preview">
               <div class="template-card__preview-wrapper">
                 <div class="template-card__preview-scaler">
@@ -155,7 +156,6 @@
                 </div>
               </div>
             </div>
-            <span class="template-card__label">{{ template_labels[tpl] }}</span>
           </label>
         {% endfor %}
       </div>

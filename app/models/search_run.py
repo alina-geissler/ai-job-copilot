@@ -31,7 +31,10 @@ class SearchRun(Base):
 
     __tablename__ = "search_runs"
     __table_args__ = (
-        UniqueConstraint("user_id", "search_profile_id", "run_date", name="uq_user_profile_run_date"),
+        UniqueConstraint(
+            "user_id", "search_profile_id", "run_date", "profile_updated_at_snapshot",
+            name="uq_user_profile_run_date_version"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -66,6 +69,9 @@ class SearchRun(Base):
     radius_km_snapshot: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     run_date: Mapped[date] = mapped_column(Date, nullable=False)
+    profile_updated_at_snapshot: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     date_posted: Mapped[str] = mapped_column(String(50), nullable=False)
     # saves the date_posted value actually used for the run (API param)
     current_page: Mapped[int] = mapped_column(Integer, nullable=False, default=5, server_default="5")

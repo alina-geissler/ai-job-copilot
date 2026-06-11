@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Annotated, Any
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -20,7 +21,7 @@ from app.crud.search_run import (
     count_primary_searches_for_user_today,
     get_latest_search_run_for_profile,
     get_search_run_by_id_for_user,
-    get_today_search_run_for_profile,
+    get_today_search_run_for_profile_version,
     list_search_runs_for_user
 )
 from app.db.session import get_db
@@ -202,16 +203,20 @@ def run_job_search(
         )
 
     today = date.today()
+    profile_updated_at_snapshot: datetime = (
+        search_profile.updated_at or search_profile.created_at or datetime.now(timezone.utc)
+    )
     last_search_run = get_latest_search_run_for_profile(
         db,
         user_id=current_user.id,
         search_profile_id=search_profile.id
     )
-    today_search_run = get_today_search_run_for_profile(
+    today_search_run_current_version = get_today_search_run_for_profile_version(
         db,
         user_id=current_user.id,
         search_profile_id=search_profile.id,
-        today=today
+        today=today,
+        profile_updated_at_snapshot=profile_updated_at_snapshot
     )
 
     primary_decision = decide_primary_search(
@@ -223,12 +228,12 @@ def run_job_search(
             user_id=current_user.id,
             today=today
         ),
-        has_primary_search_for_profile_today=today_search_run is not None
+        has_today_search_run_for_current_version=today_search_run_current_version is not None
     )
 
-    if primary_decision.action == PrimarySearchAction.SHOW_EXISTING_RUN and today_search_run is not None:
+    if primary_decision.action == PrimarySearchAction.SHOW_EXISTING_RUN and today_search_run_current_version is not None:
         results_url = str(request.url_for("render_search_run_detail_page",
-                                          search_run_id=today_search_run.id)
+                                          search_run_id=today_search_run_current_version.id)
                           )
         query_string = build_feedback_query(
             message="Für dieses Suchprofil wurde heute bereits eine Suche durchgeführt.",
@@ -239,10 +244,7 @@ def run_job_search(
             status_code=303
         )
 
-    if primary_decision.action in {
-        PrimarySearchAction.BLOCKED_DAILY_LIMIT,
-        PrimarySearchAction.BLOCKED_PROFILE_LIMIT
-    }:
+    if primary_decision.action == PrimarySearchAction.BLOCKED_DAILY_LIMIT:
         search_page_url = str(request.url_for("render_job_search_page"))
         query_string = build_feedback_query(
             message=primary_decision.message,
@@ -253,12 +255,20 @@ def run_job_search(
             status_code=303
         )
 
-    search_response = provider.search_jobs(
-        search_profile,
-        start_page=primary_decision.start_page,
-        pages_to_fetch=primary_decision.pages_to_fetch,
-        date_posted=primary_decision.date_posted
-    )
+    try:
+        search_response = provider.search_jobs(
+            search_profile,
+            start_page=primary_decision.start_page,
+            pages_to_fetch=primary_decision.pages_to_fetch,
+            date_posted=primary_decision.date_posted
+        )
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        search_page_url = str(request.url_for("render_job_search_page"))
+        query_string = build_feedback_query(
+            message="Die Jobsuche konnte nicht durchgeführt werden. Bitte versuche es erneut.",
+            message_type="error"
+        )
+        return RedirectResponse(url=f"{search_page_url}?{query_string}", status_code=303)
 
     try:
         persisted_result: PersistedSearchResult = persist_primary_search_response(
@@ -266,22 +276,24 @@ def run_job_search(
             user_id=current_user.id,
             search_profile=search_profile,
             run_date=today,
+            profile_updated_at_snapshot=profile_updated_at_snapshot,
             date_posted=primary_decision.date_posted,
             loaded_page=primary_decision.loaded_page,
             search_response=search_response
         )
     except IntegrityError:
-        # A concurrent request already committed a run for this profile today.
-        existing_run = get_today_search_run_for_profile(
+        # A concurrent request already committed a run for this profile+version today.
+        concurrent_run = get_today_search_run_for_profile_version(
             db,
             user_id=current_user.id,
             search_profile_id=search_profile.id,
-            today=today
+            today=today,
+            profile_updated_at_snapshot=profile_updated_at_snapshot
         )
-        if existing_run is not None:
+        if concurrent_run is not None:
             return RedirectResponse(
                 url=str(request.url_for("render_search_run_detail_page",
-                                        search_run_id=existing_run.id)),
+                                        search_run_id=concurrent_run.id)),
                 status_code=303
             )
         raise
@@ -289,14 +301,7 @@ def run_job_search(
     results_url = str(request.url_for("render_search_run_detail_page",
                                       search_run_id=persisted_result.search_run.id)
                       )
-    query_string = build_feedback_query(
-        message="Suchlauf erfolgreich gestartet.",
-        message_type="success"
-    )
-    return RedirectResponse(
-        url=f"{results_url}?{query_string}",
-        status_code=303
-    )
+    return RedirectResponse(url=results_url, status_code=303)
 
 
 @router.get("/runs/{search_run_id}", response_class=HTMLResponse, name="render_search_run_detail_page")
@@ -402,12 +407,21 @@ def load_more_search_run_results(
             status_code=303
         )
 
-    search_response = provider.search_jobs(
-        search_run.search_profile,
-        start_page=load_more_decision.next_page,
-        pages_to_fetch=load_more_decision.pages_to_fetch,
-        date_posted=search_run.date_posted
-    )
+    try:
+        search_response = provider.search_jobs(
+            search_run.search_profile,
+            start_page=load_more_decision.next_page,
+            pages_to_fetch=load_more_decision.pages_to_fetch,
+            date_posted=search_run.date_posted
+        )
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        results_url = str(request.url_for("render_search_run_detail_page",
+                                          search_run_id=search_run.id))
+        query_string = build_feedback_query(
+            message="Die Ergebnisse konnten nicht geladen werden. Bitte versuche es erneut.",
+            message_type="error"
+        )
+        return RedirectResponse(url=f"{results_url}?{query_string}", status_code=303)
 
     persisted_result = persist_load_more_response(
         db,
@@ -420,14 +434,18 @@ def load_more_search_run_results(
     results_url = str(request.url_for("render_search_run_detail_page",
                                       search_run_id=persisted_result.search_run.id)
                       )
-    query_string = build_feedback_query(
-        message="Weitere Suchergebnisse wurden erfolgreich geladen.",
-        message_type="success"
+
+    if persisted_result.total_jobs_in_response == 0:
+        query_string = build_feedback_query(
+            message="Keine weiteren Ergebnisse gefunden. Bitte versuche es morgen erneut oder nutze ein anderes Suchprofil.",
+            message_type="info"
+        )
+        return RedirectResponse(url=f"{results_url}?{query_string}", status_code=303)
+
+    first_new_position = (
+        persisted_result.search_run.total_jobs_loaded - persisted_result.total_jobs_in_response + 1
     )
-    return RedirectResponse(
-        url=f"{results_url}?{query_string}",
-        status_code=303
-    )
+    return RedirectResponse(url=f"{results_url}#job-{first_new_position}", status_code=303)
 
 
 @router.get("/runs", response_class=HTMLResponse, name="render_search_run_history_page")

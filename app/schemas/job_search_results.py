@@ -23,6 +23,7 @@ class JobSearchResult(BaseModel):
     description: str | None = None
     source: str | None = None
     job_url: str
+    page: int | None = None
 
 
 class JobSearchResponse(BaseModel):

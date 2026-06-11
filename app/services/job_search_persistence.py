@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -37,6 +37,7 @@ def persist_primary_search_response(
     user_id: int,
     search_profile: SearchProfile,
     run_date: date,
+    profile_updated_at_snapshot: datetime,
     date_posted: str,
     loaded_page: int,
     search_response: JobSearchResponse
@@ -47,6 +48,7 @@ def persist_primary_search_response(
     :param user_id: Identifier of the owning user.
     :param search_profile: Search profile used for this run.
     :param run_date: Calendar date of the search run.
+    :param profile_updated_at_snapshot: Timestamp of the profile version used for this run.
     :param date_posted: Provider filter used for published date.
     :param loaded_page: Last loaded provider page for the initial fetch.
     :param search_response: Normalized provider response.
@@ -58,6 +60,7 @@ def persist_primary_search_response(
             user_id=user_id,
             search_profile=search_profile,
             run_date=run_date,
+            profile_updated_at_snapshot=profile_updated_at_snapshot,
             date_posted=date_posted,
             current_page=loaded_page,
             can_load_more=True
@@ -199,6 +202,7 @@ def _persist_response_jobs_into_run(
     :return: Aggregated persistence statistics for this response.
     """
     persisted_jobs = []
+    job_id_to_page: dict[int, int] = {}
     seen_job_ids_in_run: set[int] = set()
 
     for result in search_response.results:
@@ -213,6 +217,7 @@ def _persist_response_jobs_into_run(
 
         seen_job_ids_in_run.add(job.id)
         persisted_jobs.append(job)
+        job_id_to_page[job.id] = result.page if result.page is not None else page_number
 
     persisted_job_ids = [job.id for job in persisted_jobs]
 
@@ -234,7 +239,7 @@ def _persist_response_jobs_into_run(
                     search_run_id=search_run.id,
                     job_id=job.id,
                     is_previously_seen=job.id in previously_seen_job_ids,
-                    page_number=page_number,
+                    page_number=job_id_to_page.get(job.id, page_number),
                     result_position=starting_result_position + linked_jobs_count
                 )
         except IntegrityError:

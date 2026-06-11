@@ -69,7 +69,8 @@ def map_job(raw_job: dict) -> JobSearchResult | None:
             is_remote=raw_job.get("job_is_remote"),
             description=raw_job.get("job_description") or None,
             source=raw_job.get("job_publisher") or None,
-            job_url=apply_link
+            job_url=apply_link,
+            page=raw_job.get("page") or None
         )
 
     except ValidationError as exc:

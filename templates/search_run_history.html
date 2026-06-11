@@ -64,11 +64,9 @@
           </div>
 
           <ul class="list-clean history-card__meta">
-            <li><strong>Date posted:</strong> {{ search_run.date_posted }}</li>
-            <li><strong>Geladene Seiten bis:</strong> {{ search_run.current_page }}</li>
+            <li><strong>Geladene Seiten: </strong> {{ search_run.current_page }}</li>
             <li><strong>Treffer gesamt:</strong> {{ search_run.total_jobs_loaded }}</li>
             <li><strong>Neue Treffer:</strong> {{ search_run.total_new_jobs_loaded }}</li>
-            <li><strong>Load-more genutzt:</strong> {{ search_run.load_more_requests_used }}</li>
           </ul>
 
           <div class="actions">

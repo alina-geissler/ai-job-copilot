@@ -39,7 +39,8 @@
                 </div>
               </div>
               <div class="actions">
-                  <form method="post" action="{{ request.url_for('run_job_search', search_profile_id=profile.id) }}">
+                <form method="post" action="{{ request.url_for('run_job_search', search_profile_id=profile.id) }}"
+                      onsubmit="var btn=this.querySelector('[type=submit]'); btn.disabled=true; btn.textContent='Bitte warten. Passende Jobs werden für dich gesucht...';">
                   <button type="submit" class="btn btn-primary">Suche starten</button>
                 </form>
               </div>

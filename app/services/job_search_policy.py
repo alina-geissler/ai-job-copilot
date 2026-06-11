@@ -47,42 +47,27 @@ def decide_primary_search(
     search_profile: SearchProfile,
     last_search_run: SearchRun | None,
     user_primary_searches_today_count: int,
-    has_primary_search_for_profile_today: bool
+    has_today_search_run_for_current_version: bool
 ) -> PrimarySearchDecision:
     """Decide how a primary search request should be handled.
+
+    A run is only shown as existing when it was created with the same profile
+    version (``profile_updated_at_snapshot``). Editing the profile clears that
+    gate, allowing a fresh run while keeping the old run in history.
 
     :param today: Current calendar date.
     :param search_profile: Search profile selected by the user.
     :param last_search_run: Most recent persisted search run for this profile, if any.
     :param user_primary_searches_today_count: Number of primary searches the user already started today.
-    :param has_primary_search_for_profile_today: Whether this profile already has a primary search today.
+    :param has_today_search_run_for_current_version: Whether a run for today and the current profile version exists.
     :return: Decision object describing whether to start, block, or reuse a search run.
     """
-    profile_changed_since_last_run = _has_profile_changed_since_last_run(
-        search_profile=search_profile,
-        last_search_run=last_search_run
-    )
-
-    if has_primary_search_for_profile_today and last_search_run is not None and not profile_changed_since_last_run:
+    if has_today_search_run_for_current_version:
         return PrimarySearchDecision(
             action=PrimarySearchAction.SHOW_EXISTING_RUN,
             message=(
                 "Du hast heute schon einen Suchlauf für dieses Suchprofil gestartet "
                 "und kannst gern weitere Ergebnisse laden."
-            ),
-            search_run=last_search_run,
-            date_posted=None,
-            start_page=None,
-            pages_to_fetch=None,
-            loaded_page=None
-        )
-
-    if user_primary_searches_today_count >= 100: # TODO: -> 5 !!!
-        return PrimarySearchDecision(
-            action=PrimarySearchAction.BLOCKED_DAILY_LIMIT,
-            message=(
-                "Du hast heute bereits alle Primärsuchen ausgeschöpft "
-                "und kannst morgen erneut suchen."
             ),
             search_run=None,
             date_posted=None,
@@ -91,13 +76,12 @@ def decide_primary_search(
             loaded_page=None
         )
 
-    if has_primary_search_for_profile_today and profile_changed_since_last_run:
+    if user_primary_searches_today_count >= 5:
         return PrimarySearchDecision(
-            action=PrimarySearchAction.BLOCKED_PROFILE_LIMIT,
+            action=PrimarySearchAction.BLOCKED_DAILY_LIMIT,
             message=(
-                "Für dieses Suchprofil wurde heute bereits eine Primärsuche gestartet. "
-                "Durch die Profiländerung wäre ein neuer Suchlauf nötig, "
-                "aber pro Suchprofil ist nur eine Primärsuche möglich."
+                "Du hast heute bereits alle Primärsuchen ausgeschöpft "
+                "und kannst morgen erneut suchen."
             ),
             search_run=None,
             date_posted=None,
@@ -128,7 +112,7 @@ def decide_load_more(
     :param user_load_more_actions_today_count: Number of load-more actions the user already used today.
     :return: Decision object describing whether loading more results is allowed.
     """
-    if user_load_more_actions_today_count >= 100:  # TODO: -> 15 !!!
+    if user_load_more_actions_today_count >= 15:
         return LoadMoreDecision(
             allowed=False,
             message=(
@@ -169,7 +153,7 @@ def evaluate_primary_search_load_more_availability(
     :param new_jobs_for_user_count: Number of jobs in the response that are new for the user.
     :return: Evaluation result describing whether further load-more actions should remain enabled.
     """
-    if total_jobs_returned < 50 or new_jobs_for_user_count < 15:
+    if total_jobs_returned < 40 or new_jobs_for_user_count < 15:  # TODO: total war 50
         return LoadMoreStopEvaluation(
             allow_further_load_more=False,
             message=(
@@ -192,7 +176,7 @@ def evaluate_load_more_availability_after_load_more(
     :param new_jobs_for_user_count: Number of jobs in the response that are new for the user.
     :return: Evaluation result describing whether another load-more action should remain enabled.
     """
-    if total_jobs_returned < 10 or new_jobs_for_user_count < 3:
+    if total_jobs_returned < 7 or new_jobs_for_user_count < 3:  # TODO: total war 10
         return LoadMoreStopEvaluation(
             allow_further_load_more=False,
             message=(
@@ -226,7 +210,7 @@ def decide_date_posted(*, today: date, last_search_run: SearchRun | None) -> str
         return "week"
     if 8 <= days_since_last_run <= 30:
         return "month"
-    return "week"
+    return "week"  # TODO: -> "month"? oder höchstens "week" überall?
 
 
 def _has_profile_changed_since_last_run(
