@@ -209,9 +209,9 @@ Returns a list of `{topic, evidence_sentence}` violations. If violations are fou
 ### Gender-Safe Salutation
 
 The salutation is constructed with a cascade:
-1. Check `contact_person` field from job normalization
-2. If present, use `contact_person_gender` from normalization (male/female/unknown)
-3. If unknown: try honorific extraction from name ("Herr"/"Frau" prefix)
+1. Try honorific extraction from name ("Herr"/"Frau" prefix)
+2. Check `contact_person` field from job normalization
+3. If present, use `contact_person_gender` from normalization (male/female/unknown)
 4. Fallback: `gender_guesser` library (name → gender)
 5. Final fallback: `unknown` → gender-neutral salutation ("Sehr geehrte Damen und Herren")
 

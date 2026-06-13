@@ -230,7 +230,7 @@
 **Challenges:**
 - Cover letter editor is the most complex component — 1250 lines in a single template
 - Background task reliability: FastAPI `BackgroundTasks` are lost on server restart
-- No test suite: made rapid iteration easy but created regression risk
+- LLM service tests are not yet written — the test suite covers routing and pure logic but not the mocked AI pipelines
 
 **Suggested Visualisations:**
 - Decision trade-off table (3 columns: Decision / Advantage / Disadvantage)
@@ -253,10 +253,10 @@
 - Long-term vision: multi-agent AI orchestration, salary benchmarking, enterprise mode
 
 **Immediate technical improvements:**
-- Add test suite (pytest + mocked LLM clients)
 - CSRF protection for all POST forms
 - Celery + Redis for durable background tasks
 - Docker containerise the app itself (CI/CD)
+- Extend test suite to cover LLM service pipelines (mocked OpenAI/OpenRouter clients)
 
 **Suggested Visualisations:**
 - 3-tier roadmap: Quick Wins / Medium-Term / Long-Term

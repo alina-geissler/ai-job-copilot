@@ -40,6 +40,8 @@
 | Alpine.js | Frontend library | 3.14.1 | Lightweight reactive state |
 | Docker Compose | Infrastructure | — | Local dev service orchestration |
 | WeasyPrint | PDF export | — | Server-side HTML → PDF rendering |
+| pytest | Testing | 8.0+ | Test runner for unit, integration, and e2e tests |
+| pytest-mock | Testing | 3.14+ | `mocker` fixture for patching dependencies in unit tests |
 
 ---
 

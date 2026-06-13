@@ -12,7 +12,7 @@ Improvements are ranked by **impact** (High / Medium / Low) and **effort** (Low 
 
 | Improvement | Impact | Effort | Description |
 |---|---|---|---|
-| Add test suite (unit + integration) | High | Medium | pytest with mocked LLM clients; TestClient for route handlers |
+| Add LLM service tests (mocked clients) | Medium | Medium | pytest-mock; cover `cover_letter_service`, `job_normalization_service`, and `profile_extraction` with mocked OpenAI/OpenRouter responses |
 | Add CSRF protection | High | Low | Add `itsdangerous`-based CSRF tokens or Starlette CSRF middleware to all POST forms |
 | Celery + Redis task queue | High | Medium | Replace `BackgroundTasks` with durable task queue; enables restart-safe generation, progress reporting, retry logic |
 | HTTP-level rate limiting | High | Low | Add `slowapi` middleware; enforce per-user limits on search and generation endpoints |

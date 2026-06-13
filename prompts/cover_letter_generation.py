@@ -147,9 +147,9 @@ def resolve_contact_gender(job: dict | None, normalised_gender: str | None) -> s
     low = contact.lower()
 
     # Step 1: honorific in raw data
-    if "frau" in low or " ms." in low or " mrs" in low:
+    if "frau" in low or "fr" in low or " ms" in low or " mrs" in low:
         return "female"
-    if "herr" in low or " mr." in low:
+    if "herr" in low or "hr" in low or " mr" in low:
         return "male"
 
     # Step 2: normalisation LLM result

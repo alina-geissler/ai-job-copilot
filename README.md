@@ -22,6 +22,7 @@ Built with **FastAPI**, **PostgreSQL**, **OpenAI**, and **HTMX**.
   - [5. Run database migrations](#5-run-database-migrations)
   - [6. Start the development server](#6-start-the-development-server)
 - [Environment Variables](#environment-variables)
+- [Running Tests](#running-tests)
 - [Job Search Providers](#job-search-providers)
 - [Project Structure](#project-structure)
 - [AI Components](#ai-components)
@@ -58,6 +59,7 @@ Built with **FastAPI**, **PostgreSQL**, **OpenAI**, and **HTMX**.
 | Infrastructure | Docker Compose |
 | Auth | Starlette `SessionMiddleware` (signed cookie) |
 | PDF export | WeasyPrint |
+| Testing | pytest, pytest-mock |
 
 ---
 
@@ -96,7 +98,7 @@ Long-running AI operations (cover letter generation, CV extraction) are deferred
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/ai-job-copilot.git
+git clone https://github.com/alina-geissler/ai-job-copilot.git
 cd ai-job-copilot
 ```
 
@@ -224,6 +226,38 @@ All variables are loaded from `.env` via `pydantic-settings`. Variables marked *
 
 ---
 
+## Running Tests
+
+The test suite contains 162 tests across three layers: unit (73), integration (46), and end-to-end (43).
+
+### Prerequisites
+
+The integration and e2e tests require a separate PostgreSQL database. Create it once:
+
+```bash
+# Using psql directly (Docker)
+docker exec -it ai-job-copilot-db-1 psql -U postgres -c "CREATE DATABASE ai_job_copilot_test;"
+```
+
+### Run the tests
+
+```bash
+# Full suite
+pytest
+
+# Individual layers
+pytest tests/unit/
+pytest tests/integration/
+pytest tests/e2e/
+
+# With verbose output
+pytest -v --tb=short
+```
+
+The test database is left clean after each run — every test rolls back its transaction at teardown.
+
+---
+
 ## Job Search Providers
 
 The job search backend is selected by `JOB_SEARCH_PROVIDER`:
@@ -257,9 +291,15 @@ ai-job-copilot/
 ├── prompts/                      # Versioned LLM prompt definitions
 ├── evals/                        # LLM output audit logs (JSONL)
 ├── alembic/versions/             # Database migration history (15 files)
+├── tests/
+│   ├── conftest.py               # Shared fixtures (engine, db session, client, auth)
+│   ├── unit/                     # Pure-function tests — no DB (73 tests)
+│   ├── integration/              # CRUD and service tests against test DB (46 tests)
+│   └── e2e/                      # Route tests via FastAPI TestClient (43 tests)
 ├── fixtures/                     # Pre-recorded API response for fixture provider
 ├── docs/presentation/            # Full technical documentation package
 ├── compose.yaml                  # Docker Compose: PostgreSQL, MinIO, Ollama
+├── pyproject.toml                # pytest configuration
 ├── requirements.txt
 └── .env                          # Local environment variables (not committed)
 ```
@@ -338,6 +378,14 @@ A complete technical documentation package is available under `docs/presentation
 | `08-database-analysis.md` | All 13 tables, ER diagram, migration history |
 | `09-ai-analysis.md` | Deep dive into all three AI pipelines |
 | `10-security.md` | Auth, session management, risks, mitigations |
+| `11-engineering-practices.md` | Design patterns, SOLID analysis, maintainability |
+| `12-testing.md` | Test suite structure, infrastructure, and coverage |
+| `13-performance.md` | Request latency profile, scalability analysis, concurrency limits |
 | `14-engineering-decisions.md` | Key trade-offs with rationale |
+| `15-future-improvements.md` | Prioritised improvements ranked by impact and effort |
+| `16-v2-roadmap.md` | V2 product evolution: quick wins, medium-term features, long-term vision |
+| `17-presentation-plan.md` | Slide-by-slide content plan for the capstone presentation |
+| `18-defense-preparation.md` | 20 likely viva questions with technical answers |
+| `19-glossary.md` | Definitions of technical and domain terms used in the codebase |
 | `20-job-search-analysis.md` | Complete job search subsystem analysis |
 | `assets/` | Standalone Mermaid diagrams (architecture, ER, sequence) |

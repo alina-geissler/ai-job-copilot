@@ -136,13 +136,13 @@ No layer violates its boundary: routes do not query the DB directly; CRUD module
 
 **Strengths:**
 - **Consistent naming:** CRUD modules mirror model names (e.g., `models/cover_letter.py` → `crud/cover_letter.py`)
+- **Automated test suite:** 162 tests across unit, integration, and e2e layers; savepoint isolation provides fast, reliable runs without manual database cleanup (see [12-testing.md](12-testing.md))
 - **Prompt versioning:** Changing a prompt creates a new version key without breaking existing calls; old versions preserved for comparison
 - **Eval logging:** `evals/*.jsonl` provide a persistent audit trail for debugging LLM output quality regressions
 - **Schema migrations:** 15 Alembic migrations create an auditable, reversible schema history
 - **Docstrings:** Sphinx-style docstrings required by `CLAUDE.md` working rules for all modified functions
 
 **Weaknesses:**
-- **No test suite:** Changes cannot be validated automatically; risk of regression
 - **Inline JS in templates:** The cover letter editor's ~400 lines of inline JavaScript is hard to test, refactor, or reuse
 - **Hardcoded German strings:** No i18n layer; adding a second language requires editing every template
 
