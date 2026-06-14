@@ -16,7 +16,7 @@ Improvements are ranked by **impact** (High / Medium / Low) and **effort** (Low 
 | Add CSRF protection | High | Low | Add `itsdangerous`-based CSRF tokens or Starlette CSRF middleware to all POST forms |
 | Celery + Redis task queue | High | Medium | Replace `BackgroundTasks` with durable task queue; enables restart-safe generation, progress reporting, retry logic |
 | HTTP-level rate limiting | High | Low | Add `slowapi` middleware; enforce per-user limits on search and generation endpoints |
-| Structured logging | Medium | Low | Replace print/implicit logging with `structlog` or `python-json-logger`; enables log aggregation |
+| ~~Structured logging~~ | ~~Medium~~ | ~~Low~~ | **Implemented:** `python-json-logger` with JSON-formatted output, `RequestLoggingMiddleware` (request ID, duration), auth and search policy events, Langfuse LLM observability. |
 | MyPy type checking | Medium | Low | The codebase is already heavily typed; adding `mypy --strict` would catch errors at development time |
 | Ruff linting + pre-commit hooks | Medium | Low | Consistent code style; catch bugs before commit |
 | Replace inline JS with Alpine.js or module scripts | Medium | High | The 400-line cover letter editor JS is hard to maintain; refactor into modules or Alpine.js components |
@@ -32,7 +32,7 @@ Improvements are ranked by **impact** (High / Medium / Low) and **effort** (Low 
 |---|---|---|---|
 | Streaming LLM responses for cover letter | High | Medium | Use OpenAI streaming API to show words appearing in real-time; reduces perceived wait time |
 | Async parallel LLM calls | High | Medium | Run job normalization and fit analysis in parallel where possible; reduce total generation time |
-| Automatic eval regression detection | High | Medium | Compare new LLM output structure against previous versions in eval logs; alert on schema drift |
+| Automatic eval regression detection | High | Medium | Compare new LLM output structure against previous versions in eval logs; alert on schema drift. Foundation in place: all three pipelines now write versioned JSONL records; Langfuse traces are cross-referenced by `langfuse_trace_id`. |
 | User feedback loop on letter quality | High | Medium | Allow users to rate generated letters (thumbs up/down); aggregate feedback for prompt tuning |
 | Multi-turn cover letter refinement | Medium | High | Let users chat with the AI to refine the letter iteratively instead of fixed regeneration |
 | Local LLM for cover letter (privacy) | Medium | High | Route cover letter generation through Ollama to avoid sending job data to OpenAI |

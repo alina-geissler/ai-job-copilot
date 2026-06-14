@@ -6,6 +6,8 @@ Expose the main ASGI app for the different endpoints.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -25,9 +27,28 @@ from app.api.routes.cover_letter import router as cover_letter_router
 from app.core.config import settings
 from app.dependencies.auth import AuthenticationRequiredError, AuthFailureReason
 from app.dependencies.templates import build_feedback_query
+from app.logging_config import configure_logging
+from app.middleware.request_logging import RequestLoggingMiddleware
 
-app = FastAPI(title=settings.app_name, debug=settings.debug)
+configure_logging(settings.log_level, settings.log_format)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application startup and shutdown lifecycle.
+
+    :param app: The FastAPI application instance.
+    """
+    yield
+    # Flush any buffered Langfuse traces before the process exits.
+    from app.services.llm_tracing import langfuse_client
+    if langfuse_client:
+        langfuse_client.flush()
+
+
+app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
+
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.session_secret_key,

@@ -59,6 +59,15 @@ class Settings(BaseSettings):
     openrouter_api_url: str = "https://openrouter.ai/api/v1"  # for testing (ollama in Docker is very slow)
     openrouter_api_key: str | None = None
 
+    # Langfuse LLM observability (self-hosted at http://localhost:3000 via compose.yaml).
+    # When unset, all Langfuse tracing is silently skipped.
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str = "http://localhost:3000"
+
+    log_level: str = "INFO"
+    log_format: Literal["json", "text"] = "json"
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

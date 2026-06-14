@@ -146,6 +146,8 @@ No layer violates its boundary: routes do not query the DB directly; CRUD module
 - **Inline JS in templates:** The cover letter editor's ~400 lines of inline JavaScript is hard to test, refactor, or reuse
 - **Hardcoded German strings:** No i18n layer; adding a second language requires editing every template
 
+> **Resolved:** Structured logging was previously a gap. `python-json-logger` with `RequestLoggingMiddleware` and Langfuse LLM tracing have been implemented. See [03-technology-stack.md](03-technology-stack.md).
+
 ---
 
 ## Scalability (Architecture Level)

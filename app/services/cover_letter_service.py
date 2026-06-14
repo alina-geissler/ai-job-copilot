@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date
+from datetime import date, datetime, timezone
+from pathlib import Path
 
 import httpx
 from fastapi import BackgroundTasks
@@ -41,12 +42,16 @@ from app.models.profile_information import ProfileInformation
 from app.schemas.cover_letter import CoverLetterContent
 from app.schemas.job_normalization import JobNormalizationSchema
 from app.services.job_normalization_service import get_or_create_normalization
+from app.services.llm_tracing import langfuse_client
 from prompts.cover_letter_generation import (
+    ANALYSIS_PROMPT_VERSION,
     ANALYSIS_SETTINGS,
     ANALYSIS_SCHEMA,
     LENGTH_BUDGET,
+    VERIFICATION_PROMPT_VERSION,
     VERIFICATION_SETTINGS,
     VERIFICATION_SCHEMA,
+    WRITING_PROMPT_VERSION,
     WRITING_SETTINGS,
     WRITING_SCHEMA,
     build_analysis_messages,
@@ -57,6 +62,55 @@ from prompts.cover_letter_generation import (
 )
 
 logger = logging.getLogger(__name__)
+
+_CL_EVALS_PATH = Path(__file__).resolve().parents[2] / "evals" / "cover_letter_generations.jsonl"
+
+
+def _append_cl_eval(
+    content: "CoverLetterContent",
+    *,
+    cover_letter: "CoverLetter",
+    langfuse_trace_id: str | None = None,
+) -> None:
+    """Append one cover letter generation result to the eval JSONL file.
+
+    Records only the LLM-generated prose fields (not private contact data,
+    which is populated post-generation by the caller).
+
+    :param content: Generated cover letter content from the LLM pipeline.
+    :param cover_letter: Source cover letter ORM record (provides metadata).
+    :param langfuse_trace_id: Langfuse trace ID for cross-referencing, if tracing is active.
+    """
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "model": ANALYSIS_SETTINGS.get("model"),
+        "cover_letter_id": cover_letter.id,
+        "user_id": cover_letter.user_id,
+        "job_id": cover_letter.job_id,
+        "manual_job_posting_id": cover_letter.manual_job_posting_id,
+        "tone": cover_letter.tone,
+        "industry_group": cover_letter.industry_group,
+        "hierarchy_level": cover_letter.hierarchy_level,
+        "output_language": cover_letter.output_language,
+        "prompt_version_analysis": ANALYSIS_PROMPT_VERSION,
+        "prompt_version_writing": WRITING_PROMPT_VERSION,
+        "prompt_version_verification": VERIFICATION_PROMPT_VERSION,
+        "langfuse_trace_id": langfuse_trace_id,
+        "output": {
+            "subject_line": content.subject_line,
+            "salutation": content.salutation,
+            "introduction": content.introduction,
+            "main_body_qualifications": content.main_body_qualifications,
+            "main_body_fit": content.main_body_fit,
+            "conclusion": content.conclusion,
+        },
+    }
+    try:
+        _CL_EVALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _CL_EVALS_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError:
+        logger.warning("Could not write to cover letter evals file %s.", _CL_EVALS_PATH)
 
 
 def _build_client() -> OpenAI:
@@ -219,6 +273,10 @@ def _run_generation_task(*, cover_letter_id: int) -> None:
             db, cover_letter=cover_letter, status=CoverLetterGenerationStatus.PROCESSING
         )
         db.commit()
+        logger.info(
+            "Cover letter generation started.",
+            extra={"cover_letter_id": cover_letter_id, "user_id": cover_letter.user_id},
+        )
 
         try:
             raw_text, existing_job = _resolve_job_text(db, cover_letter)
@@ -277,6 +335,10 @@ def _run_generation_task(*, cover_letter_id: int) -> None:
                 version_number=1,
             )
             db.commit()
+            logger.info(
+                "Cover letter generation completed.",
+                extra={"cover_letter_id": cover_letter_id, "user_id": cover_letter.user_id},
+            )
 
         except Exception as exc:
             logger.exception("Cover letter generation failed for record %d.", cover_letter_id)
@@ -348,6 +410,22 @@ def _llm_generate(
 
     client = _build_client()
 
+    _lf_trace = None
+    if langfuse_client:
+        _lf_trace = langfuse_client.trace(
+            name="cover-letter-generation",
+            user_id=str(cover_letter.user_id),
+            metadata={
+                "cover_letter_id": cover_letter.id,
+                "job_id": cover_letter.job_id,
+                "manual_job_posting_id": cover_letter.manual_job_posting_id,
+                "tone": tone_key,
+                "industry_group": industry_group,
+                "hierarchy_level": hierarchy_level,
+                "output_language": output_language,
+            },
+        )
+
     # ── Call A: Analysis ────────────────────────────────────────────────────
     analysis_messages = build_analysis_messages(
         job_dict, profile_dict, additional_details, company_context
@@ -358,6 +436,8 @@ def _llm_generate(
         messages=analysis_messages,
         settings=ANALYSIS_SETTINGS,
         schema=ANALYSIS_SCHEMA,
+        lf_trace=_lf_trace,
+        lf_metadata={"prompt_version": ANALYSIS_PROMPT_VERSION},
     )
 
     # ── Call B: Writing (with length-check regeneration) ────────────────────
@@ -373,6 +453,7 @@ def _llm_generate(
         tone_key=tone_key,
         output_language=output_language,
         contact_person_gender=contact_person_gender,
+        lf_trace=_lf_trace,
     )
 
     # ── Call C: Verification (conditional) ──────────────────────────────────
@@ -392,12 +473,13 @@ def _llm_generate(
             tone_key=tone_key,
             output_language=output_language,
             contact_person_gender=contact_person_gender,
+            lf_trace=_lf_trace,
         )
 
     company = norm_schema.company_name or "das Unternehmen"
     reference_number = norm_schema.reference_number
 
-    return CoverLetterContent(
+    result = CoverLetterContent(
         company_name=norm_schema.company_name,
         contact_person=norm_schema.contact_person,
         company_street=norm_schema.company_street,
@@ -414,6 +496,14 @@ def _llm_generate(
         attachments="– Lebenslauf",
     )
 
+    _append_cl_eval(
+        result,
+        cover_letter=cover_letter,
+        langfuse_trace_id=_lf_trace.id if _lf_trace is not None else None,
+    )
+
+    return result
+
 
 def _call_writing(
     *,
@@ -428,6 +518,7 @@ def _call_writing(
     tone_key: str,
     output_language: str,
     contact_person_gender: str,
+    lf_trace=None,
 ) -> dict:
     """Execute Call B (Writing) with a single length-check regeneration pass.
 
@@ -435,6 +526,7 @@ def _call_writing(
     ``LENGTH_BUDGET["total_chars_hard_max"]``, appends a compression instruction
     and retries once.
 
+    :param lf_trace: Active Langfuse trace to attach generations to, or ``None``.
     :return: Letter fields dict from the LLM.
     """
     messages = build_writing_messages(
@@ -448,6 +540,7 @@ def _call_writing(
     letter = _call_with_json_retry(
         client, call_name="Writing", messages=messages,
         settings=WRITING_SETTINGS, schema=WRITING_SCHEMA,
+        lf_trace=lf_trace, lf_metadata={"prompt_version": WRITING_PROMPT_VERSION},
     )
 
     prose_fields = ("introduction", "main_body_qualifications", "main_body_fit", "conclusion")
@@ -465,6 +558,7 @@ def _call_writing(
         letter = _call_with_json_retry(
             client, call_name="Writing (compressed)", messages=messages,
             settings=WRITING_SETTINGS, schema=WRITING_SCHEMA,
+            lf_trace=lf_trace, lf_metadata={"prompt_version": WRITING_PROMPT_VERSION},
         )
 
     return letter
@@ -485,18 +579,21 @@ def _verify_and_maybe_regenerate(
     tone_key: str,
     output_language: str,
     contact_person_gender: str,
+    lf_trace=None,
 ) -> dict:
     """Run Call C (Verification) and regenerate Call B once if violations found.
 
     After one regeneration pass, returns the letter regardless of remaining
     violations — those are logged for human review rather than looped indefinitely.
 
+    :param lf_trace: Active Langfuse trace to attach generations to, or ``None``.
     :return: Final letter fields dict (possibly regenerated).
     """
     verification_messages = build_verification_messages(letter, must_avoid)
     report = _call_with_json_retry(
         client, call_name="Verification", messages=verification_messages,
         settings=VERIFICATION_SETTINGS, schema=VERIFICATION_SCHEMA,
+        lf_trace=lf_trace, lf_metadata={"prompt_version": VERIFICATION_PROMPT_VERSION},
     )
 
     violations = [c for c in report.get("checks", []) if c.get("violated")]
@@ -527,6 +624,7 @@ def _verify_and_maybe_regenerate(
     regenerated = _call_with_json_retry(
         client, call_name="Writing (violation fix)", messages=messages,
         settings=WRITING_SETTINGS, schema=WRITING_SCHEMA,
+        lf_trace=lf_trace, lf_metadata={"prompt_version": WRITING_PROMPT_VERSION},
     )
 
     # Check once more; log remaining violations but do not loop.
@@ -534,6 +632,7 @@ def _verify_and_maybe_regenerate(
     re_report = _call_with_json_retry(
         client, call_name="Verification (re-check)", messages=re_verification,
         settings=VERIFICATION_SETTINGS, schema=VERIFICATION_SCHEMA,
+        lf_trace=lf_trace, lf_metadata={"prompt_version": VERIFICATION_PROMPT_VERSION},
     )
     remaining = [c for c in re_report.get("checks", []) if c.get("violated")]
     if remaining:
@@ -554,6 +653,8 @@ def _call_with_json_retry(
     messages: list[dict],
     settings: dict,
     schema: dict,
+    lf_trace=None,
+    lf_metadata: dict | None = None,
 ) -> dict:
     """Execute one structured-output call and retry once on JSON parse failure.
 
@@ -562,10 +663,12 @@ def _call_with_json_retry(
     (``max_output_tokens``, ``reasoning_effort``, ``verbosity``).
 
     :param client: Configured OpenAI client.
-    :param call_name: Label used in log messages.
+    :param call_name: Label used in log messages and Langfuse generation names.
     :param messages: Message list for the call.
     :param settings: Model and parameter kwargs (model, reasoning_effort, etc.).
     :param schema: JSON schema dict passed as ``text={"format": schema}``.
+    :param lf_trace: Active Langfuse trace to attach a generation span to, or ``None``.
+    :param lf_metadata: Extra metadata dict included in the Langfuse generation.
     :return: Parsed JSON dict from the LLM response.
     :raises ValueError: If the response cannot be parsed after one retry.
     """
@@ -575,6 +678,15 @@ def _call_with_json_retry(
     else:
         text_format = schema
 
+    _lf_gen = None
+    if lf_trace is not None:
+        _lf_gen = lf_trace.generation(
+            name=call_name,
+            model=settings.get("model"),
+            input=messages,
+            metadata=lf_metadata or {},
+        )
+
     for attempt in range(2):
         response = client.responses.create(
             **settings,
@@ -583,7 +695,16 @@ def _call_with_json_retry(
         )
         raw = response.output_text
         try:
-            return json.loads(raw)
+            result = json.loads(raw)
+            if _lf_gen is not None:
+                _lf_gen.end(
+                    output=raw,
+                    usage={
+                        "input": response.usage.input_tokens,
+                        "output": response.usage.output_tokens,
+                    },
+                )
+            return result
         except (json.JSONDecodeError, TypeError) as exc:
             if attempt == 0:
                 logger.warning(
@@ -591,6 +712,8 @@ def _call_with_json_retry(
                     call_name, exc,
                 )
                 continue
+            if _lf_gen is not None:
+                _lf_gen.end(output=raw, level="ERROR")
             raise ValueError(
                 f"{call_name} call returned unparseable JSON after retry. "
                 f"Raw response: {raw!r}"

@@ -59,6 +59,8 @@ Built with **FastAPI**, **PostgreSQL**, **OpenAI**, and **HTMX**.
 | Infrastructure | Docker Compose |
 | Auth | Starlette `SessionMiddleware` (signed cookie) |
 | PDF export | WeasyPrint |
+| LLM observability | Langfuse (self-hosted) |
+| Logging | python-json-logger (JSON-structured) |
 | Testing | pytest, pytest-mock |
 
 ---
@@ -131,6 +133,21 @@ This starts:
 - **PostgreSQL 16** on port `5432`
 - **MinIO** on ports `9000` (API) and `9001` (admin console — http://localhost:9001)
 - **Ollama** on port `11434` (optional local LLM for CV extraction)
+- **Langfuse** on port `3000` — LLM observability UI (http://localhost:3000)
+- **Clickhouse** and **Redis** — required by Langfuse
+
+> **Note:** If you already have the PostgreSQL data volume from a previous setup, the `langfuse` database may not have been created automatically. Run this once to create it:
+> ```bash
+> docker compose exec db psql -U postgres -c "CREATE DATABASE langfuse;"
+> ```
+
+**First-time Langfuse login:** `admin@localhost` / `changeme123`
+
+To enable LLM tracing, add these to your `.env` (keys are pre-seeded in the dev compose setup):
+```env
+LANGFUSE_PUBLIC_KEY=pk-lf-dev-key
+LANGFUSE_SECRET_KEY=sk-lf-dev-key
+```
 
 ### 4. Install dependencies
 
@@ -212,6 +229,20 @@ All variables are loaded from `.env` via `pydantic-settings`. Variables marked *
 | `JOB_API_TIMEOUT_READ` | No | `30.0` | Response read timeout (seconds) |
 | `JOB_API_TIMEOUT_WRITE` | No | `10.0` | Request write timeout (seconds) |
 | `JOB_API_TIMEOUT_POOL` | No | `5.0` | Connection pool timeout (seconds) |
+
+### LLM Observability (Langfuse)
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `LANGFUSE_PUBLIC_KEY` | No | — | Langfuse project public key — enables LLM call tracing when set |
+| `LANGFUSE_SECRET_KEY` | No | — | Langfuse project secret key |
+| `LANGFUSE_HOST` | No | `http://localhost:3000` | Langfuse server URL (self-hosted via `compose.yaml`) |
+
+### Logging
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `LOG_LEVEL` | No | `INFO` | Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 
 ### Document Storage (MinIO / S3)
 
@@ -298,7 +329,7 @@ ai-job-copilot/
 │   └── e2e/                      # Route tests via FastAPI TestClient (43 tests)
 ├── fixtures/                     # Pre-recorded API response for fixture provider
 ├── docs/presentation/            # Full technical documentation package
-├── compose.yaml                  # Docker Compose: PostgreSQL, MinIO, Ollama
+├── compose.yaml                  # Docker Compose: PostgreSQL, MinIO, Ollama, Langfuse stack
 ├── pyproject.toml                # pytest configuration
 ├── requirements.txt
 └── .env                          # Local environment variables (not committed)

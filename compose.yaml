@@ -10,6 +10,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Creates the 'langfuse' database on first initialisation of an empty volume.
+      # For existing volumes run: docker compose exec db psql -U postgres -c "CREATE DATABASE langfuse;"
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql:ro
 
   minio:
     image: minio/minio
@@ -32,7 +35,123 @@ services:
     volumes:
       - ollama_data:/root/.ollama
 
+  # ---------------------------------------------------------------------------
+  # Langfuse — self-hosted LLM observability (UI at http://localhost:3000)
+  # ---------------------------------------------------------------------------
+  # First-time login: admin@localhost / changeme123
+  # API keys (pre-seeded): pk-lf-dev-key / sk-lf-dev-key
+  # Add to .env:  LANGFUSE_PUBLIC_KEY=pk-lf-dev-key
+  #               LANGFUSE_SECRET_KEY=sk-lf-dev-key
+  # Change all *-change-in-prod values and ENCRYPTION_KEY before any deployment.
+  # ---------------------------------------------------------------------------
+
+  langfuse-server:
+    image: langfuse/langfuse:3
+    restart: unless-stopped
+    depends_on:
+      - db
+      - clickhouse
+      - redis
+      - createbuckets
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: dev-nextauth-secret-change-in-prod
+      SALT: dev-salt-change-in-prod
+      # Must be exactly 64 hex characters (256 bits). Generate with:
+      #   openssl rand -hex 32
+      ENCRYPTION_KEY: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      TELEMETRY_ENABLED: "false"
+      # Auto-seeds a project and admin account on first start.
+      LANGFUSE_INIT_ORG_ID: "00000000-0000-0000-0000-000000000001"
+      LANGFUSE_INIT_PROJECT_NAME: ai-job-copilot
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-dev-key
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-dev-key
+      LANGFUSE_INIT_USER_EMAIL: admin@example.com
+      LANGFUSE_INIT_USER_PASSWORD: changeme123
+      # S3-compatible event storage via MinIO
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse-events
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minioadmin
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: minioadmin
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    restart: unless-stopped
+    depends_on:
+      - db
+      - clickhouse
+      - redis
+      - createbuckets
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/langfuse
+      SALT: dev-salt-change-in-prod
+      ENCRYPTION_KEY: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      # S3-compatible event storage via MinIO
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse-events
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minioadmin
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: minioadmin
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    restart: unless-stopped
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+    ports:
+      - "8123:8123"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+      - ./clickhouse/config.d:/etc/clickhouse-server/config.d:ro
+
+  # One-shot service that creates the MinIO bucket Langfuse uses for event storage.
+  # Exits with code 0 after creating the bucket; Docker does not restart it.
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb --ignore-existing local/langfuse-events;
+      exit 0;
+      "
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
 volumes:
   postgres_data:
   minio_data:
   ollama_data:
+  clickhouse_data:
+  clickhouse_logs:
+  redis_data:

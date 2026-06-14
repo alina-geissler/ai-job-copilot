@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 
 from typing import Annotated
@@ -22,6 +23,7 @@ from app.services.auth_service import register_user_account
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 templates = Jinja2Templates(directory="templates")
+logger = logging.getLogger(__name__)
 
 
 def _build_register_form_data(email: str = "") -> dict[str, str]:
@@ -130,6 +132,7 @@ def register_user(
 
     except (ValueError, IntegrityError):
         errors["register_email"] = "Diese E-Mail-Adresse ist bereits registriert."
+        logger.warning("Registration failed: email already in use.", extra={"email": email})
 
         return templates.TemplateResponse(
             request=request,
@@ -142,6 +145,7 @@ def register_user(
             status_code=422
         )
 
+    logger.info("New user registered.", extra={"email": email})
     auth_url = str(request.url_for("render_auth_page"))
     query_string = build_feedback_query(
         message="Dein Konto wurde erfolgreich erstellt. Bitte logge dich jetzt ein.",
@@ -179,6 +183,7 @@ def login_user(
 
     if user is None or not verify_password(password, user.password_hash):
         errors["login_general"] = "Ungültige E-Mail-Adresse oder falsches Passwort."
+        logger.warning("Login failed: invalid credentials.", extra={"email": email})
 
         return templates.TemplateResponse(
             request=request,
@@ -198,6 +203,7 @@ def login_user(
     request.session["user_id"] = user.id
     request.session["user_email"] = user.email
     request.session["is_authenticated"] = True
+    logger.info("User login successful.", extra={"user_id": user.id})
 
     redirect_url = request.url_for("render_dashboard_page")
     return RedirectResponse(url=str(redirect_url), status_code=303)
@@ -210,7 +216,9 @@ def logout_user(request: Request) -> RedirectResponse:
     :param request: Incoming HTTP request.
     :return: Redirect response to the index page.
     """
+    user_id = request.session.get("user_id")
     request.session.clear()
+    logger.info("User logged out.", extra={"user_id": user_id})
 
     index_url = str(request.url_for("render_index_page"))
     query_string = build_feedback_query(

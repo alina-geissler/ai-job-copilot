@@ -18,6 +18,7 @@ from openai import OpenAI
 
 from app.core.config import settings
 from app.schemas.profile import CandidateProfile
+from app.services.llm_tracing import langfuse_client, prompt_hash
 from prompts.profile_extraction import VERSIONS as STEP2_VERSIONS
 from prompts.profile_extraction_step1 import VERSIONS as STEP1_VERSIONS
 
@@ -44,15 +45,15 @@ def _build_client() -> OpenAI:
     )
 
 
-def _call_step1(client: OpenAI, cv_text: str) -> str:
+def _call_step1(client: OpenAI, cv_text: str) -> tuple[str, object]:
     """Reconstruct raw CV text as clean, grouped plain text.
 
     Sends the raw CV text to the LLM with a text-reconstruction prompt and
-    returns the plain-text response. No structured output format is enforced.
+    returns the plain-text response and the raw completion usage object.
 
     :param client: Configured OpenAI client.
     :param cv_text: Raw extracted CV text (Markdown or plain text).
-    :return: Reconstructed plain text grouped by section.
+    :return: Tuple of (reconstructed text, completion usage).
     :raises openai.OpenAIError: If the LLM request fails.
     """
     completion = client.chat.completions.create(
@@ -64,10 +65,10 @@ def _call_step1(client: OpenAI, cv_text: str) -> str:
             {"role": "user", "content": cv_text},
         ],
     )
-    return completion.choices[0].message.content or ""
+    return completion.choices[0].message.content or "", completion.usage
 
 
-def _call_step2(client: OpenAI, step1_text: str) -> CandidateProfile:
+def _call_step2(client: OpenAI, step1_text: str) -> tuple[CandidateProfile, object]:
     """Map the reconstructed CV text to a structured CandidateProfile.
 
     Uses client.beta.chat.completions.parse so the SDK serialises the Pydantic
@@ -76,7 +77,7 @@ def _call_step2(client: OpenAI, step1_text: str) -> CandidateProfile:
 
     :param client: Configured OpenAI client.
     :param step1_text: Reconstructed CV text produced by step 1.
-    :return: Parsed CandidateProfile instance.
+    :return: Tuple of (parsed CandidateProfile, completion usage).
     :raises openai.OpenAIError: If the LLM request fails.
     """
     completion = client.beta.chat.completions.parse(
@@ -89,7 +90,7 @@ def _call_step2(client: OpenAI, step1_text: str) -> CandidateProfile:
         ],
         response_format=CandidateProfile,
     )
-    return completion.choices[0].message.parsed
+    return completion.choices[0].message.parsed, completion.usage
 
 
 def extract_profile_from_cv_text(
@@ -106,6 +107,52 @@ def extract_profile_from_cv_text(
     :raises openai.OpenAIError: If either LLM request fails.
     """
     client = _build_client()
-    step1_text = _call_step1(client, cv_text)
-    profile = _call_step2(client, step1_text)
+    _model = "qwen/qwen-2.5-7b-instruct"
+
+    _lf_trace = None
+    if langfuse_client:
+        _lf_trace = langfuse_client.trace(
+            name="cv-profile-extraction",
+            metadata={
+                "step1_prompt_version": STEP1_PROMPT_VERSION,
+                "step1_prompt_hash": prompt_hash(_STEP1_SYSTEM_PROMPT),
+                "step2_prompt_version": STEP2_PROMPT_VERSION,
+                "step2_prompt_hash": prompt_hash(_STEP2_SYSTEM_PROMPT),
+            },
+        )
+
+    _lf_gen1 = None
+    if _lf_trace is not None:
+        _lf_gen1 = _lf_trace.generation(
+            name="step1-reconstruct",
+            model=_model,
+            metadata={"prompt_version": STEP1_PROMPT_VERSION},
+        )
+    step1_text, step1_usage = _call_step1(client, cv_text)
+    if _lf_gen1 is not None and step1_usage is not None:
+        _lf_gen1.end(
+            output=step1_text,
+            usage={
+                "input": step1_usage.prompt_tokens,
+                "output": step1_usage.completion_tokens,
+            },
+        )
+
+    _lf_gen2 = None
+    if _lf_trace is not None:
+        _lf_gen2 = _lf_trace.generation(
+            name="step2-extract",
+            model=_model,
+            metadata={"prompt_version": STEP2_PROMPT_VERSION},
+        )
+    profile, step2_usage = _call_step2(client, step1_text)
+    if _lf_gen2 is not None and step2_usage is not None:
+        _lf_gen2.end(
+            output=profile.model_dump_json() if profile is not None else None,
+            usage={
+                "input": step2_usage.prompt_tokens,
+                "output": step2_usage.completion_tokens,
+            },
+        )
+
     return profile, step1_text, STEP1_PROMPT_VERSION, STEP2_PROMPT_VERSION

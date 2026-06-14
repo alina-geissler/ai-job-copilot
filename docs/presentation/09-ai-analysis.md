@@ -83,6 +83,14 @@ Every call appends a JSONL record to `evals/job_normalizations.jsonl`:
 }
 ```
 
+### Langfuse Tracing
+When `LANGFUSE_PUBLIC_KEY` is set, every normalization call creates a **Langfuse generation** with:
+- Model, input messages, and full structured output
+- Token counts (`input_tokens`, `output_tokens`) and estimated cost
+- Prompt version (`v2`) and prompt hash (8-char SHA-256 of the active system prompt for drift detection)
+
+The generation is visible in the Langfuse UI at `http://localhost:3000` (self-hosted via `compose.yaml`). Cache hits are logged but do not create Langfuse entries (no LLM call occurs).
+
 ### Prompt Engineering
 - **Version v2** (active): Adds `contact_person_gender` extraction with escalation rules — prefers `unknown` over incorrect gender assignment
 - **Rule-based constraints**: "Never infer or fabricate"; "Output in ad language, no translation"; "Null for missing optional fields, empty list for missing list fields"
@@ -217,6 +225,38 @@ The salutation is constructed with a cascade:
 
 **Source:** `resolve_contact_gender()` in `prompts/cover_letter_generation.py`
 
+### Eval Logging
+Every generation appends a record to `evals/cover_letter_generations.jsonl`:
+```json
+{
+  "timestamp": "...",
+  "model": "gpt-5-mini",
+  "cover_letter_id": 12,
+  "user_id": 3,
+  "job_id": 42,
+  "tone": "formal",
+  "industry_group": "conservative_business",
+  "hierarchy_level": "professional_senior",
+  "output_language": "de",
+  "prompt_version_analysis": "v1",
+  "prompt_version_writing": "v1",
+  "prompt_version_verification": "v1",
+  "langfuse_trace_id": "abc123",
+  "output": { "subject_line": "...", "introduction": "...", ... }
+}
+```
+The `langfuse_trace_id` field links each eval record to the corresponding Langfuse trace for full input/output inspection.
+
+### Langfuse Tracing
+When `LANGFUSE_PUBLIC_KEY` is set, the entire three-call pipeline is captured as a single **Langfuse trace** with up to five nested generations:
+- `Analysis` — Call A (always)
+- `Writing` — Call B (always)
+- `Writing (compressed)` — if letter was too long
+- `Verification` — Call C (only when `must_avoid` is non-empty)
+- `Writing (violation fix)` — if violations were found
+
+Each generation records token counts, estimated cost, prompt version, and the raw JSON output. The trace is visible at `http://localhost:3000`.
+
 ### Privacy by Design
 
 Private contact data (name, email, phone, address, signature image) is explicitly withheld from all LLM calls. It is injected into the `content` JSONB **after** all AI calls complete. This design ensures:
@@ -273,7 +313,14 @@ This mirrors a human expert workflow: read and organise first, then extract.
 - Explicit rules for German address format
 
 ### Eval Logging
-Outputs appended to `evals/profile_extractions.jsonl` with timestamp, model, versions, user_id.
+Outputs appended to `evals/profile_extractions.jsonl` with timestamp, model, prompt versions, user_id, and cv_sha256 hash.
+
+### Langfuse Tracing
+When `LANGFUSE_PUBLIC_KEY` is set, the two-step pipeline is captured as a single **Langfuse trace** with two nested generations:
+- `step1-reconstruct` — text reconstruction call
+- `step2-extract` — structured extraction call
+
+Each generation includes token counts, prompt version, and prompt hash. CV text is **not** included in Langfuse inputs — only metadata — to avoid storing personal data in a secondary system.
 
 ---
 

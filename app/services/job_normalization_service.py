@@ -26,6 +26,7 @@ from app.crud.job_normalization import (
 from app.models.job import Job
 from app.models.job_normalization import JobNormalization
 from app.schemas.job_normalization import JobNormalizationSchema
+from app.services.llm_tracing import langfuse_client, prompt_hash
 from prompts.job_normalization import VERSIONS
 
 logger = logging.getLogger(__name__)
@@ -136,17 +137,42 @@ def normalize_job(
             )
 
     user_message = "".join(user_parts)
+    _messages = [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user",   "content": user_message},
+    ]
+
+    _lf_gen = None
+    if langfuse_client:
+        _lf_gen = langfuse_client.generation(
+            name="job-normalization",
+            model=settings.openai_model,
+            input=_messages,
+            metadata={
+                "prompt_version": PROMPT_VERSION,
+                "prompt_hash": prompt_hash(_SYSTEM_PROMPT),
+                "job_id": job_id,
+                "manual_job_id": manual_job_id,
+            },
+        )
 
     response = client.responses.create(
         model=settings.openai_model,
-        input=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user",   "content": user_message},
-        ],
+        input=_messages,
         text={"format": _NORM_TEXT_FORMAT},
         reasoning={"effort": "medium"},
         max_output_tokens=16_000,
     )
+
+    if _lf_gen is not None:
+        _lf_gen.end(
+            output=response.output_text,
+            usage={
+                "input": response.usage.input_tokens,
+                "output": response.usage.output_tokens,
+            },
+        )
+
     result: JobNormalizationSchema = JobNormalizationSchema.model_validate(
         json.loads(response.output_text)
     )
@@ -187,6 +213,7 @@ def get_or_create_normalization(
     if job_id is not None:
         existing = get_normalization_by_job_id(db, job_id=job_id)
         if existing is not None:
+            logger.info("Normalization cache hit.", extra={"job_id": job_id})
             return existing
 
     if manual_job_posting_id is not None:
@@ -194,6 +221,10 @@ def get_or_create_normalization(
             db, manual_job_posting_id=manual_job_posting_id
         )
         if existing is not None:
+            logger.info(
+                "Normalization cache hit.",
+                extra={"manual_job_posting_id": manual_job_posting_id},
+            )
             return existing
 
     schema = normalize_job(

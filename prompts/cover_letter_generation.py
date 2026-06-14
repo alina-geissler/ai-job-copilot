@@ -33,6 +33,12 @@ logger = logging.getLogger(__name__)
 
 MODEL = "gpt-5-mini"
 
+# Increment these strings when the corresponding prompt text is changed so that
+# Langfuse traces and eval JSONL records can be filtered and compared by version.
+ANALYSIS_PROMPT_VERSION = "v1"
+WRITING_PROMPT_VERSION = "v1"
+VERIFICATION_PROMPT_VERSION = "v1"
+
 ANALYSIS_SETTINGS: dict = {
     "model": MODEL,
     "reasoning": {"effort": "medium"},

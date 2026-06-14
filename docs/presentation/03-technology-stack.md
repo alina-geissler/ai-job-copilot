@@ -42,6 +42,8 @@
 | WeasyPrint | PDF export | — | Server-side HTML → PDF rendering |
 | pytest | Testing | 8.0+ | Test runner for unit, integration, and e2e tests |
 | pytest-mock | Testing | 3.14+ | `mocker` fixture for patching dependencies in unit tests |
+| Langfuse | LLM observability | 3 (self-hosted) | Traces every LLM call with token counts, cost, latency, and prompt versions; UI at http://localhost:3000 |
+| python-json-logger | Logging | — | JSON-formatted structured log output for all application and Uvicorn loggers |
 
 ---
 
@@ -179,7 +181,7 @@
 - **Confirmed:** No GitHub Actions, no Dockerfile for the application itself, no deployment pipeline
 - **Current state:** Development only — run via `uvicorn app.main:app --reload` locally
 
-### No Monitoring / Logging Infrastructure
-- **Confirmed:** No structured logging, no Prometheus/Grafana, no Sentry
-- **Current state:** Standard Python logging (inferred); no observability tooling
-- See [15-future-improvements.md](15-future-improvements.md) for recommendations
+### Logging and LLM Observability
+- **Structured logging:** `python-json-logger` with JSON output via `app/logging_config.py`; configured on startup in `app/main.py`; `RequestLoggingMiddleware` adds per-request IDs and duration to every log line
+- **LLM tracing:** Self-hosted Langfuse (defined in `compose.yaml`) captures every LLM call as a trace with token counts, cost estimates, latency, prompt version, and prompt hash. UI at `http://localhost:3000`. Gracefully disabled when `LANGFUSE_PUBLIC_KEY` is absent.
+- **Audit logs:** JSONL eval files in `evals/` for all three pipelines including the newly added `cover_letter_generations.jsonl`

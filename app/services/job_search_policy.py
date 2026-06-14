@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date
 
+from app.core.enums import PrimarySearchAction
 from app.models.search_profile import SearchProfile
 from app.models.search_run import SearchRun
-from app.core.enums import PrimarySearchAction
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -77,6 +80,13 @@ def decide_primary_search(
         )
 
     if user_primary_searches_today_count >= 5:
+        logger.info(
+            "Job search blocked: daily primary-search limit reached.",
+            extra={
+                "search_profile_id": search_profile.id,
+                "searches_today": user_primary_searches_today_count,
+            },
+        )
         return PrimarySearchDecision(
             action=PrimarySearchAction.BLOCKED_DAILY_LIMIT,
             message=(
@@ -90,6 +100,10 @@ def decide_primary_search(
             loaded_page=None
         )
 
+    logger.info(
+        "New primary job search run started.",
+        extra={"search_profile_id": search_profile.id},
+    )
     return PrimarySearchDecision(
         action=PrimarySearchAction.START_NEW_RUN,
         message=None,
@@ -113,6 +127,13 @@ def decide_load_more(
     :return: Decision object describing whether loading more results is allowed.
     """
     if user_load_more_actions_today_count >= 15:
+        logger.info(
+            "Job search load-more blocked: daily limit reached.",
+            extra={
+                "search_run_id": search_run.id,
+                "load_more_today": user_load_more_actions_today_count,
+            },
+        )
         return LoadMoreDecision(
             allowed=False,
             message=(
