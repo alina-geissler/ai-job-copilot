@@ -217,6 +217,18 @@ def initiate_cover_letter_generation(
     :param company_context: Optional company background (reserved for future use).
     :return: Newly created CoverLetter record with PENDING status.
     """
+    # When a cover letter is created from a ManualJobPosting that also has a
+    # linked tracker entry (via manual_job_posting_id), set job_id on the cover
+    # letter so it appears in the tracker detail and the documents page.
+    resolved_job_id = job_id
+    if manual_job_posting_id is not None and resolved_job_id is None:
+        from app.crud.application_tracker_entry import get_tracker_entry_by_manual_job_posting_id
+        linked_entry = get_tracker_entry_by_manual_job_posting_id(
+            db, user_id=user_id, manual_job_posting_id=manual_job_posting_id
+        )
+        if linked_entry is not None:
+            resolved_job_id = linked_entry.job_id
+
     cover_letter = create_cover_letter(
         db,
         user_id=user_id,
@@ -225,7 +237,7 @@ def initiate_cover_letter_generation(
         industry_group=industry_group,
         hierarchy_level=hierarchy_level,
         output_language=output_language,
-        job_id=job_id,
+        job_id=resolved_job_id,
         manual_job_posting_id=manual_job_posting_id,
         must_haves=must_haves,
         no_gos=no_gos,

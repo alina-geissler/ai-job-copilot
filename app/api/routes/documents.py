@@ -169,6 +169,13 @@ def render_documents_page(
 
     tracker_entries = list_tracker_entries_for_user(db, user_id=current_user.id)
     tracked_job_map: dict[int, int] = {e.job_id: e.id for e in tracker_entries if e.job_id}
+    # Fallback map for cover letters that have manual_job_posting_id but no job_id
+    # (legacy records created before the job_id linking fix).
+    tracked_manual_map: dict[int, int] = {
+        e.manual_job_posting_id: e.id
+        for e in tracker_entries
+        if e.manual_job_posting_id
+    }
 
     all_cl_job_ids = list({
         cl["job_id"] for cl in saved_cover_letters + draft_cover_letters
@@ -195,6 +202,7 @@ def render_documents_page(
             "draft_cover_letters": draft_cover_letters,
             "job_id_filter": job_id,
             "tracked_job_map": tracked_job_map,
+            "tracked_manual_map": tracked_manual_map,
             "job_url_map": job_url_map,
         },
     )

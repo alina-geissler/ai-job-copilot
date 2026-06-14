@@ -147,13 +147,15 @@ async def save_manual_job_action(
     raw_text: Annotated[str, Form()],
     title: Annotated[str, Form()] = "",
     company: Annotated[str, Form()] = "",
+    job_url: Annotated[str, Form()] = "",
     save_to_tracker: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
-    """Save a manually entered job ad and redirect to the generator setup page.
+    """Save a manually entered job ad and redirect to the normalization prepare page.
 
     When the user checks "save to tracker" a minimal Job record (source="manual")
     and an ApplicationTrackerEntry are also created so the job appears in the
-    tracker.
+    tracker. Redirects to the normalization spinner first (same flow as API jobs)
+    so that extracted title and company populate the editor defaults.
 
     :param request: Incoming HTTP request.
     :param current_user: Authenticated user.
@@ -161,8 +163,9 @@ async def save_manual_job_action(
     :param raw_text: Full pasted job advertisement text.
     :param title: Optional user-supplied job title.
     :param company: Optional user-supplied company name.
+    :param job_url: Optional URL to the original job advertisement.
     :param save_to_tracker: Non-empty string when the checkbox is checked.
-    :return: Redirect to the generator setup page.
+    :return: Redirect to the normalization prepare page.
     """
     if not raw_text.strip():
         query_string = build_feedback_query(
@@ -172,28 +175,33 @@ async def save_manual_job_action(
         url = str(request.url_for("render_single_job_analysis_page"))
         return RedirectResponse(url=f"{url}?{query_string}", status_code=303)
 
+    clean_url = job_url.strip() or None
+
     posting = create_manual_job_posting(
         db,
         user_id=current_user.id,
         raw_text=raw_text.strip(),
         title=title.strip() or None,
         company=company.strip() or None,
+        job_url=clean_url,
     )
 
     if save_to_tracker.strip():
         _save_manual_job_to_tracker(
             db,
+            posting=posting,
             user_id=current_user.id,
             title=title.strip() or "Manuell eingetragene Stelle",
             company=company.strip() or "Unbekanntes Unternehmen",
             description=raw_text.strip(),
+            job_url=clean_url,
         )
 
     db.commit()
 
-    setup_url = str(request.url_for("render_cover_letter_setup_page"))
+    prepare_url = str(request.url_for("prepare_cover_letter_action"))
     return RedirectResponse(
-        url=f"{setup_url}?manual_job_id={posting.id}",
+        url=f"{prepare_url}?manual_job_id={posting.id}",
         status_code=303,
     )
 
@@ -201,21 +209,28 @@ async def save_manual_job_action(
 def _save_manual_job_to_tracker(
     db: Session,
     *,
+    posting: Any,
     user_id: int,
     title: str,
     company: str,
     description: str,
+    job_url: str | None = None,
 ) -> None:
     """Create a minimal Job record and a tracker entry for a manual job posting.
 
+    Links the tracker entry back to the ManualJobPosting via
+    ``manual_job_posting_id`` so that normalization data, job URL, and cover
+    letters can be resolved from the tracker without a separate lookup.
     Uses source='manual' so the job is distinguishable from API-sourced jobs.
     Silently skips if a tracker entry already exists for this job.
 
     :param db: Active database session.
+    :param posting: The ManualJobPosting record already created for this ad.
     :param user_id: Identifier of the owning user.
     :param title: Job title.
     :param company: Company name.
     :param description: Raw job advertisement text stored as description.
+    :param job_url: Optional URL to the original job advertisement.
     """
     from app.models.application_tracker_entry import ApplicationTrackerEntry
     from sqlalchemy import select
@@ -225,6 +240,7 @@ def _save_manual_job_to_tracker(
         company=company,
         description=description,
         source="manual",
+        job_url=job_url,
     )
     db.add(job)
     db.flush()
@@ -237,7 +253,11 @@ def _save_manual_job_to_tracker(
     ).scalar_one_or_none()
 
     if existing is None:
-        entry = ApplicationTrackerEntry(user_id=user_id, job_id=job.id)
+        entry = ApplicationTrackerEntry(
+            user_id=user_id,
+            job_id=job.id,
+            manual_job_posting_id=posting.id,
+        )
         db.add(entry)
 
 

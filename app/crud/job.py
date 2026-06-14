@@ -110,6 +110,37 @@ def get_jobs_by_ids(db: Session, *, job_ids: list[int]) -> dict[int, "Job"]:
     return {job.id: job for job in rows}
 
 
+def update_job_title_company(
+    db: Session,
+    *,
+    job: Job,
+    title: str | None,
+    company: str | None,
+    job_url: str | None = None,
+) -> Job:
+    """Update the title, company, and URL of a manually added job.
+
+    Only intended for jobs with ``source="manual"`` so that shared API-sourced
+    job records are never mutated.
+
+    :param db: Active database session.
+    :param job: Existing job to update.
+    :param title: New job title, or ``None`` to leave unchanged.
+    :param company: New company name, or ``None`` to leave unchanged.
+    :param job_url: New job advertisement URL, or ``None`` to leave unchanged.
+    :return: Updated job record.
+    """
+    if title:
+        job.title = title
+    if company:
+        job.company = company
+    if job_url:
+        job.job_url = job_url
+    db.add(job)
+    db.flush()
+    return job
+
+
 def get_or_create_job_from_search_result(
     db: Session,
     *,

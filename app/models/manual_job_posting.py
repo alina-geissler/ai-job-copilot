@@ -1,9 +1,10 @@
 """Define the ORM model for manually entered job postings.
 
 Map the ``manual_job_postings`` table to a Python class. Stores raw job
-advertisement text pasted by the user on the Single Job Analysis page.
-These entries are kept separate from API-sourced jobs in the ``jobs`` table
-because they lack the structured fields returned by the search API.
+advertisement text pasted by the user on the Single Job Analysis page or added
+directly via the application tracker. These entries are kept separate from
+API-sourced jobs in the ``jobs`` table because they lack the structured fields
+returned by the search API.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ class ManualJobPosting(Base):
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     company: Mapped[str | None] = mapped_column(String(255), nullable=True)
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
+    job_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

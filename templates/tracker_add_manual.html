@@ -1,37 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Single Job Analysis | Hire Hero{% endblock %}
+{% block title %}Job manuell hinzufügen | Hire Hero{% endblock %}
 
 {% block content %}
 <div class="mb-6">
-  <a href="{{ request.url_for('render_job_search_page') }}"
+  <a href="{{ request.url_for('render_application_tracker_page') }}"
      class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors no-underline mb-3">
     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
     </svg>
-    Zurück zur Jobsuche
+    Zurück zum Tracker
   </a>
-  <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Anschreiben generieren</h1>
-  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Wähle eine Stellenanzeige aus oder füge sie direkt hier ein.</p>
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Job manuell hinzufügen</h1>
+  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Füge eine Stellenanzeige direkt in deinen Bewerbungstracker ein.</p>
 </div>
 
 <section class="section">
   <div class="card stack">
-    <p>
-      Wähle eine Stellenanzeige aus deinem
-      <a href="{{ request.url_for('render_application_tracker_page') }}" class="text-yellow-600 dark:text-yellow-400 underline">Bewerbungstracker</a>,
-      aus <a href="{{ request.url_for('render_search_run_history_page') }}" class="text-yellow-600 dark:text-yellow-400 underline">früheren Suchen</a>
-      oder <a href="{{ request.url_for('render_job_search_page') }}" class="text-yellow-600 dark:text-yellow-400 underline">finde zuerst den richtigen Job</a>.
-    </p>
-    <p class="muted">Oder füge eine Stellenanzeige direkt hier ein:</p>
-  </div>
-</section>
-
-<section class="section">
-  <div class="card stack">
     <h2>Stellenanzeige einfügen</h2>
+    <p class="muted">Die Stellenanzeige wird im Tracker gespeichert. Du kannst sie danach analysieren oder ein Anschreiben generieren.</p>
 
-    <form method="post" action="{{ request.url_for('save_manual_job_action') }}" class="form stack">
+    <form method="post" action="{{ request.url_for('add_manual_tracker_entry_action') }}" class="form stack">
+
       <div class="form-group">
         <label for="title">Bezeichnung der Stelle <span class="muted">(optional)</span></label>
         <input
@@ -76,15 +66,8 @@
         ></textarea>
       </div>
 
-      <div class="form-group">
-        <label class="choice">
-          <input type="checkbox" name="save_to_tracker" value="1">
-          Im Bewerbungstracker speichern
-        </label>
-      </div>
-
       <div class="actions">
-        <button type="submit" class="btn btn-primary">Weiter zum Generator</button>
+        <button type="submit" class="btn btn-primary">Im Tracker speichern</button>
       </div>
     </form>
   </div>

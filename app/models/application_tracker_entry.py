@@ -17,6 +17,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.job import Job
+    from app.models.manual_job_posting import ManualJobPosting
     from app.models.user import User
 
 
@@ -43,6 +44,11 @@ class ApplicationTrackerEntry(Base):
         ForeignKey("jobs.id"),
         nullable=False,
         index=True
+    )
+    manual_job_posting_id: Mapped[int | None] = mapped_column(
+        ForeignKey("manual_job_postings.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     status: Mapped[ApplicationStatus] = mapped_column(
         Enum(ApplicationStatus),
@@ -85,3 +91,6 @@ class ApplicationTrackerEntry(Base):
 
     user: Mapped[User] = relationship("User", back_populates="tracker_entries")
     job: Mapped[Job] = relationship("Job", back_populates="tracker_entries")
+    manual_job_posting: Mapped[ManualJobPosting | None] = relationship(
+        "ManualJobPosting", foreign_keys=[manual_job_posting_id]
+    )

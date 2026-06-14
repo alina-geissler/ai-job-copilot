@@ -19,6 +19,7 @@ def create_manual_job_posting(
     raw_text: str,
     title: str | None = None,
     company: str | None = None,
+    job_url: str | None = None,
 ) -> ManualJobPosting:
     """Create and flush a new manual job posting record.
 
@@ -27,6 +28,7 @@ def create_manual_job_posting(
     :param raw_text: Full pasted job advertisement text.
     :param title: Optional user-supplied job title.
     :param company: Optional user-supplied company name.
+    :param job_url: Optional URL to the original job advertisement.
     :return: Newly created ManualJobPosting record.
     """
     posting = ManualJobPosting(
@@ -34,6 +36,7 @@ def create_manual_job_posting(
         raw_text=raw_text,
         title=title or None,
         company=company or None,
+        job_url=job_url or None,
     )
     db.add(posting)
     db.flush()

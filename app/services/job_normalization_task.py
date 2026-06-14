@@ -71,13 +71,38 @@ def run_normalization_task(
             NORM_ERRORS[key] = "Kein Anzeigentext gefunden."
             return
 
-        get_or_create_normalization(
+        normalization = get_or_create_normalization(
             db,
             job_id=job_id,
             manual_job_posting_id=manual_job_id,
             raw_text=raw_text,
             existing_job=existing_job,
         )
+
+        # For manually added jobs, back-fill Job.title/company from canonical
+        # normalization values so the tracker list reflects the real position.
+        if manual_job_id is not None and normalization is not None:
+            norm_data = normalization.normalized_data or {}
+            canonical_title = norm_data.get("canonical_job_title") or ""
+            canonical_company = norm_data.get("company_name") or ""
+            _TITLE_PLACEHOLDER = "Manuell eingetragene Stelle"
+            _COMPANY_PLACEHOLDER = "Unbekanntes Unternehmen"
+            from app.models.application_tracker_entry import ApplicationTrackerEntry
+            from sqlalchemy import select
+            stmt = (
+                select(ApplicationTrackerEntry)
+                .where(ApplicationTrackerEntry.manual_job_posting_id == manual_job_id)
+                .limit(1)
+            )
+            linked_entry = db.execute(stmt).scalar_one_or_none()
+            if linked_entry is not None and linked_entry.job_id is not None:
+                job = db.get(Job, linked_entry.job_id)
+                if job is not None and job.source == "manual":
+                    if canonical_title and job.title in (None, "", _TITLE_PLACEHOLDER):
+                        job.title = canonical_title
+                    if canonical_company and job.company in (None, "", _COMPANY_PLACEHOLDER):
+                        job.company = canonical_company
+
         db.commit()
         NORM_ERRORS.pop(key, None)
     except Exception as exc:

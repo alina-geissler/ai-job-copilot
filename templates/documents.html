@@ -279,7 +279,7 @@
             Bearbeiten
           </a>
           {% set _job_url = job_url_map.get(cl.job_id) if cl.job_id else none %}
-          {% set _tracker_id = tracked_job_map.get(cl.job_id) if cl.job_id else none %}
+          {% set _tracker_id = (tracked_job_map.get(cl.job_id) if cl.job_id else none) or (tracked_manual_map.get(cl.manual_job_posting_id) if cl.manual_job_posting_id else none) %}
           {% if _job_url %}
           <a href="{{ _job_url }}" target="_blank" rel="noopener noreferrer"
              class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline inline-flex items-center gap-1.5">
@@ -334,7 +334,7 @@
             Öffnen &amp; Speichern
           </a>
           {% set _job_url = job_url_map.get(cl.job_id) if cl.job_id else none %}
-          {% set _tracker_id = tracked_job_map.get(cl.job_id) if cl.job_id else none %}
+          {% set _tracker_id = (tracked_job_map.get(cl.job_id) if cl.job_id else none) or (tracked_manual_map.get(cl.manual_job_posting_id) if cl.manual_job_posting_id else none) %}
           {% if _job_url %}
           <a href="{{ _job_url }}" target="_blank" rel="noopener noreferrer"
              class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors no-underline inline-flex items-center gap-1.5">

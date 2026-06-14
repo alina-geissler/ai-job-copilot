@@ -9,10 +9,11 @@ from __future__ import annotations
 from datetime import date, datetime, time, timezone
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from app.core.enums import ApplicationStatus
 from app.models.application_tracker_entry import ApplicationTrackerEntry
+from app.models.job import Job
 
 _STATUS_DATE_FIELD_BY_STATUS: dict[ApplicationStatus, str | None] = {
     ApplicationStatus.SAVED: None,  # saved/offen uses created_at, so there is no separate saved_at field
@@ -80,7 +81,10 @@ def get_tracker_entry_by_id_for_user(
             ApplicationTrackerEntry.id == entry_id,
             ApplicationTrackerEntry.user_id == user_id
         )
-        .options(joinedload(ApplicationTrackerEntry.job))
+        .options(
+            joinedload(ApplicationTrackerEntry.job),
+            joinedload(ApplicationTrackerEntry.manual_job_posting),
+        )
         .limit(1)
     )
     return db.execute(stmt).scalar_one_or_none()
@@ -89,28 +93,87 @@ def get_tracker_entry_by_id_for_user(
 def list_tracker_entries_for_user(
     db: Session,
     *,
-    user_id: int
+    user_id: int,
+    sort: str = "newest",
+    status_filter: str | None = None,
+    jobs_with_cover_letters: set[int] | None = None,
 ) -> list[ApplicationTrackerEntry]:
-    """Return all tracker entries for one user ordered by newest first.
+    """Return tracker entries for one user with optional sort and filter.
 
     :param db: Active database session.
     :param user_id: Identifier of the owning user.
+    :param sort: Sort order — ``"newest"`` (default), ``"oldest"``, or ``"name_az"``.
+    :param status_filter: Optional filter — individual status value, ``"active"``
+        (APPLIED/INTERVIEW/OFFER), or ``"has_cover_letter"``.
+    :param jobs_with_cover_letters: Set of job IDs with completed cover letters,
+        required when ``status_filter="has_cover_letter"``.
     :return: List of tracker entries with their related jobs loaded.
+    """
+    active_statuses = [ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW, ApplicationStatus.OFFER]
+
+    if sort == "name_az":
+        stmt = (
+            select(ApplicationTrackerEntry)
+            .join(ApplicationTrackerEntry.job)
+            .where(ApplicationTrackerEntry.user_id == user_id)
+            .options(contains_eager(ApplicationTrackerEntry.job))
+        )
+    else:
+        stmt = (
+            select(ApplicationTrackerEntry)
+            .where(ApplicationTrackerEntry.user_id == user_id)
+            .options(joinedload(ApplicationTrackerEntry.job))
+        )
+
+    if status_filter == "active":
+        stmt = stmt.where(ApplicationTrackerEntry.status.in_(active_statuses))
+    elif status_filter == "has_cover_letter":
+        job_ids = list(jobs_with_cover_letters or set())
+        stmt = stmt.where(ApplicationTrackerEntry.job_id.in_(job_ids))
+    elif status_filter and status_filter in {s.value for s in ApplicationStatus}:
+        stmt = stmt.where(ApplicationTrackerEntry.status == ApplicationStatus(status_filter))
+
+    if sort == "oldest":
+        stmt = stmt.order_by(ApplicationTrackerEntry.created_at.asc(), ApplicationTrackerEntry.id.asc())
+    elif sort == "name_az":
+        stmt = stmt.order_by(Job.title.asc(), ApplicationTrackerEntry.id.asc())
+    else:
+        stmt = stmt.order_by(ApplicationTrackerEntry.created_at.desc(), ApplicationTrackerEntry.id.desc())
+
+    return list(db.execute(stmt).unique().scalars().all())
+
+
+def get_tracker_entry_by_manual_job_posting_id(
+    db: Session,
+    *,
+    user_id: int,
+    manual_job_posting_id: int,
+) -> ApplicationTrackerEntry | None:
+    """Return one tracker entry linked to the given manual job posting.
+
+    :param db: Active database session.
+    :param user_id: Identifier of the owning user.
+    :param manual_job_posting_id: Identifier of the linked manual job posting.
+    :return: Matching tracker entry or ``None``.
     """
     stmt = (
         select(ApplicationTrackerEntry)
-        .where(ApplicationTrackerEntry.user_id == user_id)
+        .where(
+            ApplicationTrackerEntry.user_id == user_id,
+            ApplicationTrackerEntry.manual_job_posting_id == manual_job_posting_id,
+        )
         .options(joinedload(ApplicationTrackerEntry.job))
-        .order_by(ApplicationTrackerEntry.created_at.desc(), ApplicationTrackerEntry.id.desc())
+        .limit(1)
     )
-    return list(db.execute(stmt).unique().scalars().all())
+    return db.execute(stmt).scalar_one_or_none()
 
 
 def create_tracker_entry(
     db: Session,
     *,
     user_id: int,
-    job_id: int
+    job_id: int,
+    manual_job_posting_id: int | None = None,
 ) -> ApplicationTrackerEntry:
     """Create and flush a new tracker entry with saved status.
 
@@ -120,12 +183,14 @@ def create_tracker_entry(
     :param db: Active database session.
     :param user_id: Identifier of the owning user.
     :param job_id: Identifier of the tracked job.
+    :param manual_job_posting_id: Optional FK to the linked manual job posting.
     :return: Newly created tracker entry.
     """
     entry = ApplicationTrackerEntry(
         user_id=user_id,
         job_id=job_id,
-        status=ApplicationStatus.SAVED
+        manual_job_posting_id=manual_job_posting_id,
+        status=ApplicationStatus.SAVED,
     )
     db.add(entry)
     db.flush()
@@ -136,13 +201,15 @@ def create_tracker_entry_if_missing(
     db: Session,
     *,
     user_id: int,
-    job_id: int
+    job_id: int,
+    manual_job_posting_id: int | None = None,
 ) -> tuple[ApplicationTrackerEntry, bool]:
     """Create a tracker entry when it does not exist yet.
 
     :param db: Active database session.
     :param user_id: Identifier of the owning user.
     :param job_id: Identifier of the tracked job.
+    :param manual_job_posting_id: Optional FK to the linked manual job posting.
     :return: Tuple of ``(tracker_entry, created)``.
     """
     existing_entry = get_tracker_entry_by_job_id_for_user(
@@ -156,7 +223,8 @@ def create_tracker_entry_if_missing(
     created_entry = create_tracker_entry(
         db,
         user_id=user_id,
-        job_id=job_id
+        job_id=job_id,
+        manual_job_posting_id=manual_job_posting_id,
     )
     return created_entry, True
 
