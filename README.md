@@ -88,7 +88,7 @@ Long-running AI operations (cover letter generation, CV extraction) are deferred
 ## Prerequisites
 
 - **Python** 3.11 or newer
-- **Docker** and **Docker Compose** (for PostgreSQL, MinIO, and optionally Ollama)
+- **Docker Desktop** — the only infrastructure tool you need to install manually ([download here](https://www.docker.com/products/docker-desktop/)). Once installed, `docker compose up -d` downloads and starts all required services (PostgreSQL, MinIO, Ollama, Langfuse, ClickHouse, Redis) automatically.
 - **OpenAI API key** — required for job normalisation and cover letter generation
 - **RapidAPI / JSearch key** — required only when `JOB_SEARCH_PROVIDER=live`; the default fixture mode works without it
 - **OpenRouter API key** — optional; used for CV extraction (falls back to local Ollama if omitted)
@@ -112,12 +112,13 @@ Copy the example file and fill in the required values:
 cp .env.example .env
 ```
 
-The minimum required values to run the app in development mode (fixture job search, no live API):
+The minimum values you must fill in before the app will start (everything else is pre-configured in `.env.example`):
 
 ```env
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/ai_job_copilot
 SESSION_SECRET_KEY=change-me-to-a-long-random-string
 OPENAI_API_KEY=sk-...
+JOB_SEARCH_PROVIDER=fixture
 STORAGE_ENDPOINT_URL=http://localhost:9000
 ```
 
@@ -136,14 +137,9 @@ This starts:
 - **Langfuse** on port `3000` — LLM observability UI (http://localhost:3000)
 - **Clickhouse** and **Redis** — required by Langfuse
 
-> **Note:** If you already have the PostgreSQL data volume from a previous setup, the `langfuse` database may not have been created automatically. Run this once to create it:
-> ```bash
-> docker compose exec db psql -U postgres -c "CREATE DATABASE langfuse;"
-> ```
-
 **First-time Langfuse login:** `admin@localhost` / `changeme123`
 
-To enable LLM tracing, add these to your `.env` (keys are pre-seeded in the dev compose setup):
+The Langfuse project keys are pre-seeded in the dev compose setup. Add them to your `.env` to connect the app to the local tracing instance:
 ```env
 LANGFUSE_PUBLIC_KEY=pk-lf-dev-key
 LANGFUSE_SECRET_KEY=sk-lf-dev-key
@@ -221,7 +217,7 @@ All variables are loaded from `.env` via `pydantic-settings`. Variables marked *
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `JOB_SEARCH_PROVIDER` | No | `fixture` | `fixture` — use local mock data; `live` — call the RapidAPI/JSearch endpoint |
+| `JOB_SEARCH_PROVIDER` | No | `live` | `fixture` — use local mock data (recommended for development); `live` — call the RapidAPI/JSearch endpoint |
 | `JOB_API_BASE_URL` | If `live` | — | JSearch API base URL, e.g. `https://jsearch.p.rapidapi.com` |
 | `JOB_API_KEY` | If `live` | — | RapidAPI authentication key |
 | `JOB_API_HOST` | If `live` | — | RapidAPI host header value, e.g. `jsearch.p.rapidapi.com` |
@@ -308,8 +304,10 @@ Use `fixture` during development to avoid API costs and rate limits.
 ai-job-copilot/
 ├── app/
 │   ├── main.py                   # App factory: middleware, routers, error handlers
-│   ├── api/routes/               # HTTP route handlers (11 modules)
+│   ├── logging_config.py         # JSON-structured logging setup (python-json-logger)
+│   ├── api/routes/               # HTTP route handlers (10 modules)
 │   ├── services/                 # Business logic and external integrations (19 modules)
+│   │   └── llm_tracing.py        # Langfuse LLM call tracing
 │   ├── crud/                     # DB read/write functions — never commit (13 modules)
 │   ├── models/                   # SQLAlchemy ORM models (13 tables)
 │   ├── schemas/                  # Pydantic request/response models
@@ -321,13 +319,15 @@ ai-job-copilot/
 ├── static/                       # CSS and images
 ├── prompts/                      # Versioned LLM prompt definitions
 ├── evals/                        # LLM output audit logs (JSONL)
-├── alembic/versions/             # Database migration history (15 files)
+├── alembic/versions/             # Database migration history (16 files)
 ├── tests/
 │   ├── conftest.py               # Shared fixtures (engine, db session, client, auth)
 │   ├── unit/                     # Pure-function tests — no DB (73 tests)
 │   ├── integration/              # CRUD and service tests against test DB (46 tests)
 │   └── e2e/                      # Route tests via FastAPI TestClient (43 tests)
 ├── fixtures/                     # Pre-recorded API response for fixture provider
+├── scripts/                      # Database init scripts (run automatically by Docker Compose)
+├── clickhouse/                   # ClickHouse configuration (required by Langfuse)
 ├── docs/presentation/            # Full technical documentation package
 ├── compose.yaml                  # Docker Compose: PostgreSQL, MinIO, Ollama, Langfuse stack
 ├── pyproject.toml                # pytest configuration
