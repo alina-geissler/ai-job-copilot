@@ -47,8 +47,8 @@
         <p class="muted dark:text-gray-400">Dies kann einige Minuten dauern. Die Seite aktualisiert sich automatisch.</p>
       {% else %}
         <p class="muted dark:text-gray-400">Noch kein Profil vorhanden. Lade deinen Lebenslauf unter
-          <a href="{{ request.url_for('render_documents_page') }}">Dokumente</a> hoch, um dein Profil automatisch zu befüllen,
-          oder <a href="{{ request.url_for('render_profile_edit_page') }}">trage deine Daten manuell ein</a>.</p>
+          <a href="{{ request.url_for('render_documents_page') }}" class="text-yellow-600 dark:text-yellow-400 underline">Dokumente</a> hoch, um dein Profil automatisch zu befüllen,
+          oder <a href="{{ request.url_for('render_profile_edit_page') }}" class="text-yellow-600 dark:text-yellow-400 underline">trage deine Daten manuell ein</a>.</p>
         {% if has_completed_cv %}
           <form method="post" action="{{ request.url_for('retry_profile_extraction_route') }}" style="margin-top: 0.75rem;">
             <button type="submit" class="btn btn-secondary">Profil aus Lebenslauf erstellen</button>
@@ -74,14 +74,14 @@
     </div>
   {% endif %}
 
-  {% if profile.cv_reconstruction %}
+  <!-- {% if profile.cv_reconstruction %}
   <section class="section">
     <div class="card dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
       <h2>Debug: Rekonstruierter CV-Text (Schritt 1)</h2>
       <pre style="white-space: pre-wrap; font-size: 0.85em; margin: 0;">{{ profile.cv_reconstruction }}</pre>
     </div>
   </section>
-  {% endif %}
+  {% endif %} -->
 
   {# Persönliche Daten #}
   <section class="section">

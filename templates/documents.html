@@ -99,7 +99,7 @@
   </button>
   <div x-show="open" x-cloak class="px-5 pb-5 border-t border-gray-100 dark:border-gray-700 pt-4">
     <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-      Dunkle Unterschrift auf weißem Papier, gut ausgeleuchtet, scharf und ohne Schatten.
+      Dunkle Unterschrift auf weißem Papier, gut ausgeleuchtet, scharf und ohne Schatten. (PNG oder JPEG)
     </p>
     {% if signature_image %}
     <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg inline-block">
@@ -190,7 +190,7 @@
               {{ doc.document_type_label }}
               &middot; {{ (doc.file_size_bytes / 1024) | round(1) }} KB
               &middot; {{ doc.created_at.strftime('%d.%m.%Y') }}
-              {% if doc.extraction_method_label %}&middot; {{ doc.extraction_method_label }}{% endif %}
+              <!--{% if doc.extraction_method_label %}&middot; {{ doc.extraction_method_label }}{% endif %}-->
             </p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">

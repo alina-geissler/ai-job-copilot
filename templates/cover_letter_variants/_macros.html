@@ -28,14 +28,14 @@
     <span class="cl-name cl-name-first" data-field="candidate_first_name" data-placeholder="Vorname">{{ first or '' }}</span>
     {% if not first and show_warnings %}
     <div class="cl-field-warning" data-warning-for="candidate_first_name">
-      <span class="cl-warning-text">⚠ Kein Vorname – bitte im Profil ergänzen.</span>
+      <span class="cl-warning-text">⚠ Kein Vorname – bitte manuell ergänzen.</span>
       <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
     </div>
     {% endif %}
     <span class="cl-name cl-name-last" data-field="candidate_last_name" data-placeholder="Nachname">{{ last or '' }}</span>
     {% if not last and show_warnings %}
     <div class="cl-field-warning" data-warning-for="candidate_last_name">
-      <span class="cl-warning-text">⚠ Kein Nachname – bitte im Profil ergänzen.</span>
+      <span class="cl-warning-text">⚠ Kein Nachname – bitte manuell ergänzen.</span>
       <button class="cl-warning-dismiss" type="button" aria-label="Warnung schließen" onclick="this.closest('.cl-field-warning').style.display='none'">×</button>
     </div>
     {% endif %}
