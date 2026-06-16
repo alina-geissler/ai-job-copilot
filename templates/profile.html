@@ -19,6 +19,13 @@
   {% endif %}
 </div>
 
+{% if show_ai_warning %}
+<div class="alert alert-error" role="alert">
+  <p><strong>⚠️ KI kann sich irren!</strong></p><br>
+  <p>Bitte prüfe alle Angaben sorgfältig, damit die Anschreiben möglichst präzise auf dein Profil zugeschnitten werden können.</p>
+</div>
+{% endif %}
+
 {% if request.query_params.get('needs_profile') %}
   <section class="section">
     <div class="alert alert-info" role="alert">

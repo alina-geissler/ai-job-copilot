@@ -223,11 +223,14 @@ def render_profile_page(
     profile = get_profile_for_user(db, user_id=current_user.id)
     profile_has_content = _profile_has_content(profile)
 
+    show_ai_warning = False
     extraction_in_progress = request.session.get("profile_extraction_in_progress", False)
     if extraction_in_progress:
         if profile is not None:
             request.session.pop("profile_extraction_in_progress", None)
             extraction_in_progress = False
+            if not profile.extraction_error:
+                show_ai_warning = True
     else:
         request.session.pop("profile_extraction_in_progress", None)
 
@@ -250,6 +253,7 @@ def render_profile_page(
             "profile": profile,
             "profile_has_content": profile_has_content,
             "extraction_in_progress": extraction_in_progress,
+            "show_ai_warning": show_ai_warning,
             "has_completed_cv": has_completed_cv,
             "has_signature": bool(profile and profile.signature_image),
         },
